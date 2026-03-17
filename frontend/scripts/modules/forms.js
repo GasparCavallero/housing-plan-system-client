@@ -1,0 +1,29 @@
+export function getConfig(form) {
+  const data = new FormData(form);
+
+  return {
+    cantidad_cuotas: Number(data.get("cantidadCuotas")),
+    cantidad_de_adherentes: Number(data.get("cantidadAdherentes")),
+    metros_cuadrados_vivienda: Number(data.get("metrosCuadrados")),
+    valor_por_m2: Number(data.get("valorPorM2")),
+    duracion_construccion_meses: Number(data.get("duracionConstruccionMeses")),
+    tipo_cambio: Number(data.get("tipoCambio"))
+  };
+}
+
+export function setConfigToForm(form, config) {
+  form.elements.cantidadCuotas.value = config.cantidad_cuotas;
+  form.elements.cantidadAdherentes.value = config.cantidad_de_adherentes;
+  form.elements.metrosCuadrados.value = config.metros_cuadrados_vivienda;
+  form.elements.valorPorM2.value = config.valor_por_m2;
+  form.elements.duracionConstruccionMeses.value = config.duracion_construccion_meses;
+  form.elements.tipoCambio.value = config.tipo_cambio;
+}
+
+export function getCuotasFromForm(form) {
+  const data = new FormData(form);
+  return {
+    mediaCuota: Number(data.get("mediaCuota")),
+    cuotaCompleta: Number(data.get("cuotaCompleta"))
+  };
+}
