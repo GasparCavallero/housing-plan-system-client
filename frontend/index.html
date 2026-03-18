@@ -5,6 +5,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Ahorro para Viviendas</title>
+  <script>
+    (function () {
+      try {
+        var accessToken = localStorage.getItem("hps_access_token");
+        if (!accessToken) {
+          document.documentElement.style.visibility = "hidden";
+          window.location.replace("./login.html");
+        }
+      } catch (error) {
+        document.documentElement.style.visibility = "hidden";
+        window.location.replace("./login.html");
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
