@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Ahorro para Viviendas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+
+<body>
+  <div class="bg-shape bg-shape-a"></div>
+  <div class="bg-shape bg-shape-b"></div>
+
+  <header class="hero">
+    <p class="eyebrow">Gestión interna</p>
+    <h1>Sistema de Ahorro para Viviendas</h1>
+    <p class="subtitle">Controlá planes, cuotas, adjudicaciones y simulación financiera en un único panel configurable.
+    </p>
+    <div class="session-bar">
+      <p id="session-status">Sin sesión</p>
+      <button id="btn-logout" class="btn btn-secondary" type="button">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <nav class="section-nav" aria-label="Navegación de secciones">
+    <a id="nav-link-admin" href="#admin-panel">Admin</a>
+    <a href="#configuracion">Configuración + Estado</a>
+    <a href="#simulacion">Simulación</a>
+    <a href="#adherentes">Adherentes</a>
+    <a href="#pagos">Pagos</a>
+    <a href="#respuestas">Respuestas</a>
+  </nav>
+
+  <main class="layout">
+    <section id="admin-panel" class="panel panel-admin hidden">
+      <div class="panel-head">
+        <h2>Panel administrador</h2>
+        <p id="admin-role-label">-</p>
+      </div>
+      <div class="admin-user-box">
+        <p id="admin-user-data">Cargando datos de sesión...</p>
+      </div>
+      <form id="admin-create-user-form" class="inline-form">
+        <input type="text" name="username" placeholder="Nuevo usuario" minlength="3" required />
+        <input type="password" name="password" placeholder="Password (min 8)" minlength="8" required />
+        <select name="role" aria-label="Rol de nuevo usuario" required>
+          <option value="operador">operador</option>
+          <option value="lectura">lectura</option>
+          <option value="admin">admin</option>
+        </select>
+        <button id="btn-admin-create-user" class="btn btn-primary" type="submit">Crear usuario</button>
+      </form>
+    </section>
+
+    <section id="configuracion" class="panel panel-config">
+      <h2>Configuración del plan</h2>
+      <form id="config-form" class="form-grid">
+        <label>
+          Cantidad de cuotas
+          <input type="number" name="cantidadCuotas" min="1" value="240" required />
+        </label>
+        <label>
+          Cantidad de adherentes
+          <input type="number" name="cantidadAdherentes" min="1" value="120" required />
+        </label>
+        <label>
+          Metros cuadrados vivienda
+          <input type="number" name="metrosCuadrados" min="1" value="60" required />
+        </label>
+        <label>
+          Valor por m² (ARS)
+          <input type="number" name="valorPorM2" min="1" value="950000" required />
+        </label>
+        <label>
+          Duración construcción (meses)
+          <input type="number" name="duracionConstruccionMeses" min="1" value="6" required />
+        </label>
+        <label>
+          Tipo de cambio ARS/USD
+          <input type="number" name="tipoCambio" min="1" value="1200" required />
+        </label>
+        <label>
+          Media cuota (ARS)
+          <input type="number" name="mediaCuota" min="1" value="250000" required />
+        </label>
+        <label>
+          Cuota completa (ARS)
+          <input type="number" name="cuotaCompleta" min="1" value="500000" required />
+        </label>
+      </form>
+      <div class="actions multi-actions">
+        <button id="btn-cargar-config" class="btn btn-ghost">Cargar configuración</button>
+        <button id="btn-guardar-config" class="btn btn-secondary">Guardar configuración</button>
+        <button id="btn-cargar-resumen" class="btn btn-ghost">Actualizar resumen</button>
+      </div>
+    </section>
+
+    <section id="estado-financiero" class="panel panel-kpi">
+      <h2>Estado financiero</h2>
+      <div class="kpi-grid">
+        <article class="kpi-card">
+          <p>Valor vivienda</p>
+          <h3 id="kpi-valor-vivienda-ars">-</h3>
+          <small id="kpi-valor-vivienda-usd">-</small>
+        </article>
+        <article class="kpi-card">
+          <p>Fondo actual</p>
+          <h3 id="kpi-fondo-ars">-</h3>
+          <small id="kpi-fondo-usd">-</small>
+        </article>
+        <article class="kpi-card">
+          <p>Viviendas iniciadas</p>
+          <h3 id="kpi-viviendas-iniciadas">0</h3>
+          <small id="kpi-viviendas-finalizadas">Finalizadas: 0</small>
+        </article>
+        <article class="kpi-card">
+          <p>Ingreso estimado mensual</p>
+          <h3 id="kpi-ingreso-mensual">-</h3>
+          <small>Basado en estados actuales</small>
+        </article>
+      </div>
+    </section>
+
+    <section id="simulacion" class="panel panel-timeline">
+      <div class="panel-head">
+        <h2>Simulación mensual</h2>
+        <p id="sim-summary">Ejecutá la simulación para ver proyecciones.</p>
+      </div>
+      <form id="operacion-form" class="inline-form">
+        <input type="number" name="horizonteMeses" min="1" value="36" placeholder="Horizonte meses" required />
+        <select name="metodoAdjudicacion" aria-label="Método de adjudicación">
+          <option value="sorteo">Sorteo</option>
+          <option value="licitacion">Licitación</option>
+        </select>
+        <input type="number" name="ofertaAdherenteId" min="1" placeholder="ID oferta (opcional)" />
+        <input type="number" name="ofertaPorcentaje" min="0.01" max="100" step="0.01"
+          placeholder="% oferta (opcional)" />
+        <button id="btn-simular-servidor" class="btn btn-primary" type="button">Simular</button>
+        <button id="btn-procesar-mes" class="btn btn-secondary" type="button">Procesar mes</button>
+        <button id="btn-reiniciar-plan" class="btn btn-ghost" type="button">Reiniciar plan</button>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Mes</th>
+              <th>Activos</th>
+              <th>En construcción</th>
+              <th>Adjudicados</th>
+              <th>Ingreso mes</th>
+              <th>Fondo cierre</th>
+              <th>Evento</th>
+            </tr>
+          </thead>
+          <tbody id="sim-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="adherentes" class="panel panel-adherentes">
+      <div class="panel-head">
+        <h2>Adherentes</h2>
+        <p id="adherentes-summary">Sin datos cargados.</p>
+      </div>
+      <form id="adherente-form" class="inline-form">
+        <input type="text" name="nombre" placeholder="Nombre nuevo adherente" required />
+        <button id="btn-crear-adherente" class="btn btn-primary" type="submit">Crear</button>
+        <button id="btn-listar-adherentes" class="btn btn-ghost" type="button">Actualizar lista</button>
+      </form>
+      <form id="adherente-lote-form" class="inline-form">
+        <input type="number" name="cantidad" min="1" max="200" value="10" placeholder="Cantidad" required />
+        <input type="text" name="prefijo" value="Adherente" placeholder="Prefijo nombre" required />
+        <button id="btn-crear-adherentes-lote" class="btn btn-secondary" type="submit">Carga rápida temporal</button>
+      </form>
+      <form id="adherente-estado-form" class="inline-form">
+        <input type="number" name="adherenteIdEstado" min="1" placeholder="ID adherente" required />
+        <select name="estadoAdherente" aria-label="Estado de adherente" required>
+          <option value="activo">activo</option>
+          <option value="en_construccion">en_construccion</option>
+          <option value="adjudicado">adjudicado</option>
+        </select>
+        <button id="btn-cambiar-estado" class="btn btn-secondary" type="submit">Cambiar estado</button>
+      </form>
+      <form id="adherente-eliminar-form" class="inline-form">
+        <input type="number" name="adherenteIdEliminar" min="1" placeholder="ID adherente a eliminar" required />
+        <button id="btn-eliminar-adherente" class="btn btn-secondary" type="submit">Eliminar adherente</button>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Estado</th>
+              <th>Cuotas pagadas</th>
+              <th>Bonificadas</th>
+            </tr>
+          </thead>
+          <tbody id="adherentes-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="pagos" class="panel panel-pagos">
+      <div class="panel-head">
+        <h2>Pagos</h2>
+        <p id="pagos-summary">Sin datos cargados.</p>
+      </div>
+      <form id="pago-form" class="inline-form pago-form">
+        <input type="number" name="adherenteId" min="1" placeholder="Adherente ID" required />
+        <input type="number" name="montoArs" min="1" step="0.01" placeholder="Monto ARS" required />
+        <input type="number" name="mes" min="1" placeholder="Mes" required />
+        <button id="btn-registrar-pago" class="btn btn-primary" type="submit">Registrar pago</button>
+        <button id="btn-listar-pagos" class="btn btn-ghost" type="button">Actualizar pagos</button>
+      </form>
+      <form id="pago-lote-form" class="inline-form pago-form">
+        <input type="number" name="cantidadPagos" min="1" max="300" value="10" placeholder="Cantidad" required />
+        <input type="number" name="adherenteInicial" min="1" value="1" placeholder="Adherente inicial" required />
+        <input type="number" name="montoLoteArs" min="1" step="0.01" value="100000" placeholder="Monto ARS" required />
+        <input type="number" name="mesLote" min="1" value="1" placeholder="Mes" required />
+        <button id="btn-registrar-pagos-lote" class="btn btn-secondary" type="submit">Carga rápida temporal</button>
+      </form>
+      <form id="pago-eliminar-form" class="inline-form pago-form">
+        <input type="number" name="pagoIdEliminar" min="1" placeholder="ID pago a eliminar" required />
+        <button id="btn-eliminar-pago" class="btn btn-secondary" type="submit">Eliminar pago</button>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Adherente</th>
+              <th>Monto</th>
+              <th>Mes</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="pagos-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="respuestas" class="panel panel-log">
+      <div class="panel-head">
+        <h2>Respuesta del sistema</h2>
+        <p>Última operación ejecutada</p>
+      </div>
+      <pre id="system-log" class="system-log">Sin operaciones todavía.</pre>
+    </section>
+  </main>
+
+  <div id="confirm-modal" class="confirm-modal hidden" role="dialog" aria-modal="true"
+    aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message">
+    <div class="confirm-modal-card">
+      <p class="eyebrow">Confirmación</p>
+      <h2 id="confirm-modal-title">Confirmar acción</h2>
+      <p id="confirm-modal-message">¿Querés continuar?</p>
+      <div class="confirm-modal-actions">
+        <button id="btn-confirm-cancel" class="btn btn-ghost" type="button">Cancelar</button>
+        <button id="btn-confirm-accept" class="btn btn-secondary" type="button">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/app.js"></script>
+</body>
+
+</html>
