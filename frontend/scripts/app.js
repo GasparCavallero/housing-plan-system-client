@@ -1,66 +1,306 @@
 import { dom } from "./modules/dom.js";
-import { getConfig, getCuotasFromForm, setConfigToForm } from "./modules/forms.js";
-import { simularPlanLocal } from "./modules/simulation.js";
+import { getConfig, setConfigToForm } from "./modules/forms.js";
 import {
+  logout,
+  me,
+  crearUsuario,
+  refreshToken,
   cargarConfiguracion,
+  cargarResumenFinanciero,
+  cargarEstadoPlan,
   guardarConfiguracion,
   simularServidor,
   procesarMes,
+  reiniciarPlan,
   listarAdherentes,
   crearAdherente,
+  actualizarEstadoAdherente,
+  eliminarAdherente,
   listarPagos,
-  registrarPago
+  registrarPago,
+  eliminarPago
 } from "./modules/services.js";
+import { clearTokens, hasSession, setCurrentUser } from "./modules/auth.js";
+import { setRefreshHandler } from "./modules/http.js";
+import { DEBUG_UI } from "./modules/settings.js";
 import {
   writeLog,
   setSummary,
-  updateKpi,
+  updateKpiFromResumen,
   renderTimeline,
   renderAdherentes,
   renderPagos,
+  hasTimelineMetrics,
   normalizeTimeline
 } from "./modules/renderers.js";
+
+setRefreshHandler(refreshToken);
+
+let navController = null;
+
+function redirectToLogin() {
+  window.location.href = "./login.html";
+}
 
 function withUiFeedback(fn) {
   return async (...args) => {
     try {
       await fn(...args);
     } catch (error) {
-      writeLog(dom.systemLog, "Error", { message: error.message });
+      const message = error?.message || "Error inesperado";
+      writeLog(dom.systemLog, "Error", { message });
+      setSummary(dom.simSummary, `Error: ${message}`);
+
+      if (/no autenticado|token|401|403/i.test(message)) {
+        clearTokens();
+        redirectToLogin();
+      }
     }
   };
 }
 
-async function ejecutarSimulacionLocal() {
-  const config = getConfig(dom.form);
-  const cuotas = getCuotasFromForm(dom.form);
-  const result = simularPlanLocal(config, cuotas, 36);
+function renderSessionStatus(user) {
+  dom.sessionStatus.textContent = `Sesión: ${user.username} (${user.role})`;
+}
 
-  updateKpi(dom.kpi, config, result);
-  renderTimeline(dom.tableBody, result.timeline);
+function initSectionNav() {
+  const nav = document.querySelector(".section-nav");
+  const layout = document.querySelector(".layout");
+  if (!nav || !layout) {
+    return null;
+  }
 
-  const primerasCasas = result.timeline
-    .filter((m) => String(m.evento).includes("Inicio casa"))
-    .slice(0, 3)
-    .map((m) => `Casa ${m.evento.split(" ").at(-1)} -> mes ${m.mes}`);
+  const links = Array.from(nav.querySelectorAll("a[href^='#']"));
+  const sections = links
+    .map((link) => {
+      const targetId = link.getAttribute("href")?.slice(1) || "";
+      const section = document.getElementById(targetId);
+      return section ? { link, section, id: targetId } : null;
+    })
+    .filter(Boolean);
 
-  setSummary(
-    dom.simSummary,
-    primerasCasas.length > 0
-      ? `Proyección local: ${primerasCasas.join(" | ")}`
-      : "No se logra iniciar ninguna vivienda con los parámetros actuales."
-  );
+  if (sections.length === 0) {
+    return null;
+  }
+
+  const sectionLoaders = {
+    "estado-financiero": cargarResumenServidor,
+    configuracion: cargarConfiguracionServidor,
+    adherentes: actualizarAdherentes,
+    pagos: actualizarPagos
+  };
+
+  const groupedViews = {
+    configuracion: ["configuracion", "estado-financiero"],
+    "estado-financiero": ["configuracion", "estado-financiero"]
+  };
+
+  let currentSectionId = "";
+
+  const setActive = (id) => {
+    links.forEach((link) => {
+      const isActive = link.getAttribute("href") === `#${id}`;
+      link.classList.toggle("is-active", isActive);
+      if (isActive) {
+        link.setAttribute("aria-current", "true");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+  };
+
+  const showSection = async (id) => {
+    const target = sections.find((item) => item.id === id);
+    if (!target) {
+      return;
+    }
+    if (target.section.classList.contains("hidden") || target.link.classList.contains("hidden")) {
+      return;
+    }
+
+    currentSectionId = id;
+    layout.classList.add("single-section");
+
+    const visibleIds = new Set(groupedViews[id] || [id]);
+    const allPanels = Array.from(layout.querySelectorAll(".panel[id]"));
+
+    allPanels.forEach((section) => {
+      const shouldShow = visibleIds.has(section.id) && !section.classList.contains("hidden");
+      section.classList.toggle("section-visible", shouldShow);
+    });
+
+    setActive(id);
+
+    const loaders = Array.from(visibleIds)
+      .map((sectionId) => sectionLoaders[sectionId])
+      .filter((loader, index, array) => typeof loader === "function" && array.indexOf(loader) === index);
+
+    await Promise.all(loaders.map((loader) => withUiFeedback(loader)()));
+  };
+
+  const ensureVisibleSelection = async () => {
+    const selected = sections.find((item) => item.id === currentSectionId);
+    if (selected && !selected.section.classList.contains("hidden") && !selected.link.classList.contains("hidden")) {
+      return;
+    }
+
+    const fallback = sections.find(
+      (item) => !item.section.classList.contains("hidden") && !item.link.classList.contains("hidden")
+    );
+    if (fallback) {
+      await showSection(fallback.id);
+    }
+  };
+
+  links.forEach((link) => {
+    link.addEventListener("click", async (event) => {
+      event.preventDefault();
+      const id = link.getAttribute("href")?.slice(1);
+      if (id) {
+        await showSection(id);
+      }
+    });
+  });
+
+  return {
+    showSection,
+    ensureVisibleSelection
+  };
+}
+
+function applyRoleUI(user) {
+  const esAdmin = user.role === "admin";
+
+  dom.adminPanel.classList.toggle("hidden", !esAdmin);
+  dom.navLinkAdmin.classList.toggle("hidden", !esAdmin);
+  dom.adminRoleLabel.textContent = esAdmin ? "Perfil admin" : "-";
+  dom.adminUserData.textContent = `ID ${user.id} | ${user.username} | ${user.role} | activo: ${user.is_active ? "sí" : "no"}`;
+
+  const soloLectura = user.role === "lectura";
+  dom.buttonGuardarConfig.disabled = soloLectura;
+  dom.buttonProcesarMes.disabled = soloLectura;
+  dom.buttonReiniciarPlan.disabled = soloLectura;
+  document.getElementById("btn-crear-adherente").disabled = soloLectura;
+  dom.buttonCrearAdherentesLote.disabled = soloLectura;
+  dom.buttonEliminarAdherente.disabled = soloLectura;
+  document.getElementById("btn-cambiar-estado").disabled = soloLectura;
+  document.getElementById("btn-registrar-pago").disabled = soloLectura;
+  dom.buttonRegistrarPagosLote.disabled = soloLectura;
+  dom.buttonEliminarPago.disabled = soloLectura;
+}
+
+function pedirConfirmacion({ title, message, acceptLabel = "Confirmar", focusBackElement = dom.buttonReiniciarPlan }) {
+  const {
+    confirmModal,
+    confirmModalTitle,
+    confirmModalMessage,
+    confirmCancelButton,
+    confirmAcceptButton
+  } = dom;
+
+  if (!confirmModal || !confirmCancelButton || !confirmAcceptButton) {
+    return Promise.resolve(window.confirm(message));
+  }
+
+  confirmModalTitle.textContent = title;
+  confirmModalMessage.textContent = message;
+  confirmAcceptButton.textContent = acceptLabel;
+  confirmModal.classList.remove("hidden");
+  confirmAcceptButton.focus();
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      confirmModal.classList.add("hidden");
+      confirmCancelButton.removeEventListener("click", onCancel);
+      confirmAcceptButton.removeEventListener("click", onAccept);
+      confirmModal.removeEventListener("click", onBackdropClick);
+      document.removeEventListener("keydown", onKeyDown);
+      confirmAcceptButton.textContent = "Confirmar";
+      if (focusBackElement && typeof focusBackElement.focus === "function") {
+        focusBackElement.focus();
+      }
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    const onAccept = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const onBackdropClick = (event) => {
+      if (event.target === confirmModal) {
+        onCancel();
+      }
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onCancel();
+      }
+    };
+
+    confirmCancelButton.addEventListener("click", onCancel);
+    confirmAcceptButton.addEventListener("click", onAccept);
+    confirmModal.addEventListener("click", onBackdropClick);
+    document.addEventListener("keydown", onKeyDown);
+  });
 }
 
 async function ejecutarSimulacionServidor() {
-  const payload = await simularServidor(36);
+  if (navController) {
+    await navController.showSection("simulacion");
+  }
+
+  const data = new FormData(dom.operacionForm);
+  const horizonte = Number(data.get("horizonteMeses") || 36);
+  const payload = await simularServidor(horizonte);
   const rows = normalizeTimeline(payload);
 
   if (rows.length > 0) {
+    const hasMetrics = hasTimelineMetrics(rows);
+
     renderTimeline(dom.tableBody, rows);
-    setSummary(dom.simSummary, "Simulación obtenida desde servidor.");
+    if (hasMetrics) {
+      setSummary(dom.simSummary, `Simulación servidor ok: ${rows.length} fila(s) en ${horizonte} meses.`);
+    } else {
+      setSummary(
+        dom.simSummary,
+        `Simulación servidor ok: ${rows.length} evento(s) en ${horizonte} meses. La API no devolvió métricas mensuales en esta respuesta.`
+      );
+    }
   } else {
-    setSummary(dom.simSummary, "El servidor respondió sin timeline explícito; revisá el panel de respuesta.");
+    const fondoFinal = typeof payload?.fondo_final_ars === "number"
+      ? ` Fondo final: ${payload.fondo_final_ars.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS.`
+      : "";
+
+    let diagnostico = "";
+    if (DEBUG_UI) {
+      try {
+        const estadoPlan = await cargarEstadoPlan();
+        const cantidadAdherentes = Array.isArray(estadoPlan?.adherentes)
+          ? estadoPlan.adherentes.length
+          : null;
+        const ingresoMensual = Number(estadoPlan?.resumen?.ingreso_mensual_ars ?? 0);
+        const fondoActual = Number(estadoPlan?.estado?.fondo_ars ?? 0);
+
+        if (cantidadAdherentes === 0 || ingresoMensual <= 0) {
+          diagnostico = " Diagnóstico: no hay ingreso mensual (posible falta de adherentes cargados o todos en estado sin aporte).";
+        } else if (fondoActual <= 0) {
+          diagnostico = " Diagnóstico: el fondo actual es 0 y el horizonte puede ser corto para alcanzar una vivienda.";
+        }
+      } catch {
+        diagnostico = "";
+      }
+    }
+
+    setSummary(
+      dom.simSummary,
+      `Simulación servidor ejecutada, pero no hubo eventos de casas en ${horizonte} meses.${fondoFinal}${diagnostico}`
+    );
   }
 
   writeLog(dom.systemLog, "Simulación servidor", payload);
@@ -72,14 +312,61 @@ async function cargarConfiguracionServidor() {
   writeLog(dom.systemLog, "Configuración cargada", config);
 }
 
+async function cargarResumenServidor() {
+  const [resumen, estadoPlan] = await Promise.all([
+    cargarResumenFinanciero(),
+    cargarEstadoPlan()
+  ]);
+
+  updateKpiFromResumen(dom.kpi, resumen, estadoPlan?.estado);
+  writeLog(dom.systemLog, "Resumen financiero", { resumen, estado: estadoPlan?.estado });
+}
+
 async function guardarConfiguracionServidor() {
   const response = await guardarConfiguracion(getConfig(dom.form));
   writeLog(dom.systemLog, "Configuración guardada", response);
 }
 
 async function procesarMesServidor() {
-  const payload = await procesarMes();
+  const data = new FormData(dom.operacionForm);
+  const metodo = String(data.get("metodoAdjudicacion") || "sorteo");
+  const ofertaAdherenteId = Number(data.get("ofertaAdherenteId") || 0);
+  const ofertaPorcentaje = Number(data.get("ofertaPorcentaje") || 0);
+  const ofertas = [];
+
+  if (metodo === "licitacion" && ofertaAdherenteId > 0 && ofertaPorcentaje > 0) {
+    ofertas.push({
+      adherente_id: ofertaAdherenteId,
+      porcentaje_cuotas_restantes: ofertaPorcentaje
+    });
+  }
+
+  const payload = await procesarMes(metodo, ofertas);
   writeLog(dom.systemLog, "Procesar mes", payload);
+  await cargarResumenServidor();
+}
+
+async function reiniciarPlanServidor() {
+  const confirmacion = await pedirConfirmacion({
+    title: "Reiniciar plan",
+    message: "Esta acción restablece el estado del plan y no se puede deshacer desde esta pantalla.",
+    acceptLabel: "Reiniciar",
+    focusBackElement: dom.buttonReiniciarPlan
+  });
+  if (!confirmacion) {
+    return;
+  }
+
+  const payload = await reiniciarPlan();
+  dom.tableBody.innerHTML = "";
+  setSummary(dom.simSummary, "Plan reiniciado. Ejecutá una simulación para ver una nueva proyección.");
+  writeLog(dom.systemLog, "Reiniciar plan", payload);
+
+  await Promise.all([
+    cargarResumenServidor(),
+    actualizarAdherentes(),
+    actualizarPagos()
+  ]);
 }
 
 async function actualizarAdherentes() {
@@ -94,11 +381,182 @@ async function actualizarPagos() {
   writeLog(dom.systemLog, "Listado de pagos", items);
 }
 
-dom.buttonSimular.addEventListener("click", withUiFeedback(ejecutarSimulacionLocal));
+async function logoutFlow() {
+  try {
+    await logout();
+  } catch {
+    clearTokens();
+  }
+  redirectToLogin();
+}
+
+async function bootstrapSession() {
+  if (!hasSession()) {
+    redirectToLogin();
+    return false;
+  }
+
+  try {
+    const user = await me();
+    setCurrentUser(user);
+    renderSessionStatus(user);
+    applyRoleUI(user);
+    if (navController) {
+      await navController.ensureVisibleSelection();
+    }
+    return true;
+  } catch {
+    clearTokens();
+    redirectToLogin();
+    return false;
+  }
+}
+
+async function crearUsuarioAdminFlow(event) {
+  event.preventDefault();
+  const data = new FormData(dom.adminCreateUserForm);
+  const username = String(data.get("username") || "").trim();
+  const password = String(data.get("password") || "");
+  const role = String(data.get("role") || "operador");
+
+  const user = await crearUsuario(username, password, role);
+  dom.adminCreateUserForm.reset();
+  writeLog(dom.systemLog, "Usuario creado por admin", user);
+}
+
+async function crearAdherentesLoteFlow(event) {
+  event.preventDefault();
+  const data = new FormData(dom.adherenteLoteForm);
+  const cantidad = Number(data.get("cantidad") || 0);
+  const prefijo = String(data.get("prefijo") || "Adherente").trim();
+
+  if (!Number.isFinite(cantidad) || cantidad < 1 || cantidad > 200) {
+    throw new Error("La cantidad debe estar entre 1 y 200.");
+  }
+  if (!prefijo) {
+    throw new Error("Ingresá un prefijo para los nombres.");
+  }
+
+  const actuales = await listarAdherentes();
+  const base = actuales.length;
+
+  for (let i = 1; i <= cantidad; i += 1) {
+    const nombre = `${prefijo} ${base + i}`;
+    await crearAdherente(nombre);
+  }
+
+  await actualizarAdherentes();
+  writeLog(dom.systemLog, "Carga rápida temporal", {
+    creados: cantidad,
+    prefijo
+  });
+}
+
+async function registrarPagosLoteFlow(event) {
+  event.preventDefault();
+  const data = new FormData(dom.pagoLoteForm);
+  const cantidad = Number(data.get("cantidadPagos") || 0);
+  const adherenteInicial = Number(data.get("adherenteInicial") || 0);
+  const montoArs = Number(data.get("montoLoteArs") || 0);
+  const mes = Number(data.get("mesLote") || 0);
+
+  if (!Number.isFinite(cantidad) || cantidad < 1 || cantidad > 300) {
+    throw new Error("La cantidad de pagos debe estar entre 1 y 300.");
+  }
+  if (!Number.isFinite(adherenteInicial) || adherenteInicial < 1) {
+    throw new Error("El adherente inicial debe ser mayor o igual a 1.");
+  }
+  if (!Number.isFinite(montoArs) || montoArs <= 0) {
+    throw new Error("El monto debe ser mayor a 0.");
+  }
+  if (!Number.isFinite(mes) || mes < 1) {
+    throw new Error("El mes debe ser mayor o igual a 1.");
+  }
+
+  let creados = 0;
+  let fallidos = 0;
+
+  for (let i = 0; i < cantidad; i += 1) {
+    const adherenteId = adherenteInicial + i;
+    try {
+      await registrarPago(adherenteId, montoArs, mes);
+      creados += 1;
+    } catch {
+      fallidos += 1;
+    }
+  }
+
+  await actualizarPagos();
+  writeLog(dom.systemLog, "Carga rápida temporal de pagos", {
+    cantidad,
+    adherenteInicial,
+    montoArs,
+    mes,
+    creados,
+    fallidos
+  });
+}
+
+async function eliminarAdherenteFlow(event) {
+  event.preventDefault();
+  const data = new FormData(dom.adherenteEliminarForm);
+  const adherenteId = Number(data.get("adherenteIdEliminar") || 0);
+
+  if (!Number.isFinite(adherenteId) || adherenteId < 1) {
+    throw new Error("Ingresá un ID de adherente válido.");
+  }
+
+  const confirmacion = await pedirConfirmacion({
+    title: "Eliminar adherente",
+    message: `Se eliminará el adherente ID ${adherenteId}. Esta acción puede afectar pagos y estado del plan.`,
+    acceptLabel: "Eliminar",
+    focusBackElement: dom.buttonEliminarAdherente
+  });
+
+  if (!confirmacion) {
+    return;
+  }
+
+  const payload = await eliminarAdherente(adherenteId);
+  dom.adherenteEliminarForm.reset();
+  writeLog(dom.systemLog, "Eliminar adherente", { adherenteId, payload });
+  await actualizarAdherentes();
+}
+
+async function eliminarPagoFlow(event) {
+  event.preventDefault();
+  const data = new FormData(dom.pagoEliminarForm);
+  const pagoId = Number(data.get("pagoIdEliminar") || 0);
+
+  if (!Number.isFinite(pagoId) || pagoId < 1) {
+    throw new Error("Ingresá un ID de pago válido.");
+  }
+
+  const confirmacion = await pedirConfirmacion({
+    title: "Eliminar pago",
+    message: `Se eliminará el pago ID ${pagoId}. Esta acción no se puede deshacer.`,
+    acceptLabel: "Eliminar",
+    focusBackElement: dom.buttonEliminarPago
+  });
+
+  if (!confirmacion) {
+    return;
+  }
+
+  const payload = await eliminarPago(pagoId);
+  dom.pagoEliminarForm.reset();
+  writeLog(dom.systemLog, "Eliminar pago", { pagoId, payload });
+  await actualizarPagos();
+}
+
 dom.buttonSimularServidor.addEventListener("click", withUiFeedback(ejecutarSimulacionServidor));
 dom.buttonCargarConfig.addEventListener("click", withUiFeedback(cargarConfiguracionServidor));
 dom.buttonGuardarConfig.addEventListener("click", withUiFeedback(guardarConfiguracionServidor));
+dom.buttonCargarResumen.addEventListener("click", withUiFeedback(cargarResumenServidor));
 dom.buttonProcesarMes.addEventListener("click", withUiFeedback(procesarMesServidor));
+dom.buttonReiniciarPlan.addEventListener("click", withUiFeedback(reiniciarPlanServidor));
+
+dom.buttonLogout.addEventListener("click", withUiFeedback(logoutFlow));
 
 dom.buttonListarAdherentes.addEventListener("click", withUiFeedback(actualizarAdherentes));
 dom.adherenteForm.addEventListener("submit", withUiFeedback(async (event) => {
@@ -112,6 +570,19 @@ dom.adherenteForm.addEventListener("submit", withUiFeedback(async (event) => {
 
   await crearAdherente(nombre);
   dom.adherenteForm.reset();
+  await actualizarAdherentes();
+}));
+
+dom.adherenteLoteForm.addEventListener("submit", withUiFeedback(crearAdherentesLoteFlow));
+dom.adherenteEliminarForm.addEventListener("submit", withUiFeedback(eliminarAdherenteFlow));
+
+dom.adherenteEstadoForm.addEventListener("submit", withUiFeedback(async (event) => {
+  event.preventDefault();
+  const data = new FormData(dom.adherenteEstadoForm);
+  const adherenteId = Number(data.get("adherenteIdEstado"));
+  const estado = String(data.get("estadoAdherente"));
+
+  await actualizarEstadoAdherente(adherenteId, estado);
   await actualizarAdherentes();
 }));
 
@@ -129,5 +600,15 @@ dom.pagoForm.addEventListener("submit", withUiFeedback(async (event) => {
   dom.pagoForm.reset();
   await actualizarPagos();
 }));
+dom.pagoLoteForm.addEventListener("submit", withUiFeedback(registrarPagosLoteFlow));
+dom.pagoEliminarForm.addEventListener("submit", withUiFeedback(eliminarPagoFlow));
 
-ejecutarSimulacionLocal();
+dom.adminCreateUserForm.addEventListener("submit", withUiFeedback(crearUsuarioAdminFlow));
+
+navController = initSectionNav();
+const sessionOk = await bootstrapSession();
+if (sessionOk) {
+  if (navController) {
+    await navController.showSection("estado-financiero");
+  }
+}
