@@ -238,10 +238,8 @@ function clearBusinessUiState() {
   dom.adherentesSummary.textContent = "Sin adherentes para este usuario.";
   dom.pagosSummary.textContent = "Sin pagos para este usuario.";
   configuracionesUsuario = [];
-  if (dom.configSelector) {
-    dom.configSelector.innerHTML = "";
-  }
-  dom.configSelectorWrap?.classList.add("hidden");
+  dom.configModalList && (dom.configModalList.innerHTML = "");
+  dom.configModal?.classList.add("hidden");
 }
 
 function pickConfigPayload(item) {
@@ -309,39 +307,86 @@ function buildConfigLabel(item, index) {
   return `Configuración ${idPart}`;
 }
 
-function renderConfigSelector() {
-  if (!dom.configSelector || !dom.configSelectorWrap) {
+function renderConfigListInModal() {
+  if (!dom.configModalList) {
     return;
   }
 
-  if (configuracionesUsuario.length <= 1) {
-    dom.configSelectorWrap.classList.add("hidden");
-    dom.configSelector.innerHTML = "";
-    return;
-  }
-
-  dom.configSelector.innerHTML = configuracionesUsuario
-    .map((item, index) => `<option value="${index}">${buildConfigLabel(item, index)}</option>`)
+  dom.configModalList.innerHTML = configuracionesUsuario
+    .map((item, index) => {
+      const config = item.configuracion;
+      return `
+        <article class="config-item">
+          <h3>${buildConfigLabel(item, index)}</h3>
+          <div class="config-item-grid">
+            <p><strong>Tipo de cambio:</strong> ${Number(config.tipo_cambio).toLocaleString("es-AR")}</p>
+            <p><strong>Adherentes:</strong> ${Number(config.cantidad_de_adherentes).toLocaleString("es-AR")}</p>
+            <p><strong>m2 vivienda:</strong> ${Number(config.metros_cuadrados_vivienda).toLocaleString("es-AR")}</p>
+            <p><strong>Cuotas:</strong> ${Number(config.cantidad_cuotas).toLocaleString("es-AR")}</p>
+            <p><strong>Valor por m2:</strong> ${Number(config.valor_por_m2).toLocaleString("es-AR")}</p>
+            <p><strong>Duración obra (meses):</strong> ${Number(config.duracion_construccion_meses).toLocaleString("es-AR")}</p>
+          </div>
+          <button class="btn btn-secondary js-config-apply" type="button" data-config-index="${index}">Usar esta configuración</button>
+        </article>
+      `;
+    })
     .join("");
-
-  dom.configSelectorWrap.classList.remove("hidden");
 }
 
-function aplicarConfiguracionSeleccionada() {
-  if (!dom.configSelector) {
-    return;
+function pedirSeleccionConfiguracion() {
+  const { configModal, configModalCloseButton, configModalList } = dom;
+  if (!configModal || !configModalCloseButton || !configModalList) {
+    return Promise.resolve(configuracionesUsuario[0] || null);
   }
 
-  const selectedIndex = Number(dom.configSelector.value || 0);
-  const item = configuracionesUsuario[selectedIndex];
-  const config = pickConfigPayload(item);
+  renderConfigListInModal();
+  configModal.classList.remove("hidden");
+  configModalCloseButton.focus();
 
-  if (!isPlanConfigShape(config)) {
-    throw new Error("La configuración seleccionada no tiene el formato esperado.");
-  }
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      configModal.classList.add("hidden");
+      configModalCloseButton.removeEventListener("click", onClose);
+      configModal.removeEventListener("click", onBackdrop);
+      configModalList.removeEventListener("click", onListClick);
+      document.removeEventListener("keydown", onKeyDown);
+      dom.buttonCargarConfig?.focus();
+    };
 
-  setConfigToForm(dom.form, config);
-  writeLog(dom.systemLog, "Configuración aplicada", item);
+    const onClose = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    const onBackdrop = (event) => {
+      if (event.target === configModal) {
+        onClose();
+      }
+    };
+
+    const onListClick = (event) => {
+      const button = event.target.closest(".js-config-apply");
+      if (!button) {
+        return;
+      }
+
+      const index = Number(button.getAttribute("data-config-index") || "-1");
+      const item = configuracionesUsuario[index] || null;
+      cleanup();
+      resolve(item);
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    configModalCloseButton.addEventListener("click", onClose);
+    configModal.addEventListener("click", onBackdrop);
+    configModalList.addEventListener("click", onListClick);
+    document.addEventListener("keydown", onKeyDown);
+  });
 }
 
 function pedirConfirmacion({ title, message, acceptLabel = "Confirmar", focusBackElement = dom.buttonReiniciarPlan }) {
@@ -479,21 +524,24 @@ async function cargarConfiguracionServidor(options = {}) {
   }
 
   if (configuracionesUsuario.length === 0) {
-    dom.configSelectorWrap?.classList.add("hidden");
     throw new Error("No hay configuraciones guardadas para este usuario.");
   }
 
   if (configuracionesUsuario.length === 1 || !showPicker) {
     setConfigToForm(dom.form, configuracionesUsuario[0].configuracion);
     writeLog(dom.systemLog, "Configuración cargada", configuracionesUsuario[0]);
-    renderConfigSelector();
     return;
   }
 
-  renderConfigSelector();
-  dom.configSelector.value = "0";
-  aplicarConfiguracionSeleccionada();
-  setSummary(dom.simSummary, `Se encontraron ${configuracionesUsuario.length} configuraciones. Elegí una y aplicala.`);
+  const selected = await pedirSeleccionConfiguracion();
+  if (!selected) {
+    setSummary(dom.simSummary, "Selección de configuración cancelada.");
+    return;
+  }
+
+  setConfigToForm(dom.form, selected.configuracion);
+  writeLog(dom.systemLog, "Configuración cargada", selected);
+  setSummary(dom.simSummary, `Configuración aplicada (${buildConfigLabel(selected, configuracionesUsuario.indexOf(selected))}).`);
 }
 
 async function cargarResumenServidor() {
@@ -779,7 +827,6 @@ async function eliminarPagoFlow(event) {
 
 dom.buttonSimularServidor.addEventListener("click", withUiFeedback(ejecutarSimulacionServidor));
 dom.buttonCargarConfig.addEventListener("click", withUiFeedback(cargarConfiguracionServidor));
-dom.buttonAplicarConfig?.addEventListener("click", withUiFeedback(aplicarConfiguracionSeleccionada));
 dom.buttonGuardarConfig.addEventListener("click", withUiFeedback(guardarConfiguracionServidor));
 dom.buttonCargarResumen.addEventListener("click", withUiFeedback(cargarResumenServidor));
 dom.buttonProcesarMes.addEventListener("click", withUiFeedback(procesarMesServidor));

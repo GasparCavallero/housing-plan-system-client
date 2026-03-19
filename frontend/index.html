@@ -112,13 +112,6 @@
         <button id="btn-guardar-config" class="btn btn-secondary">Guardar configuración</button>
         <button id="btn-cargar-resumen" class="btn btn-ghost">Actualizar resumen</button>
       </div>
-      <div id="config-selector-wrap" class="config-selector hidden">
-        <label for="config-selector">Configuraciones guardadas del usuario</label>
-        <div class="config-selector-actions">
-          <select id="config-selector" aria-label="Configuraciones guardadas"></select>
-          <button id="btn-aplicar-config" class="btn btn-ghost" type="button">Aplicar seleccionada</button>
-        </div>
-      </div>
     </section>
 
     <section id="estado-financiero" class="panel panel-kpi">
@@ -285,6 +278,18 @@
         <button id="btn-confirm-cancel" class="btn btn-ghost" type="button">Cancelar</button>
         <button id="btn-confirm-accept" class="btn btn-secondary" type="button">Confirmar</button>
       </div>
+    </div>
+  </div>
+
+  <div id="config-modal" class="config-modal hidden" role="dialog" aria-modal="true"
+    aria-labelledby="config-modal-title" aria-describedby="config-modal-subtitle">
+    <div class="config-modal-card">
+      <div class="panel-head">
+        <h2 id="config-modal-title">Elegí una configuración</h2>
+        <button id="btn-config-modal-close" class="btn btn-ghost" type="button">Cerrar</button>
+      </div>
+      <p id="config-modal-subtitle">Estas son las configuraciones guardadas para tu usuario.</p>
+      <div id="config-modal-list" class="config-modal-list"></div>
     </div>
   </div>
 
