@@ -102,7 +102,8 @@ export async function reiniciarPlan() {
       method: "POST"
     });
   } catch (error) {
-    if (!/404|Not Found|No encontrado/i.test(String(error?.message || ""))) {
+    const status = Number(error?.status || 0);
+    if (status !== 404 && !/404|Not Found|No encontrado/i.test(String(error?.message || ""))) {
       throw error;
     }
 
@@ -135,7 +136,8 @@ export async function eliminarAdherente(adherenteId) {
       method: "DELETE"
     });
   } catch (error) {
-    if (!/404|405|Not Found|Method Not Allowed|No encontrado/i.test(String(error?.message || ""))) {
+    const status = Number(error?.status || 0);
+    if (![404, 405].includes(status) && !/404|405|Not Found|Method Not Allowed|No encontrado/i.test(String(error?.message || ""))) {
       throw error;
     }
 
@@ -166,7 +168,8 @@ export async function eliminarPago(pagoId) {
       method: "DELETE"
     });
   } catch (error) {
-    if (!/404|405|Not Found|Method Not Allowed|No encontrado/i.test(String(error?.message || ""))) {
+    const status = Number(error?.status || 0);
+    if (![404, 405].includes(status) && !/404|405|Not Found|Method Not Allowed|No encontrado/i.test(String(error?.message || ""))) {
       throw error;
     }
 

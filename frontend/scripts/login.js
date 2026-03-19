@@ -1,4 +1,10 @@
-import { clearTokens, hasSession, setCurrentUser } from "./modules/auth.js";
+import {
+  clearTokens,
+  clearBusinessCache,
+  getLastUserId,
+  hasSession,
+  setCurrentUser
+} from "./modules/auth.js";
 import { setRefreshHandler } from "./modules/http.js";
 import { login, me, refreshToken } from "./modules/services.js";
 
@@ -41,6 +47,11 @@ form.addEventListener("submit", async (event) => {
   try {
     await login(username, password);
     const user = await me();
+    const previousUserId = getLastUserId();
+    const currentUserId = user?.id != null ? String(user.id) : "";
+    if (previousUserId && currentUserId && previousUserId !== currentUserId) {
+      clearBusinessCache();
+    }
     setCurrentUser(user);
     goDashboard();
   } catch (error) {

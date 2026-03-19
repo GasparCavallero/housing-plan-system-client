@@ -20,7 +20,13 @@ import {
   registrarPago,
   eliminarPago
 } from "./modules/services.js";
-import { clearTokens, hasSession, setCurrentUser } from "./modules/auth.js";
+import {
+  clearTokens,
+  clearBusinessCache,
+  getLastUserId,
+  hasSession,
+  setCurrentUser
+} from "./modules/auth.js";
 import { setRefreshHandler } from "./modules/http.js";
 import { DEBUG_UI } from "./modules/settings.js";
 import {
@@ -47,11 +53,36 @@ function withUiFeedback(fn) {
     try {
       await fn(...args);
     } catch (error) {
+      const status = Number(error?.status || 0);
       const message = error?.message || "Error inesperado";
       writeLog(dom.systemLog, "Error", { message });
+      if (status === 401) {
+        setSummary(dom.simSummary, "Sesión expirada o no autenticado. Volvé a iniciar sesión.");
+        clearTokens();
+        clearBusinessCache();
+        clearBusinessUiState();
+        redirectToLogin();
+        return;
+      }
+
+      if (status === 403) {
+        setSummary(dom.simSummary, "No tenés permisos para realizar esta operación.");
+        return;
+      }
+
+      if (status === 404) {
+        setSummary(dom.simSummary, "Recurso no encontrado o fuera del alcance de tu usuario.");
+        return;
+      }
+
+      if (status === 409) {
+        setSummary(dom.simSummary, `Conflicto de regla de negocio: ${message}`);
+        return;
+      }
+
       setSummary(dom.simSummary, `Error: ${message}`);
 
-      if (/no autenticado|token|401|403/i.test(message)) {
+      if (/no autenticado|token|401/i.test(message)) {
         clearTokens();
         redirectToLogin();
       }
@@ -86,6 +117,7 @@ function initSectionNav() {
   const sectionLoaders = {
     "estado-financiero": cargarResumenServidor,
     configuracion: cargarConfiguracionServidor,
+    simulacion: () => ejecutarSimulacionServidor({ skipNavigation: true }),
     adherentes: actualizarAdherentes,
     pagos: actualizarPagos
   };
@@ -176,17 +208,32 @@ function applyRoleUI(user) {
   dom.adminRoleLabel.textContent = esAdmin ? "Perfil admin" : "-";
   dom.adminUserData.textContent = `ID ${user.id} | ${user.username} | ${user.role} | activo: ${user.is_active ? "sí" : "no"}`;
 
-  const soloLectura = user.role === "lectura";
-  dom.buttonGuardarConfig.disabled = soloLectura;
-  dom.buttonProcesarMes.disabled = soloLectura;
-  dom.buttonReiniciarPlan.disabled = soloLectura;
-  document.getElementById("btn-crear-adherente").disabled = soloLectura;
-  dom.buttonCrearAdherentesLote.disabled = soloLectura;
-  dom.buttonEliminarAdherente.disabled = soloLectura;
-  document.getElementById("btn-cambiar-estado").disabled = soloLectura;
-  document.getElementById("btn-registrar-pago").disabled = soloLectura;
-  dom.buttonRegistrarPagosLote.disabled = soloLectura;
-  dom.buttonEliminarPago.disabled = soloLectura;
+  const canWrite = user.role === "admin" || user.role === "operador";
+  const readOnlyMode = !canWrite;
+
+  if (readOnlyMode) {
+    setSummary(dom.simSummary, "Tu rol no está habilitado para operar en este sistema.");
+  }
+
+  dom.buttonGuardarConfig.disabled = readOnlyMode;
+  dom.buttonProcesarMes.disabled = readOnlyMode;
+  dom.buttonReiniciarPlan.disabled = readOnlyMode;
+  document.getElementById("btn-crear-adherente").disabled = readOnlyMode;
+  dom.buttonCrearAdherentesLote.disabled = readOnlyMode;
+  dom.buttonEliminarAdherente.disabled = readOnlyMode;
+  document.getElementById("btn-cambiar-estado").disabled = readOnlyMode;
+  document.getElementById("btn-registrar-pago").disabled = readOnlyMode;
+  dom.buttonRegistrarPagosLote.disabled = readOnlyMode;
+  dom.buttonEliminarPago.disabled = readOnlyMode;
+}
+
+function clearBusinessUiState() {
+  dom.tableBody.innerHTML = "";
+  dom.adherentesBody.innerHTML = "";
+  dom.pagosBody.innerHTML = "";
+  dom.simSummary.textContent = "Ejecutá la simulación para ver proyecciones.";
+  dom.adherentesSummary.textContent = "Sin adherentes para este usuario.";
+  dom.pagosSummary.textContent = "Sin pagos para este usuario.";
 }
 
 function pedirConfirmacion({ title, message, acceptLabel = "Confirmar", focusBackElement = dom.buttonReiniciarPlan }) {
@@ -250,8 +297,8 @@ function pedirConfirmacion({ title, message, acceptLabel = "Confirmar", focusBac
   });
 }
 
-async function ejecutarSimulacionServidor() {
-  if (navController) {
+async function ejecutarSimulacionServidor(options = {}) {
+  if (navController && !options.skipNavigation) {
     await navController.showSection("simulacion");
   }
 
@@ -387,6 +434,8 @@ async function logoutFlow() {
   } catch {
     clearTokens();
   }
+  clearBusinessCache();
+  clearBusinessUiState();
   redirectToLogin();
 }
 
@@ -398,6 +447,13 @@ async function bootstrapSession() {
 
   try {
     const user = await me();
+    const previousUserId = getLastUserId();
+    const currentUserId = user?.id != null ? String(user.id) : "";
+    if (previousUserId && currentUserId && previousUserId !== currentUserId) {
+      clearBusinessCache();
+      clearBusinessUiState();
+    }
+
     setCurrentUser(user);
     renderSessionStatus(user);
     applyRoleUI(user);
@@ -407,6 +463,8 @@ async function bootstrapSession() {
     return true;
   } catch {
     clearTokens();
+    clearBusinessCache();
+    clearBusinessUiState();
     redirectToLogin();
     return false;
   }
@@ -418,6 +476,10 @@ async function crearUsuarioAdminFlow(event) {
   const username = String(data.get("username") || "").trim();
   const password = String(data.get("password") || "");
   const role = String(data.get("role") || "operador");
+
+  if (!["admin", "operador"].includes(role)) {
+    throw new Error("Rol inválido. Solo se permite admin u operador.");
+  }
 
   const user = await crearUsuario(username, password, role);
   dom.adminCreateUserForm.reset();
@@ -517,7 +579,21 @@ async function eliminarAdherenteFlow(event) {
     return;
   }
 
-  const payload = await eliminarAdherente(adherenteId);
+  let payload;
+  try {
+    payload = await eliminarAdherente(adherenteId);
+  } catch (error) {
+    if (Number(error?.status || 0) === 404) {
+      writeLog(dom.systemLog, "Eliminar adherente", {
+        adherenteId,
+        message: "No encontrado o fuera de tu alcance"
+      });
+      await actualizarAdherentes();
+      return;
+    }
+    throw error;
+  }
+
   dom.adherenteEliminarForm.reset();
   writeLog(dom.systemLog, "Eliminar adherente", { adherenteId, payload });
   await actualizarAdherentes();
@@ -543,7 +619,21 @@ async function eliminarPagoFlow(event) {
     return;
   }
 
-  const payload = await eliminarPago(pagoId);
+  let payload;
+  try {
+    payload = await eliminarPago(pagoId);
+  } catch (error) {
+    if (Number(error?.status || 0) === 404) {
+      writeLog(dom.systemLog, "Eliminar pago", {
+        pagoId,
+        message: "No encontrado o fuera de tu alcance"
+      });
+      await actualizarPagos();
+      return;
+    }
+    throw error;
+  }
+
   dom.pagoEliminarForm.reset();
   writeLog(dom.systemLog, "Eliminar pago", { pagoId, payload });
   await actualizarPagos();
@@ -606,6 +696,7 @@ dom.pagoEliminarForm.addEventListener("submit", withUiFeedback(eliminarPagoFlow)
 dom.adminCreateUserForm.addEventListener("submit", withUiFeedback(crearUsuarioAdminFlow));
 
 navController = initSectionNav();
+clearBusinessUiState();
 const sessionOk = await bootstrapSession();
 if (sessionOk) {
   if (navController) {

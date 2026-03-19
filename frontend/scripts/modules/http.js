@@ -36,7 +36,9 @@ export async function apiRequest(path, options = {}, allowRefresh = true) {
 
   if (!response.ok) {
     const detail = data?.detail || `HTTP ${response.status}`;
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    const error = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    error.status = response.status;
+    throw error;
   }
 
   return data;

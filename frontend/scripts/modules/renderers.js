@@ -120,6 +120,16 @@ export function hasTimelineMetrics(rows) {
 }
 
 export function renderAdherentes(tableBody, summaryTarget, items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="5">No hay adherentes para este usuario.</td>
+      </tr>
+    `;
+    summaryTarget.textContent = "Total: 0";
+    return;
+  }
+
   tableBody.innerHTML = items.map((item) => `
     <tr>
       <td>${item.id}</td>
@@ -133,6 +143,16 @@ export function renderAdherentes(tableBody, summaryTarget, items) {
 }
 
 export function renderPagos(tableBody, summaryTarget, items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="5">No hay pagos para este usuario.</td>
+      </tr>
+    `;
+    summaryTarget.textContent = "Total: 0";
+    return;
+  }
+
   tableBody.innerHTML = items.map((item) => `
     <tr>
       <td>${item.id}</td>
