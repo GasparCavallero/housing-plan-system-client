@@ -5,6 +5,7 @@ import {
   me,
   crearUsuario,
   refreshToken,
+  cargarConfiguracion,
   listarConfiguraciones,
   cargarResumenFinanciero,
   cargarEstadoPlan,
@@ -256,6 +257,23 @@ function pickConfigPayload(item) {
   return null;
 }
 
+function normalizePlanConfig(raw) {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const normalized = {
+    cantidad_cuotas: Number(raw.cantidad_cuotas ?? raw.cantidadCuotas),
+    cantidad_de_adherentes: Number(raw.cantidad_de_adherentes ?? raw.cantidadAdherentes),
+    metros_cuadrados_vivienda: Number(raw.metros_cuadrados_vivienda ?? raw.metrosCuadradosVivienda ?? raw.metrosCuadrados),
+    valor_por_m2: Number(raw.valor_por_m2 ?? raw.valorPorM2),
+    duracion_construccion_meses: Number(raw.duracion_construccion_meses ?? raw.duracionConstruccionMeses),
+    tipo_cambio: Number(raw.tipo_cambio ?? raw.tipoCambio)
+  };
+
+  return isPlanConfigShape(normalized) ? normalized : null;
+}
+
 function isPlanConfigShape(config) {
   if (!config || typeof config !== "object") {
     return false;
@@ -448,9 +466,17 @@ async function cargarConfiguracionServidor(options = {}) {
   const items = await listarConfiguraciones();
 
   configuracionesUsuario = items
-    .map((item) => ({ raw: item, config: pickConfigPayload(item) }))
-    .filter((entry) => isPlanConfigShape(entry.config))
+    .map((item) => ({ raw: item, config: normalizePlanConfig(pickConfigPayload(item)) }))
+    .filter((entry) => entry.config)
     .map((entry) => ({ ...entry.raw, configuracion: entry.config }));
+
+  if (configuracionesUsuario.length === 0) {
+    // Fallback para backends que exponen una sola configuración en /configuracion.
+    const directConfig = normalizePlanConfig(await cargarConfiguracion());
+    if (directConfig) {
+      configuracionesUsuario = [{ id: "actual", nombre: "Actual", configuracion: directConfig }];
+    }
+  }
 
   if (configuracionesUsuario.length === 0) {
     dom.configSelectorWrap?.classList.add("hidden");
