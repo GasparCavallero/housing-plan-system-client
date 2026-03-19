@@ -67,6 +67,24 @@ export async function cargarConfiguracion() {
   return apiRequest("/configuracion", { method: "GET" });
 }
 
+export async function listarConfiguraciones() {
+  const payload = await apiRequest("/configuracion", { method: "GET" });
+
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (Array.isArray(payload?.configuraciones)) {
+    return payload.configuraciones;
+  }
+
+  if (payload && typeof payload === "object") {
+    return [payload];
+  }
+
+  return [];
+}
+
 export async function cargarResumenFinanciero() {
   return apiRequest("/configuracion/resumen-financiero", { method: "GET" });
 }

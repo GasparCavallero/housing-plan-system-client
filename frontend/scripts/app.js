@@ -5,7 +5,7 @@ import {
   me,
   crearUsuario,
   refreshToken,
-  cargarConfiguracion,
+  listarConfiguraciones,
   cargarResumenFinanciero,
   cargarEstadoPlan,
   guardarConfiguracion,
@@ -44,6 +44,7 @@ setRefreshHandler(refreshToken);
 
 let navController = null;
 let userSwitchedSession = false;
+let configuracionesUsuario = [];
 
 function redirectToLogin() {
   window.location.href = "./login.html";
@@ -235,6 +236,94 @@ function clearBusinessUiState() {
   dom.simSummary.textContent = "Ejecutá la simulación para ver proyecciones.";
   dom.adherentesSummary.textContent = "Sin adherentes para este usuario.";
   dom.pagosSummary.textContent = "Sin pagos para este usuario.";
+  configuracionesUsuario = [];
+  if (dom.configSelector) {
+    dom.configSelector.innerHTML = "";
+  }
+  dom.configSelectorWrap?.classList.add("hidden");
+}
+
+function pickConfigPayload(item) {
+  if (item && typeof item === "object") {
+    if (item.configuracion && typeof item.configuracion === "object") {
+      return item.configuracion;
+    }
+    if (item.payload && typeof item.payload === "object") {
+      return item.payload;
+    }
+    return item;
+  }
+  return null;
+}
+
+function isPlanConfigShape(config) {
+  if (!config || typeof config !== "object") {
+    return false;
+  }
+
+  const keys = [
+    "cantidad_cuotas",
+    "cantidad_de_adherentes",
+    "metros_cuadrados_vivienda",
+    "valor_por_m2",
+    "duracion_construccion_meses",
+    "tipo_cambio"
+  ];
+
+  return keys.every((key) => config[key] !== undefined && config[key] !== null);
+}
+
+function buildConfigLabel(item, index) {
+  const name = String(item?.nombre || item?.name || item?.titulo || "").trim();
+  const idPart = item?.id != null ? `#${item.id}` : `#${index + 1}`;
+  const dateRaw = item?.created_at || item?.fecha_creacion || item?.updated_at || item?.fecha;
+  if (name) {
+    return `${idPart} - ${name}`;
+  }
+
+  if (dateRaw) {
+    const dateValue = new Date(dateRaw);
+    if (!Number.isNaN(dateValue.getTime())) {
+      return `${idPart} - ${dateValue.toLocaleString("es-AR")}`;
+    }
+  }
+
+  return `Configuración ${idPart}`;
+}
+
+function renderConfigSelector() {
+  if (!dom.configSelector || !dom.configSelectorWrap) {
+    return;
+  }
+
+  if (configuracionesUsuario.length <= 1) {
+    dom.configSelectorWrap.classList.add("hidden");
+    dom.configSelector.innerHTML = "";
+    return;
+  }
+
+  dom.configSelector.innerHTML = configuracionesUsuario
+    .map((item, index) => `<option value="${index}">${buildConfigLabel(item, index)}</option>`)
+    .join("");
+
+  dom.configSelectorWrap.classList.remove("hidden");
+}
+
+function aplicarConfiguracionSeleccionada() {
+  if (!dom.configSelector) {
+    return;
+  }
+
+  const selectedIndex = Number(dom.configSelector.value || 0);
+  const item = configuracionesUsuario[selectedIndex];
+  const config = pickConfigPayload(item);
+
+  if (!isPlanConfigShape(config)) {
+    throw new Error("La configuración seleccionada no tiene el formato esperado.");
+  }
+
+  setConfigToForm(dom.form, config);
+  writeLog(dom.systemLog, "Configuración aplicada", item);
 }
 
 function pedirConfirmacion({ title, message, acceptLabel = "Confirmar", focusBackElement = dom.buttonReiniciarPlan }) {
@@ -354,10 +443,31 @@ async function ejecutarSimulacionServidor(options = {}) {
   writeLog(dom.systemLog, "Simulación servidor", payload);
 }
 
-async function cargarConfiguracionServidor() {
-  const config = await cargarConfiguracion();
-  setConfigToForm(dom.form, config);
-  writeLog(dom.systemLog, "Configuración cargada", config);
+async function cargarConfiguracionServidor(options = {}) {
+  const showPicker = options.showPicker !== false;
+  const items = await listarConfiguraciones();
+
+  configuracionesUsuario = items
+    .map((item) => ({ raw: item, config: pickConfigPayload(item) }))
+    .filter((entry) => isPlanConfigShape(entry.config))
+    .map((entry) => ({ ...entry.raw, configuracion: entry.config }));
+
+  if (configuracionesUsuario.length === 0) {
+    dom.configSelectorWrap?.classList.add("hidden");
+    throw new Error("No hay configuraciones guardadas para este usuario.");
+  }
+
+  if (configuracionesUsuario.length === 1 || !showPicker) {
+    setConfigToForm(dom.form, configuracionesUsuario[0].configuracion);
+    writeLog(dom.systemLog, "Configuración cargada", configuracionesUsuario[0]);
+    renderConfigSelector();
+    return;
+  }
+
+  renderConfigSelector();
+  dom.configSelector.value = "0";
+  aplicarConfiguracionSeleccionada();
+  setSummary(dom.simSummary, `Se encontraron ${configuracionesUsuario.length} configuraciones. Elegí una y aplicala.`);
 }
 
 async function cargarResumenServidor() {
@@ -643,6 +753,7 @@ async function eliminarPagoFlow(event) {
 
 dom.buttonSimularServidor.addEventListener("click", withUiFeedback(ejecutarSimulacionServidor));
 dom.buttonCargarConfig.addEventListener("click", withUiFeedback(cargarConfiguracionServidor));
+dom.buttonAplicarConfig?.addEventListener("click", withUiFeedback(aplicarConfiguracionSeleccionada));
 dom.buttonGuardarConfig.addEventListener("click", withUiFeedback(guardarConfiguracionServidor));
 dom.buttonCargarResumen.addEventListener("click", withUiFeedback(cargarResumenServidor));
 dom.buttonProcesarMes.addEventListener("click", withUiFeedback(procesarMesServidor));
