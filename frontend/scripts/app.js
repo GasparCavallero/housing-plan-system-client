@@ -43,6 +43,7 @@ import {
 setRefreshHandler(refreshToken);
 
 let navController = null;
+let userSwitchedSession = false;
 
 function redirectToLogin() {
   window.location.href = "./login.html";
@@ -449,7 +450,8 @@ async function bootstrapSession() {
     const user = await me();
     const previousUserId = getLastUserId();
     const currentUserId = user?.id != null ? String(user.id) : "";
-    if (previousUserId && currentUserId && previousUserId !== currentUserId) {
+    userSwitchedSession = Boolean(previousUserId && currentUserId && previousUserId !== currentUserId);
+    if (userSwitchedSession) {
       clearBusinessCache();
       clearBusinessUiState();
     }
@@ -672,7 +674,20 @@ dom.adherenteEstadoForm.addEventListener("submit", withUiFeedback(async (event) 
   const adherenteId = Number(data.get("adherenteIdEstado"));
   const estado = String(data.get("estadoAdherente"));
 
-  await actualizarEstadoAdherente(adherenteId, estado);
+  try {
+    await actualizarEstadoAdherente(adherenteId, estado);
+  } catch (error) {
+    if (Number(error?.status || 0) === 404) {
+      writeLog(dom.systemLog, "Cambiar estado adherente", {
+        adherenteId,
+        message: "No encontrado o fuera de tu alcance"
+      });
+      await actualizarAdherentes();
+      return;
+    }
+    throw error;
+  }
+
   await actualizarAdherentes();
 }));
 
@@ -701,5 +716,10 @@ const sessionOk = await bootstrapSession();
 if (sessionOk) {
   if (navController) {
     await navController.showSection("estado-financiero");
+  }
+
+  if (userSwitchedSession) {
+    await withUiFeedback(() => ejecutarSimulacionServidor({ skipNavigation: true }))();
+    userSwitchedSession = false;
   }
 }
