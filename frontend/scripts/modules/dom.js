@@ -33,7 +33,6 @@ export const dom = {
   buttonSimularServidor: document.getElementById("btn-simular-servidor"),
   buttonProcesarMes: document.getElementById("btn-procesar-mes"),
   buttonReiniciarPlan: document.getElementById("btn-reiniciar-plan"),
-  buttonCargarConfig: document.getElementById("btn-cargar-config"),
   buttonGuardarConfig: document.getElementById("btn-guardar-config"),
   buttonCargarResumen: document.getElementById("btn-cargar-resumen"),
   buttonListarAdherentes: document.getElementById("btn-listar-adherentes"),

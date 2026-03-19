@@ -350,7 +350,7 @@ function pedirSeleccionConfiguracion() {
       configModal.removeEventListener("click", onBackdrop);
       configModalList.removeEventListener("click", onListClick);
       document.removeEventListener("keydown", onKeyDown);
-      dom.buttonCargarConfig?.focus();
+      dom.buttonGuardarConfig?.focus();
     };
 
     const onClose = () => {
@@ -826,7 +826,6 @@ async function eliminarPagoFlow(event) {
 }
 
 dom.buttonSimularServidor.addEventListener("click", withUiFeedback(ejecutarSimulacionServidor));
-dom.buttonCargarConfig.addEventListener("click", withUiFeedback(cargarConfiguracionServidor));
 dom.buttonGuardarConfig.addEventListener("click", withUiFeedback(guardarConfiguracionServidor));
 dom.buttonCargarResumen.addEventListener("click", withUiFeedback(cargarResumenServidor));
 dom.buttonProcesarMes.addEventListener("click", withUiFeedback(procesarMesServidor));
