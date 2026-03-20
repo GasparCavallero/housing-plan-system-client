@@ -517,6 +517,27 @@ td.evento {
   font-weight: 600;
 }
 
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.btn-table {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.26rem 0.62rem;
+  background: #fff;
+  color: var(--primary-strong);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.btn-table:hover {
+  background: #eef5f3;
+}
+
 @keyframes rise {
   from {
     opacity: 0;

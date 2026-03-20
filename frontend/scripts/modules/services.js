@@ -180,6 +180,31 @@ export async function registrarPago(adherenteId, montoArs, mes) {
   });
 }
 
+export async function actualizarPago(pagoId, adherenteId, montoArs, mes) {
+  const body = JSON.stringify({
+    adherente_id: adherenteId,
+    monto_ars: montoArs,
+    mes
+  });
+
+  try {
+    return await apiRequest(`/pagos/${pagoId}`, {
+      method: "PATCH",
+      body
+    });
+  } catch (error) {
+    const status = Number(error?.status || 0);
+    if (status !== 404 && status !== 405) {
+      throw error;
+    }
+
+    return apiRequest(`/pagos/${pagoId}`, {
+      method: "PUT",
+      body
+    });
+  }
+}
+
 export async function eliminarPago(pagoId) {
   try {
     return await apiRequest(`/pagos/${pagoId}`, {

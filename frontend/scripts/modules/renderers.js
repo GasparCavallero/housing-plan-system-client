@@ -123,7 +123,7 @@ export function renderAdherentes(tableBody, summaryTarget, items) {
   if (!Array.isArray(items) || items.length === 0) {
     tableBody.innerHTML = `
       <tr>
-        <td colspan="5">No hay adherentes para este usuario.</td>
+        <td colspan="6">No hay adherentes para este usuario.</td>
       </tr>
     `;
     summaryTarget.textContent = "Total: 0";
@@ -137,6 +137,12 @@ export function renderAdherentes(tableBody, summaryTarget, items) {
       <td>${item.estado}</td>
       <td>${item.cuotas_pagadas}</td>
       <td>${item.cuotas_bonificadas_por_licitacion}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn-table js-edit-adherente" type="button" data-adherente-id="${item.id}" data-adherente-estado="${item.estado}">Editar</button>
+          <button class="btn-table js-delete-adherente" type="button" data-adherente-id="${item.id}">Eliminar</button>
+        </div>
+      </td>
     </tr>
   `).join("");
   summaryTarget.textContent = `Total: ${items.length}`;
@@ -146,7 +152,7 @@ export function renderPagos(tableBody, summaryTarget, items) {
   if (!Array.isArray(items) || items.length === 0) {
     tableBody.innerHTML = `
       <tr>
-        <td colspan="5">No hay pagos para este usuario.</td>
+        <td colspan="6">No hay pagos para este usuario.</td>
       </tr>
     `;
     summaryTarget.textContent = "Total: 0";
@@ -160,6 +166,12 @@ export function renderPagos(tableBody, summaryTarget, items) {
       <td>${formatterArs.format(item.monto_ars)}</td>
       <td>${item.mes}</td>
       <td>${new Date(item.fecha).toLocaleString("es-AR")}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn-table js-edit-pago" type="button" data-pago-id="${item.id}" data-adherente-id="${item.adherente_id}" data-monto-ars="${item.monto_ars}" data-mes="${item.mes}">Editar</button>
+          <button class="btn-table js-delete-pago" type="button" data-pago-id="${item.id}">Eliminar</button>
+        </div>
+      </td>
     </tr>
   `).join("");
   summaryTarget.textContent = `Total: ${items.length}`;

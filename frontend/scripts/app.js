@@ -19,6 +19,7 @@ import {
   eliminarAdherente,
   listarPagos,
   registrarPago,
+  actualizarPago,
   eliminarPago
 } from "./modules/services.js";
 import {
@@ -46,6 +47,7 @@ setRefreshHandler(refreshToken);
 let navController = null;
 let userSwitchedSession = false;
 let configuracionesUsuario = [];
+let isReadOnlyMode = false;
 
 function redirectToLogin() {
   window.location.href = "./login.html";
@@ -95,6 +97,16 @@ function withUiFeedback(fn) {
 
 function renderSessionStatus(user) {
   dom.sessionStatus.textContent = `Sesión: ${user.username} (${user.role})`;
+}
+
+function syncRowActionPermissions(readOnly) {
+  const buttons = [
+    ...dom.adherentesBody.querySelectorAll(".btn-table"),
+    ...dom.pagosBody.querySelectorAll(".btn-table")
+  ];
+  buttons.forEach((button) => {
+    button.disabled = readOnly;
+  });
 }
 
 function initSectionNav() {
@@ -213,6 +225,7 @@ function applyRoleUI(user) {
 
   const canWrite = user.role === "admin" || user.role === "operador";
   const readOnlyMode = !canWrite;
+  isReadOnlyMode = readOnlyMode;
 
   if (readOnlyMode) {
     setSummary(dom.simSummary, "Tu rol no está habilitado para operar en este sistema.");
@@ -228,6 +241,7 @@ function applyRoleUI(user) {
   document.getElementById("btn-registrar-pago").disabled = readOnlyMode;
   dom.buttonRegistrarPagosLote.disabled = readOnlyMode;
   dom.buttonEliminarPago.disabled = readOnlyMode;
+  syncRowActionPermissions(readOnlyMode);
 }
 
 function clearBusinessUiState() {
@@ -604,13 +618,155 @@ async function reiniciarPlanServidor() {
 async function actualizarAdherentes() {
   const items = await listarAdherentes();
   renderAdherentes(dom.adherentesBody, dom.adherentesSummary, items);
+  syncRowActionPermissions(isReadOnlyMode);
   writeLog(dom.systemLog, "Listado de adherentes", items);
 }
 
 async function actualizarPagos() {
   const items = await listarPagos();
   renderPagos(dom.pagosBody, dom.pagosSummary, items);
+  syncRowActionPermissions(isReadOnlyMode);
   writeLog(dom.systemLog, "Listado de pagos", items);
+}
+
+async function editarAdherenteDesdeFila(adherenteId, estadoActual) {
+  const estadosValidos = ["activo", "en_construccion", "adjudicado"];
+  const estadoIngresado = window.prompt(
+    "Nuevo estado del adherente (activo, en_construccion, adjudicado)",
+    String(estadoActual || "activo")
+  );
+
+  if (estadoIngresado === null) {
+    return;
+  }
+
+  const estado = String(estadoIngresado || "").trim();
+  if (!estadosValidos.includes(estado)) {
+    throw new Error("Estado inválido. Usá: activo, en_construccion o adjudicado.");
+  }
+
+  try {
+    await actualizarEstadoAdherente(adherenteId, estado);
+  } catch (error) {
+    if (Number(error?.status || 0) === 404) {
+      writeLog(dom.systemLog, "Editar adherente", {
+        adherenteId,
+        message: "No encontrado o fuera de tu alcance"
+      });
+      await actualizarAdherentes();
+      return;
+    }
+    throw error;
+  }
+
+  await actualizarAdherentes();
+}
+
+async function eliminarAdherentePorId(adherenteId, focusBackElement = dom.buttonEliminarAdherente) {
+  const confirmacion = await pedirConfirmacion({
+    title: "Eliminar adherente",
+    message: `Se eliminará el adherente ID ${adherenteId}. Esta acción puede afectar pagos y estado del plan.`,
+    acceptLabel: "Eliminar",
+    focusBackElement
+  });
+
+  if (!confirmacion) {
+    return;
+  }
+
+  let payload;
+  try {
+    payload = await eliminarAdherente(adherenteId);
+  } catch (error) {
+    if (Number(error?.status || 0) === 404) {
+      writeLog(dom.systemLog, "Eliminar adherente", {
+        adherenteId,
+        message: "No encontrado o fuera de tu alcance"
+      });
+      await actualizarAdherentes();
+      return;
+    }
+    throw error;
+  }
+
+  writeLog(dom.systemLog, "Eliminar adherente", { adherenteId, payload });
+  await actualizarAdherentes();
+}
+
+async function editarPagoDesdeFila(pagoId, adherenteIdActual, montoArsActual, mesActual) {
+  const adherenteInput = window.prompt("Adherente ID", String(adherenteIdActual ?? ""));
+  if (adherenteInput === null) {
+    return;
+  }
+  const montoInput = window.prompt("Monto ARS", String(montoArsActual ?? ""));
+  if (montoInput === null) {
+    return;
+  }
+  const mesInput = window.prompt("Mes", String(mesActual ?? ""));
+  if (mesInput === null) {
+    return;
+  }
+
+  const adherenteId = Number(adherenteInput);
+  const montoArs = Number(montoInput);
+  const mes = Number(mesInput);
+
+  if (!Number.isFinite(adherenteId) || adherenteId < 1) {
+    throw new Error("Adherente ID inválido.");
+  }
+  if (!Number.isFinite(montoArs) || montoArs <= 0) {
+    throw new Error("Monto inválido.");
+  }
+  if (!Number.isFinite(mes) || mes < 1) {
+    throw new Error("Mes inválido.");
+  }
+
+  try {
+    await actualizarPago(pagoId, adherenteId, montoArs, mes);
+  } catch (error) {
+    if (Number(error?.status || 0) === 404) {
+      writeLog(dom.systemLog, "Editar pago", {
+        pagoId,
+        message: "No encontrado o fuera de tu alcance"
+      });
+      await actualizarPagos();
+      return;
+    }
+    throw error;
+  }
+
+  await actualizarPagos();
+}
+
+async function eliminarPagoPorId(pagoId, focusBackElement = dom.buttonEliminarPago) {
+  const confirmacion = await pedirConfirmacion({
+    title: "Eliminar pago",
+    message: `Se eliminará el pago ID ${pagoId}. Esta acción no se puede deshacer.`,
+    acceptLabel: "Eliminar",
+    focusBackElement
+  });
+
+  if (!confirmacion) {
+    return;
+  }
+
+  let payload;
+  try {
+    payload = await eliminarPago(pagoId);
+  } catch (error) {
+    if (Number(error?.status || 0) === 404) {
+      writeLog(dom.systemLog, "Eliminar pago", {
+        pagoId,
+        message: "No encontrado o fuera de tu alcance"
+      });
+      await actualizarPagos();
+      return;
+    }
+    throw error;
+  }
+
+  writeLog(dom.systemLog, "Eliminar pago", { pagoId, payload });
+  await actualizarPagos();
 }
 
 async function logoutFlow() {
@@ -754,35 +910,8 @@ async function eliminarAdherenteFlow(event) {
     throw new Error("Ingresá un ID de adherente válido.");
   }
 
-  const confirmacion = await pedirConfirmacion({
-    title: "Eliminar adherente",
-    message: `Se eliminará el adherente ID ${adherenteId}. Esta acción puede afectar pagos y estado del plan.`,
-    acceptLabel: "Eliminar",
-    focusBackElement: dom.buttonEliminarAdherente
-  });
-
-  if (!confirmacion) {
-    return;
-  }
-
-  let payload;
-  try {
-    payload = await eliminarAdherente(adherenteId);
-  } catch (error) {
-    if (Number(error?.status || 0) === 404) {
-      writeLog(dom.systemLog, "Eliminar adherente", {
-        adherenteId,
-        message: "No encontrado o fuera de tu alcance"
-      });
-      await actualizarAdherentes();
-      return;
-    }
-    throw error;
-  }
-
+  await eliminarAdherentePorId(adherenteId, dom.buttonEliminarAdherente);
   dom.adherenteEliminarForm.reset();
-  writeLog(dom.systemLog, "Eliminar adherente", { adherenteId, payload });
-  await actualizarAdherentes();
 }
 
 async function eliminarPagoFlow(event) {
@@ -794,35 +923,8 @@ async function eliminarPagoFlow(event) {
     throw new Error("Ingresá un ID de pago válido.");
   }
 
-  const confirmacion = await pedirConfirmacion({
-    title: "Eliminar pago",
-    message: `Se eliminará el pago ID ${pagoId}. Esta acción no se puede deshacer.`,
-    acceptLabel: "Eliminar",
-    focusBackElement: dom.buttonEliminarPago
-  });
-
-  if (!confirmacion) {
-    return;
-  }
-
-  let payload;
-  try {
-    payload = await eliminarPago(pagoId);
-  } catch (error) {
-    if (Number(error?.status || 0) === 404) {
-      writeLog(dom.systemLog, "Eliminar pago", {
-        pagoId,
-        message: "No encontrado o fuera de tu alcance"
-      });
-      await actualizarPagos();
-      return;
-    }
-    throw error;
-  }
-
+  await eliminarPagoPorId(pagoId, dom.buttonEliminarPago);
   dom.pagoEliminarForm.reset();
-  writeLog(dom.systemLog, "Eliminar pago", { pagoId, payload });
-  await actualizarPagos();
 }
 
 dom.buttonSimularServidor.addEventListener("click", withUiFeedback(ejecutarSimulacionServidor));
@@ -890,6 +992,52 @@ dom.pagoForm.addEventListener("submit", withUiFeedback(async (event) => {
 }));
 dom.pagoLoteForm.addEventListener("submit", withUiFeedback(registrarPagosLoteFlow));
 dom.pagoEliminarForm.addEventListener("submit", withUiFeedback(eliminarPagoFlow));
+
+dom.adherentesBody.addEventListener("click", withUiFeedback(async (event) => {
+  const editButton = event.target.closest(".js-edit-adherente");
+  if (editButton) {
+    const adherenteId = Number(editButton.getAttribute("data-adherente-id") || 0);
+    const estadoActual = String(editButton.getAttribute("data-adherente-estado") || "activo");
+    if (!Number.isFinite(adherenteId) || adherenteId < 1) {
+      throw new Error("ID de adherente inválido.");
+    }
+    await editarAdherenteDesdeFila(adherenteId, estadoActual);
+    return;
+  }
+
+  const deleteButton = event.target.closest(".js-delete-adherente");
+  if (deleteButton) {
+    const adherenteId = Number(deleteButton.getAttribute("data-adherente-id") || 0);
+    if (!Number.isFinite(adherenteId) || adherenteId < 1) {
+      throw new Error("ID de adherente inválido.");
+    }
+    await eliminarAdherentePorId(adherenteId, deleteButton);
+  }
+}));
+
+dom.pagosBody.addEventListener("click", withUiFeedback(async (event) => {
+  const editButton = event.target.closest(".js-edit-pago");
+  if (editButton) {
+    const pagoId = Number(editButton.getAttribute("data-pago-id") || 0);
+    const adherenteId = Number(editButton.getAttribute("data-adherente-id") || 0);
+    const montoArs = Number(editButton.getAttribute("data-monto-ars") || 0);
+    const mes = Number(editButton.getAttribute("data-mes") || 0);
+    if (!Number.isFinite(pagoId) || pagoId < 1) {
+      throw new Error("ID de pago inválido.");
+    }
+    await editarPagoDesdeFila(pagoId, adherenteId, montoArs, mes);
+    return;
+  }
+
+  const deleteButton = event.target.closest(".js-delete-pago");
+  if (deleteButton) {
+    const pagoId = Number(deleteButton.getAttribute("data-pago-id") || 0);
+    if (!Number.isFinite(pagoId) || pagoId < 1) {
+      throw new Error("ID de pago inválido.");
+    }
+    await eliminarPagoPorId(pagoId, deleteButton);
+  }
+}));
 
 dom.adminCreateUserForm.addEventListener("submit", withUiFeedback(crearUsuarioAdminFlow));
 
