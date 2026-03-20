@@ -11,6 +11,8 @@ export const dom = {
   adherentesBody: document.getElementById("adherentes-body"),
   pagosBody: document.getElementById("pagos-body"),
   simSummary: document.getElementById("sim-summary"),
+  casasChart: document.getElementById("casas-chart"),
+  casasChartSummary: document.getElementById("casas-chart-summary"),
   adherentesSummary: document.getElementById("adherentes-summary"),
   pagosSummary: document.getElementById("pagos-summary"),
   adherentesSearch: document.getElementById("adherentes-search"),

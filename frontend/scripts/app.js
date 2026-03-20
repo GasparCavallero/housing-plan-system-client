@@ -37,6 +37,7 @@ import {
   setSummary,
   updateKpiFromResumen,
   renderTimeline,
+  renderCasasChart,
   renderAdherentes,
   renderPagos,
   hasTimelineMetrics,
@@ -136,6 +137,7 @@ function initSectionNav() {
     "estado-financiero": cargarResumenServidor,
     configuracion: cargarConfiguracionServidor,
     simulacion: () => ejecutarSimulacionServidor({ skipNavigation: true }),
+    "grafico-casas": () => ejecutarSimulacionServidor({ skipNavigation: true }),
     adherentes: actualizarAdherentes,
     pagos: actualizarPagos
   };
@@ -256,6 +258,13 @@ function clearBusinessUiState() {
   dom.simSummary.textContent = "Ejecutá la simulación para ver proyecciones.";
   dom.adherentesSummary.textContent = "Sin adherentes para este usuario.";
   dom.pagosSummary.textContent = "Sin pagos para este usuario.";
+  if (dom.casasChart) {
+    dom.casasChart.innerHTML = "Sin datos de simulación para graficar.";
+    dom.casasChart.classList.add("casas-chart-empty");
+  }
+  if (dom.casasChartSummary) {
+    dom.casasChartSummary.textContent = "Ejecutá una simulación para visualizar la evolución mensual.";
+  }
   if (dom.adherentesSearch) {
     dom.adherentesSearch.value = "";
   }
@@ -540,6 +549,7 @@ async function ejecutarSimulacionServidor(options = {}) {
     const hasMetrics = hasTimelineMetrics(rows);
 
     renderTimeline(dom.tableBody, rows);
+    renderCasasChart(dom.casasChart, dom.casasChartSummary, rows);
     if (hasMetrics) {
       setSummary(dom.simSummary, `Simulación servidor ok: ${rows.length} fila(s) en ${horizonte} meses.`);
     } else {
@@ -549,6 +559,7 @@ async function ejecutarSimulacionServidor(options = {}) {
       );
     }
   } else {
+    renderCasasChart(dom.casasChart, dom.casasChartSummary, []);
     const fondoFinal = typeof payload?.fondo_final_ars === "number"
       ? ` Fondo final: ${payload.fondo_final_ars.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS.`
       : "";

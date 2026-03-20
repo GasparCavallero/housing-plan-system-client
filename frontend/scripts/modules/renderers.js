@@ -10,6 +10,125 @@ export function setSummary(target, text) {
   target.textContent = text;
 }
 
+function countStartsFromEvent(eventText) {
+  if (!eventText) {
+    return 0;
+  }
+  const normalized = String(eventText);
+  const matches = normalized.match(/inicio casa/gi);
+  return matches ? matches.length : 0;
+}
+
+export function buildCasasMesData(rows) {
+  const points = [];
+  let previousCumulative = null;
+
+  rows.forEach((row) => {
+    const mes = Number(row?.mes);
+    if (!Number.isFinite(mes)) {
+      return;
+    }
+
+    const direct = Number(
+      row?.casasIniciadasMes
+      ?? row?.casas_iniciadas_mes
+      ?? row?.viviendas_iniciadas_mes
+      ?? row?.casas_mes
+      ?? row?.inicios_mes
+    );
+
+    const cumulative = Number(
+      row?.casasIniciadasAcumuladas
+      ?? row?.casas_iniciadas
+      ?? row?.viviendas_iniciadas
+    );
+
+    let casasMes = 0;
+    if (Number.isFinite(direct)) {
+      casasMes = Math.max(0, direct);
+    } else if (Number.isFinite(cumulative)) {
+      if (previousCumulative === null) {
+        casasMes = Math.max(0, cumulative);
+      } else {
+        casasMes = Math.max(0, cumulative - previousCumulative);
+      }
+    } else {
+      casasMes = countStartsFromEvent(row?.evento ?? row?.evento_mes);
+    }
+
+    if (Number.isFinite(cumulative)) {
+      previousCumulative = cumulative;
+    }
+
+    points.push({ mes, casasMes });
+  });
+
+  return points;
+}
+
+export function renderCasasChart(target, summaryTarget, rows) {
+  const points = buildCasasMesData(rows);
+  if (!Array.isArray(points) || points.length === 0) {
+    target.innerHTML = "Sin datos de simulación para graficar.";
+    summaryTarget.textContent = "Ejecutá una simulación para visualizar la evolución mensual.";
+    target.classList.add("casas-chart-empty");
+    return;
+  }
+
+  const width = 900;
+  const height = 240;
+  const padding = { top: 16, right: 16, bottom: 34, left: 40 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+
+  const maxY = Math.max(1, ...points.map((item) => Number(item.casasMes || 0)));
+  const stepX = points.length > 1 ? innerWidth / (points.length - 1) : innerWidth;
+
+  const toX = (index) => padding.left + (index * stepX);
+  const toY = (value) => padding.top + innerHeight - ((value / maxY) * innerHeight);
+
+  const linePoints = points
+    .map((point, index) => `${toX(index)},${toY(point.casasMes)}`)
+    .join(" ");
+
+  const bars = points
+    .map((point, index) => {
+      const x = toX(index) - 6;
+      const y = toY(point.casasMes);
+      const h = padding.top + innerHeight - y;
+      return `<rect x="${x}" y="${y}" width="12" height="${Math.max(0, h)}" rx="2" fill="rgba(0, 109, 91, 0.25)" />`;
+    })
+    .join("");
+
+  const dots = points
+    .map((point, index) => `<circle cx="${toX(index)}" cy="${toY(point.casasMes)}" r="3" fill="#006d5b" />`)
+    .join("");
+
+  const labels = points
+    .filter((_, index) => index === 0 || index === points.length - 1 || index % Math.ceil(points.length / 8) === 0)
+    .map((point, index, selected) => {
+      const originalIndex = points.findIndex((item) => item.mes === point.mes && item.casasMes === point.casasMes);
+      return `<text x="${toX(originalIndex)}" y="${height - 10}" text-anchor="middle" font-size="10" fill="#5f6663">M${point.mes}</text>`;
+    })
+    .join("");
+
+  target.classList.remove("casas-chart-empty");
+  target.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Casas iniciadas por mes">
+      <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${width - padding.right}" y2="${padding.top + innerHeight}" stroke="#cfd9d5" />
+      <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + innerHeight}" stroke="#cfd9d5" />
+      ${bars}
+      <polyline points="${linePoints}" fill="none" stroke="#006d5b" stroke-width="2" />
+      ${dots}
+      ${labels}
+      <text x="${padding.left}" y="12" font-size="10" fill="#5f6663">Max: ${maxY}</text>
+    </svg>
+  `;
+
+  const total = points.reduce((acc, item) => acc + Number(item.casasMes || 0), 0);
+  summaryTarget.textContent = `Meses graficados: ${points.length} | Casas iniciadas acumuladas en horizonte: ${total}`;
+}
+
 export function updateKpi(kpi, config, result) {
   kpi.valorViviendaArs.textContent = formatterArs.format(result.viviendaArs);
   kpi.valorViviendaUsd.textContent = formatterUsd.format(toUsd(result.viviendaArs, config.tipo_cambio));
@@ -254,13 +373,15 @@ export function normalizeTimeline(payload) {
     const mediaCuotaMes = row.mediaCuotaMes ?? row.media_cuota_mes ?? row.media_cuota_mes_ars ?? row.cuota_mes_media ?? null;
     const ingresoMes = row.ingresoMes ?? row.ingreso_mes ?? row.ingreso_mes_ars ?? row.ingreso_mensual_ars ?? null;
     const fondo = row.fondo ?? row.fondo_cierre ?? row.fondo_ars ?? row.fondo_final_ars ?? null;
+    const casasIniciadasMes = row.casasIniciadasMes ?? row.casas_iniciadas_mes ?? row.viviendas_iniciadas_mes ?? row.casas_mes ?? row.inicios_mes ?? null;
+    const casasIniciadasAcumuladas = row.casasIniciadasAcumuladas ?? row.casas_iniciadas ?? row.viviendas_iniciadas ?? null;
 
     let evento = row.evento ?? row.evento_mes ?? row.descripcion ?? row.detalle ?? null;
     if (!evento && row.casa_numero != null && mes != null) {
       evento = `Inicio casa ${row.casa_numero}`;
     }
 
-    return { mes, activos, enConstruccion, adjudicados, cuotaCompletaMes, mediaCuotaMes, ingresoMes, fondo, evento };
+    return { mes, activos, enConstruccion, adjudicados, cuotaCompletaMes, mediaCuotaMes, ingresoMes, fondo, casasIniciadasMes, casasIniciadasAcumuladas, evento };
   };
 
   const pickArray = (input) => {

@@ -189,6 +189,11 @@ h1 {
   animation-delay: 0.2s;
 }
 
+.panel-chart {
+  grid-column: 1 / -1;
+  animation-delay: 0.24s;
+}
+
 .panel-adherentes,
 .panel-pagos {
   grid-column: span 6;
@@ -498,6 +503,29 @@ input:focus {
   margin-top: 0.9rem;
 }
 
+#casas-chart {
+  width: 100%;
+  min-height: 260px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+#casas-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.casas-chart-empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -517,6 +545,11 @@ th {
   font-size: 0.78rem;
   color: var(--muted);
   text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fffaf3;
+  box-shadow: inset 0 -1px 0 var(--border);
 }
 
 td.evento {
