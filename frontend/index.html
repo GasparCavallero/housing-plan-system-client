@@ -24,7 +24,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="./css/styles.css?v=20260320-2" />
+  <link rel="stylesheet" href="./css/styles.css?v=20260320-3" />
 </head>
 
 <body>
@@ -98,26 +98,14 @@
           Tipo de cambio ARS/USD
           <input type="number" name="tipoCambio" min="1" value="1200" required />
         </label>
-        <label>
-          Porcentaje media cuota (%)
-          <input type="number" name="porcentajeMediaCuota" min="0.01" max="100" step="0.01" value="0.5" required />
-        </label>
-        <label>
-          Porcentaje cuota completa (%)
-          <input type="number" name="porcentajeCuotaCompleta" min="0.01" max="100" step="0.01" value="1" required />
-        </label>
-        <label>
-          Meses media cuota inicial (compatibilidad)
-          <input type="number" name="mesesMediaCuotaInicial" min="1" value="7" required />
-        </label>
       </form>
       <p class="config-help">
         Media cuota hasta adjudicación.<br />
-        Cuota completa desde adjudicado.<br />
-        Tope de pago por adherente: cantidad_cuotas (ej. 180).<br />
+        Cuota completa desde adjudicación.<br />
+        Tope de pago por adherente: 180 cuotas.<br />
         valor_total_vivienda = metros_cuadrados_vivienda * valor_por_m2<br />
-        media_cuota = valor_total_vivienda * (porcentaje_media_cuota / 100)<br />
-        cuota_completa = valor_total_vivienda * (porcentaje_cuota_completa / 100)
+        cuota_completa = valor_total_vivienda / cantidad_cuotas<br />
+        media_cuota = cuota_completa * 0.5
       </p>
       <div class="actions multi-actions">
         <button id="btn-guardar-config" class="btn btn-secondary">Guardar configuración</button>
@@ -302,7 +290,7 @@
     </div>
   </div>
 
-  <script type="module" src="./scripts/app.js?v=20260320-2"></script>
+  <script type="module" src="./scripts/app.js?v=20260320-3"></script>
 </body>
 
 </html>
