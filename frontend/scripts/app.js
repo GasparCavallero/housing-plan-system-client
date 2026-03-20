@@ -49,6 +49,8 @@ let navController = null;
 let userSwitchedSession = false;
 let configuracionesUsuario = [];
 let isReadOnlyMode = false;
+let adherentesItems = [];
+let pagosItems = [];
 
 function redirectToLogin() {
   window.location.href = "./login.html";
@@ -254,9 +256,54 @@ function clearBusinessUiState() {
   dom.simSummary.textContent = "Ejecutá la simulación para ver proyecciones.";
   dom.adherentesSummary.textContent = "Sin adherentes para este usuario.";
   dom.pagosSummary.textContent = "Sin pagos para este usuario.";
+  if (dom.adherentesSearch) {
+    dom.adherentesSearch.value = "";
+  }
+  if (dom.pagosSearch) {
+    dom.pagosSearch.value = "";
+  }
+  adherentesItems = [];
+  pagosItems = [];
   configuracionesUsuario = [];
   dom.configModalList && (dom.configModalList.innerHTML = "");
   dom.configModal?.classList.add("hidden");
+}
+
+function matchesSearch(item, query, fields) {
+  if (!query) {
+    return true;
+  }
+
+  const normalizedQuery = String(query).toLowerCase().trim();
+  return fields.some((field) => String(field ?? "").toLowerCase().includes(normalizedQuery));
+}
+
+function applyAdherentesFilter() {
+  const query = dom.adherentesSearch?.value || "";
+  const filtered = adherentesItems.filter((item) => matchesSearch(item, query, [
+    item.id,
+    item.nombre,
+    item.estado,
+    item.cuotas_pagadas,
+    item.cuotas_bonificadas_por_licitacion
+  ]));
+
+  renderAdherentes(dom.adherentesBody, dom.adherentesSummary, filtered);
+  syncRowActionPermissions(isReadOnlyMode);
+}
+
+function applyPagosFilter() {
+  const query = dom.pagosSearch?.value || "";
+  const filtered = pagosItems.filter((item) => matchesSearch(item, query, [
+    item.id,
+    item.adherente_id,
+    item.monto_ars,
+    item.mes,
+    item.fecha
+  ]));
+
+  renderPagos(dom.pagosBody, dom.pagosSummary, filtered);
+  syncRowActionPermissions(isReadOnlyMode);
 }
 
 function pickConfigPayload(item) {
@@ -636,15 +683,15 @@ async function reiniciarPlanServidor() {
 
 async function actualizarAdherentes() {
   const items = await listarAdherentes();
-  renderAdherentes(dom.adherentesBody, dom.adherentesSummary, items);
-  syncRowActionPermissions(isReadOnlyMode);
+  adherentesItems = Array.isArray(items) ? items : [];
+  applyAdherentesFilter();
   writeLog(dom.systemLog, "Listado de adherentes", items);
 }
 
 async function actualizarPagos() {
   const items = await listarPagos();
-  renderPagos(dom.pagosBody, dom.pagosSummary, items);
-  syncRowActionPermissions(isReadOnlyMode);
+  pagosItems = Array.isArray(items) ? items : [];
+  applyPagosFilter();
   writeLog(dom.systemLog, "Listado de pagos", items);
 }
 
@@ -1029,6 +1076,14 @@ dom.pagoForm.addEventListener("submit", withUiFeedback(async (event) => {
 }));
 dom.pagoLoteForm.addEventListener("submit", withUiFeedback(registrarPagosLoteFlow));
 dom.pagoEliminarForm.addEventListener("submit", withUiFeedback(eliminarPagoFlow));
+
+dom.adherentesSearch?.addEventListener("input", () => {
+  applyAdherentesFilter();
+});
+
+dom.pagosSearch?.addEventListener("input", () => {
+  applyPagosFilter();
+});
 
 dom.adherentesBody.addEventListener("click", withUiFeedback(async (event) => {
   const editButton = event.target.closest(".js-edit-adherente");

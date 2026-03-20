@@ -13,6 +13,8 @@ export const dom = {
   simSummary: document.getElementById("sim-summary"),
   adherentesSummary: document.getElementById("adherentes-summary"),
   pagosSummary: document.getElementById("pagos-summary"),
+  adherentesSearch: document.getElementById("adherentes-search"),
+  pagosSearch: document.getElementById("pagos-search"),
   sessionStatus: document.getElementById("session-status"),
   adminPanel: document.getElementById("admin-panel"),
   navLinkAdmin: document.getElementById("nav-link-admin"),
