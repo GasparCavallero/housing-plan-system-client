@@ -84,7 +84,7 @@ export function buildCasasAnoData(rows) {
       return;
     }
 
-    const ano = Math.ceil(mes / 12);
+    const ano = Math.floor(mes / 12) + 1;
 
     const direct = Number(
       row?.casasIniciadasMes
@@ -176,7 +176,7 @@ export function buildCasasTerminadasAnoData(rows) {
       return;
     }
 
-    const ano = Math.ceil(mes / 12);
+    const ano = Math.floor(mes / 12) + 1;
 
     const direct = Number(
       row?.casasTerminadasMes
@@ -221,7 +221,7 @@ export function buildCasasEjecucionAnoData(rows) {
       return;
     }
 
-    const ano = Math.ceil(mes / 12);
+    const ano = Math.floor(mes / 12) + 1;
 
     const inicidasAcumuladas = Number(
       row?.casasIniciadasAcumuladas
