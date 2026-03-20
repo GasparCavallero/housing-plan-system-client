@@ -213,15 +213,50 @@ export function buildCasasTerminadasAnoData(rows) {
 }
 
 export function buildCasasEjecucionAnoData(rows) {
-  const casasIniciadas = buildCasasAnoData(rows);
-  const casasTerminadas = buildCasasTerminadasAnoData(rows);
+  const pointsByYear = {};
 
-  const terminadasMap = Object.fromEntries(casasTerminadas.map((item) => [item.ano, item.casasAno]));
+  rows.forEach((row) => {
+    const mes = Number(row?.mes);
+    if (!Number.isFinite(mes)) {
+      return;
+    }
 
-  const points = casasIniciadas.map((item) => ({
-    ano: item.ano,
-    casasAno: Math.max(0, item.casasAno - (terminadasMap[item.ano] ?? 0))
-  }));
+    const ano = Math.ceil(mes / 12);
+
+    const inicidasAcumuladas = Number(
+      row?.casasIniciadasAcumuladas
+      ?? row?.casas_iniciadas
+      ?? row?.viviendas_iniciadas
+      ?? row?.casas_iniciadas_acumuladas
+    );
+
+    const terminadasAcumuladas = Number(
+      row?.casasTerminadasAcumuladas
+      ?? row?.casas_entregadas
+      ?? row?.viviendas_entregadas
+      ?? row?.casas_terminadas
+      ?? row?.casas_terminadas_acumuladas
+    );
+
+    if (!pointsByYear[ano]) {
+      pointsByYear[ano] = { inicidasAcumuladas: 0, terminadasAcumuladas: 0 };
+    }
+
+    if (Number.isFinite(inicidasAcumuladas)) {
+      pointsByYear[ano].inicidasAcumuladas = inicidasAcumuladas;
+    }
+
+    if (Number.isFinite(terminadasAcumuladas)) {
+      pointsByYear[ano].terminadasAcumuladas = terminadasAcumuladas;
+    }
+  });
+
+  const points = Object.entries(pointsByYear)
+    .map(([ano, data]) => ({
+      ano: Number(ano),
+      casasAno: Math.max(0, data.inicidasAcumuladas - data.terminadasAcumuladas)
+    }))
+    .sort((a, b) => a.ano - b.ano);
 
   return points;
 }
