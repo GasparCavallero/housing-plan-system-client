@@ -468,21 +468,33 @@ export function renderPagos(tableBody, summaryTarget, items) {
 }
 
 export function normalizeTimeline(payload) {
+  const toNumberOrNull = (value) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string") {
+      const normalized = value.replace(/\./g, "").replace(",", ".").trim();
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
   const mapRow = (row) => {
     if (!row || typeof row !== "object") {
       return null;
     }
 
-    const mes = row.mes ?? row.mes_inicio ?? row.periodo ?? row.periodo_mes ?? null;
-    const activos = row.activos ?? row.adherentes_activos ?? row.cantidad_activos ?? null;
-    const enConstruccion = row.enConstruccion ?? row.en_construccion ?? row.adherentes_en_construccion ?? null;
-    const adjudicados = row.adjudicados ?? row.adherentes_adjudicados ?? row.casas_adjudicadas ?? null;
-    const cuotaCompletaMes = row.cuotaCompletaMes ?? row.cuota_completa_mes ?? row.cuota_completa_mes_ars ?? row.cuota_mes_completa ?? null;
-    const mediaCuotaMes = row.mediaCuotaMes ?? row.media_cuota_mes ?? row.media_cuota_mes_ars ?? row.cuota_mes_media ?? null;
-    const ingresoMes = row.ingresoMes ?? row.ingreso_mes ?? row.ingreso_mes_ars ?? row.ingreso_mensual_ars ?? null;
-    const fondo = row.fondo ?? row.fondo_cierre ?? row.fondo_ars ?? row.fondo_final_ars ?? null;
-    const casasIniciadasMes = row.casasIniciadasMes ?? row.casas_iniciadas_mes ?? row.viviendas_iniciadas_mes ?? row.casas_mes ?? row.inicios_mes ?? null;
-    const casasIniciadasAcumuladas = row.casasIniciadasAcumuladas ?? row.casas_iniciadas ?? row.viviendas_iniciadas ?? null;
+    const mes = toNumberOrNull(row.mes ?? row.mes_inicio ?? row.periodo ?? row.periodo_mes);
+    const activos = toNumberOrNull(row.activos ?? row.adherentes_activos ?? row.cantidad_activos);
+    const enConstruccion = toNumberOrNull(row.enConstruccion ?? row.en_construccion ?? row.adherentes_en_construccion);
+    const adjudicados = toNumberOrNull(row.adjudicados ?? row.adherentes_adjudicados ?? row.casas_adjudicadas);
+    const cuotaCompletaMes = toNumberOrNull(row.cuotaCompletaMes ?? row.cuota_completa_mes ?? row.cuota_completa_mes_ars ?? row.cuota_mes_completa);
+    const mediaCuotaMes = toNumberOrNull(row.mediaCuotaMes ?? row.media_cuota_mes ?? row.media_cuota_mes_ars ?? row.cuota_mes_media);
+    const ingresoMes = toNumberOrNull(row.ingresoMes ?? row.ingreso_mes ?? row.ingreso_mes_ars ?? row.ingreso_mensual_ars);
+    const fondo = toNumberOrNull(row.fondo ?? row.fondo_cierre ?? row.fondo_ars ?? row.fondo_final_ars ?? row.fondo_mes_ars ?? row.saldo_fondo_ars);
+    const casasIniciadasMes = toNumberOrNull(row.casasIniciadasMes ?? row.casas_iniciadas_mes ?? row.viviendas_iniciadas_mes ?? row.casas_mes ?? row.inicios_mes);
+    const casasIniciadasAcumuladas = toNumberOrNull(row.casasIniciadasAcumuladas ?? row.casas_iniciadas ?? row.viviendas_iniciadas);
 
     let evento = row.evento ?? row.evento_mes ?? row.descripcion ?? row.detalle ?? null;
     if (!evento && row.casa_numero != null && mes != null) {
