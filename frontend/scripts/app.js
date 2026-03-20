@@ -38,6 +38,7 @@ import {
   updateKpiFromResumen,
   renderTimeline,
   renderCasasChart,
+  renderCasasTerminadasChart,
   renderAdherentes,
   renderPagos,
   hasTimelineMetrics,
@@ -264,6 +265,13 @@ function clearBusinessUiState() {
   }
   if (dom.casasChartSummary) {
     dom.casasChartSummary.textContent = "Ejecutá una simulación para visualizar la evolución mensual.";
+  }
+  if (dom.casasFinishChart) {
+    dom.casasFinishChart.innerHTML = "Sin datos de simulación para graficar.";
+    dom.casasFinishChart.classList.add("casas-chart-empty");
+  }
+  if (dom.casasFinishChartSummary) {
+    dom.casasFinishChartSummary.textContent = "Ejecutá una simulación para visualizar la evolución mensual.";
   }
   if (dom.adherentesSearch) {
     dom.adherentesSearch.value = "";
@@ -550,6 +558,7 @@ async function ejecutarSimulacionServidor(options = {}) {
 
     renderTimeline(dom.tableBody, rows);
     renderCasasChart(dom.casasChart, dom.casasChartSummary, rows);
+    renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, rows);
     if (hasMetrics) {
       setSummary(dom.simSummary, `Simulación servidor ok: ${rows.length} fila(s) en ${horizonte} meses.`);
     } else {
@@ -560,6 +569,7 @@ async function ejecutarSimulacionServidor(options = {}) {
     }
   } else {
     renderCasasChart(dom.casasChart, dom.casasChartSummary, []);
+    renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, []);
     const fondoFinal = typeof payload?.fondo_final_ars === "number"
       ? ` Fondo final: ${payload.fondo_final_ars.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS.`
       : "";

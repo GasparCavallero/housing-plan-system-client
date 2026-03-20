@@ -19,6 +19,15 @@ function countStartsFromEvent(eventText) {
   return matches ? matches.length : 0;
 }
 
+function countFinishesFromEvent(eventText) {
+  if (!eventText) {
+    return 0;
+  }
+  const normalized = String(eventText);
+  const matches = normalized.match(/entrega casa|casa entregada|finaliza casa|casa finalizada/gi);
+  return matches ? matches.length : 0;
+}
+
 export function buildCasasMesData(rows) {
   const points = [];
   let previousCumulative = null;
@@ -66,8 +75,55 @@ export function buildCasasMesData(rows) {
   return points.sort((a, b) => a.mes - b.mes);
 }
 
-export function renderCasasChart(target, summaryTarget, rows) {
-  const points = buildCasasMesData(rows);
+export function buildCasasTerminadasMesData(rows) {
+  const points = [];
+  let previousCumulative = null;
+
+  rows.forEach((row) => {
+    const mes = Number(row?.mes);
+    if (!Number.isFinite(mes)) {
+      return;
+    }
+
+    const direct = Number(
+      row?.casasTerminadasMes
+      ?? row?.casas_terminadas_mes
+      ?? row?.viviendas_terminadas_mes
+      ?? row?.casas_finalizadas_mes
+      ?? row?.entregadas_mes
+    );
+
+    const cumulative = Number(
+      row?.casasTerminadasAcumuladas
+      ?? row?.casas_entregadas
+      ?? row?.viviendas_entregadas
+      ?? row?.casas_terminadas
+    );
+
+    let casasMes = 0;
+    if (Number.isFinite(direct)) {
+      casasMes = Math.max(0, direct);
+    } else if (Number.isFinite(cumulative)) {
+      if (previousCumulative === null) {
+        casasMes = Math.max(0, cumulative);
+      } else {
+        casasMes = Math.max(0, cumulative - previousCumulative);
+      }
+    } else {
+      casasMes = countFinishesFromEvent(row?.evento ?? row?.evento_mes);
+    }
+
+    if (Number.isFinite(cumulative)) {
+      previousCumulative = cumulative;
+    }
+
+    points.push({ mes, casasMes });
+  });
+
+  return points.sort((a, b) => a.mes - b.mes);
+}
+
+function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, tooltipLabel, summaryLabel) {
   if (!Array.isArray(points) || points.length === 0) {
     target.innerHTML = "Sin datos de simulación para graficar.";
     summaryTarget.textContent = "Ejecutá una simulación para visualizar la evolución mensual.";
@@ -78,7 +134,7 @@ export function renderCasasChart(target, summaryTarget, rows) {
   target.classList.remove("casas-chart-empty");
   target.innerHTML = `
     <div class="casas-chart-shell">
-      <svg viewBox="0 0 900 240" role="img" aria-label="Casas iniciadas por mes"></svg>
+      <svg viewBox="0 0 900 240" role="img" aria-label="${chartLabel}"></svg>
       <div class="casas-chart-tooltip hidden"></div>
     </div>
     <p class="casas-chart-hint">Rueda del mouse para zoom. Mové el cursor para ver valores por mes.</p>
@@ -157,7 +213,7 @@ export function renderCasasChart(target, summaryTarget, rows) {
 
   const showTooltip = (event, point) => {
     tooltip.classList.remove("hidden");
-    tooltip.textContent = `Mes ${point.mes}: ${point.casasMes} casa(s) iniciada(s)`;
+    tooltip.textContent = `Mes ${point.mes}: ${point.casasMes} ${tooltipLabel}`;
     const rect = shell.getBoundingClientRect();
     const x = event.clientX - rect.left + 12;
     const y = event.clientY - rect.top - 28;
@@ -228,13 +284,37 @@ export function renderCasasChart(target, summaryTarget, rows) {
     renderSvg();
 
     const total = points.reduce((acc, item) => acc + Number(item.casasMes || 0), 0);
-    summaryTarget.textContent = `Meses graficados: ${points.length} | Casas iniciadas acumuladas en horizonte: ${total} | Zoom: ${points.length - visibleCount + 1}x`;
+    summaryTarget.textContent = `Meses graficados: ${points.length} | ${summaryLabel}: ${total} | Zoom: ${points.length - visibleCount + 1}x`;
   }, { passive: false });
 
   renderSvg();
 
   const total = points.reduce((acc, item) => acc + Number(item.casasMes || 0), 0);
-  summaryTarget.textContent = `Meses graficados: ${points.length} | Casas iniciadas acumuladas en horizonte: ${total}`;
+  summaryTarget.textContent = `Meses graficados: ${points.length} | ${summaryLabel}: ${total}`;
+}
+
+export function renderCasasChart(target, summaryTarget, rows) {
+  const points = buildCasasMesData(rows);
+  renderInteractiveCasasChart(
+    target,
+    summaryTarget,
+    points,
+    "Casas iniciadas por mes",
+    "casa(s) iniciada(s)",
+    "Casas iniciadas acumuladas en horizonte"
+  );
+}
+
+export function renderCasasTerminadasChart(target, summaryTarget, rows) {
+  const points = buildCasasTerminadasMesData(rows);
+  renderInteractiveCasasChart(
+    target,
+    summaryTarget,
+    points,
+    "Casas terminadas por mes",
+    "casa(s) terminada(s)",
+    "Casas terminadas acumuladas en horizonte"
+  );
 }
 
 export function updateKpi(kpi, config, result) {

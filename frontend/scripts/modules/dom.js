@@ -13,6 +13,8 @@ export const dom = {
   simSummary: document.getElementById("sim-summary"),
   casasChart: document.getElementById("casas-chart"),
   casasChartSummary: document.getElementById("casas-chart-summary"),
+  casasFinishChart: document.getElementById("casas-finish-chart"),
+  casasFinishChartSummary: document.getElementById("casas-finish-chart-summary"),
   adherentesSummary: document.getElementById("adherentes-summary"),
   pagosSummary: document.getElementById("pagos-summary"),
   adherentesSearch: document.getElementById("adherentes-search"),
