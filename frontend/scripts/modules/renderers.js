@@ -131,21 +131,33 @@ export function renderAdherentes(tableBody, summaryTarget, items) {
   }
 
   tableBody.innerHTML = items.map((item) => `
-    <tr>
+    <tr data-adherente-id="${item.id}">
       <td>${item.id}</td>
-      <td><input class="inline-cell-input" type="text" value="${item.nombre ?? ""}" data-field="nombre" /></td>
       <td>
-        <select class="inline-cell-input" data-field="estado">
+        <span class="cell-read">${item.nombre ?? ""}</span>
+        <input class="inline-cell-input cell-edit hidden" type="text" value="${item.nombre ?? ""}" data-field="nombre" />
+      </td>
+      <td>
+        <span class="cell-read">${item.estado ?? ""}</span>
+        <select class="inline-cell-input cell-edit hidden" data-field="estado">
           <option value="activo" ${item.estado === "activo" ? "selected" : ""}>activo</option>
           <option value="en_construccion" ${item.estado === "en_construccion" ? "selected" : ""}>en_construccion</option>
           <option value="adjudicado" ${item.estado === "adjudicado" ? "selected" : ""}>adjudicado</option>
         </select>
       </td>
-      <td><input class="inline-cell-input" type="number" min="0" step="1" value="${Number(item.cuotas_pagadas ?? 0)}" data-field="cuotas_pagadas" /></td>
-      <td><input class="inline-cell-input" type="number" min="0" step="1" value="${Number(item.cuotas_bonificadas_por_licitacion ?? 0)}" data-field="cuotas_bonificadas_por_licitacion" /></td>
+      <td>
+        <span class="cell-read">${Number(item.cuotas_pagadas ?? 0)}</span>
+        <input class="inline-cell-input cell-edit hidden" type="number" min="0" step="1" value="${Number(item.cuotas_pagadas ?? 0)}" data-field="cuotas_pagadas" />
+      </td>
+      <td>
+        <span class="cell-read">${Number(item.cuotas_bonificadas_por_licitacion ?? 0)}</span>
+        <input class="inline-cell-input cell-edit hidden" type="number" min="0" step="1" value="${Number(item.cuotas_bonificadas_por_licitacion ?? 0)}" data-field="cuotas_bonificadas_por_licitacion" />
+      </td>
       <td>
         <div class="row-actions">
-          <button class="btn-table js-save-adherente" type="button" data-adherente-id="${item.id}">Guardar</button>
+          <button class="btn-table js-edit-adherente" type="button" data-adherente-id="${item.id}">Editar</button>
+          <button class="btn-table js-save-adherente hidden" type="button" data-adherente-id="${item.id}">Guardar</button>
+          <button class="btn-table js-cancel-adherente hidden" type="button" data-adherente-id="${item.id}">Cancelar</button>
           <button class="btn-table js-delete-adherente" type="button" data-adherente-id="${item.id}">Eliminar</button>
         </div>
       </td>
@@ -166,15 +178,29 @@ export function renderPagos(tableBody, summaryTarget, items) {
   }
 
   tableBody.innerHTML = items.map((item) => `
-    <tr>
+    <tr data-pago-id="${item.id}">
       <td>${item.id}</td>
-      <td><input class="inline-cell-input" type="number" min="1" step="1" value="${Number(item.adherente_id ?? 0)}" data-field="adherente_id" /></td>
-      <td><input class="inline-cell-input" type="number" min="0" step="0.01" value="${Number(item.monto_ars ?? 0)}" data-field="monto_ars" /></td>
-      <td><input class="inline-cell-input" type="number" min="1" step="1" value="${Number(item.mes ?? 1)}" data-field="mes" /></td>
-      <td><input class="inline-cell-input" type="datetime-local" value="${(item.fecha && !Number.isNaN(new Date(item.fecha).getTime())) ? new Date(item.fecha).toISOString().slice(0, 16) : ""}" data-field="fecha" /></td>
+      <td>
+        <span class="cell-read">${Number(item.adherente_id ?? 0)}</span>
+        <input class="inline-cell-input cell-edit hidden" type="number" min="1" step="1" value="${Number(item.adherente_id ?? 0)}" data-field="adherente_id" />
+      </td>
+      <td>
+        <span class="cell-read">${formatterArs.format(Number(item.monto_ars ?? 0))}</span>
+        <input class="inline-cell-input cell-edit hidden" type="number" min="0" step="0.01" value="${Number(item.monto_ars ?? 0)}" data-field="monto_ars" />
+      </td>
+      <td>
+        <span class="cell-read">${Number(item.mes ?? 1)}</span>
+        <input class="inline-cell-input cell-edit hidden" type="number" min="1" step="1" value="${Number(item.mes ?? 1)}" data-field="mes" />
+      </td>
+      <td>
+        <span class="cell-read">${item.fecha ? new Date(item.fecha).toLocaleString("es-AR") : "-"}</span>
+        <input class="inline-cell-input cell-edit hidden" type="datetime-local" value="${(item.fecha && !Number.isNaN(new Date(item.fecha).getTime())) ? new Date(item.fecha).toISOString().slice(0, 16) : ""}" data-field="fecha" />
+      </td>
       <td>
         <div class="row-actions">
-          <button class="btn-table js-save-pago" type="button" data-pago-id="${item.id}">Guardar</button>
+          <button class="btn-table js-edit-pago" type="button" data-pago-id="${item.id}">Editar</button>
+          <button class="btn-table js-save-pago hidden" type="button" data-pago-id="${item.id}">Guardar</button>
+          <button class="btn-table js-cancel-pago hidden" type="button" data-pago-id="${item.id}">Cancelar</button>
           <button class="btn-table js-delete-pago" type="button" data-pago-id="${item.id}">Eliminar</button>
         </div>
       </td>

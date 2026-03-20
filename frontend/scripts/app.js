@@ -650,6 +650,35 @@ function getRowField(row, field) {
   return input ? String(input.value || "").trim() : "";
 }
 
+function setRowEditing(row, editing, type) {
+  if (!row) {
+    return;
+  }
+
+  row.querySelectorAll(".cell-read").forEach((element) => {
+    element.classList.toggle("hidden", editing);
+  });
+
+  row.querySelectorAll(".cell-edit").forEach((element) => {
+    element.classList.toggle("hidden", !editing);
+  });
+
+  const editButton = row.querySelector(type === "adherente" ? ".js-edit-adherente" : ".js-edit-pago");
+  const saveButton = row.querySelector(type === "adherente" ? ".js-save-adherente" : ".js-save-pago");
+  const cancelButton = row.querySelector(type === "adherente" ? ".js-cancel-adherente" : ".js-cancel-pago");
+  const deleteButton = row.querySelector(type === "adherente" ? ".js-delete-adherente" : ".js-delete-pago");
+
+  editButton?.classList.toggle("hidden", editing);
+  saveButton?.classList.toggle("hidden", !editing);
+  cancelButton?.classList.toggle("hidden", !editing);
+  deleteButton?.classList.toggle("hidden", editing);
+
+  if (editing) {
+    const firstInput = row.querySelector(".cell-edit");
+    firstInput?.focus();
+  }
+}
+
 async function guardarAdherenteDesdeFila(button) {
   const adherenteId = Number(button.getAttribute("data-adherente-id") || 0);
   if (!Number.isFinite(adherenteId) || adherenteId < 1) {
@@ -1022,9 +1051,22 @@ dom.pagoLoteForm.addEventListener("submit", withUiFeedback(registrarPagosLoteFlo
 dom.pagoEliminarForm.addEventListener("submit", withUiFeedback(eliminarPagoFlow));
 
 dom.adherentesBody.addEventListener("click", withUiFeedback(async (event) => {
+  const editButton = event.target.closest(".js-edit-adherente");
+  if (editButton) {
+    const row = editButton.closest("tr");
+    setRowEditing(row, true, "adherente");
+    return;
+  }
+
   const saveButton = event.target.closest(".js-save-adherente");
   if (saveButton) {
     await guardarAdherenteDesdeFila(saveButton);
+    return;
+  }
+
+  const cancelButton = event.target.closest(".js-cancel-adherente");
+  if (cancelButton) {
+    await actualizarAdherentes();
     return;
   }
 
@@ -1039,9 +1081,22 @@ dom.adherentesBody.addEventListener("click", withUiFeedback(async (event) => {
 }));
 
 dom.pagosBody.addEventListener("click", withUiFeedback(async (event) => {
+  const editButton = event.target.closest(".js-edit-pago");
+  if (editButton) {
+    const row = editButton.closest("tr");
+    setRowEditing(row, true, "pago");
+    return;
+  }
+
   const saveButton = event.target.closest(".js-save-pago");
   if (saveButton) {
     await guardarPagoDesdeFila(saveButton);
+    return;
+  }
+
+  const cancelButton = event.target.closest(".js-cancel-pago");
+  if (cancelButton) {
+    await actualizarPagos();
     return;
   }
 
