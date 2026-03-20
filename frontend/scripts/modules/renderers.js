@@ -213,7 +213,11 @@ export function buildCasasTerminadasAnoData(rows) {
 }
 
 export function buildCasasEjecucionAnoData(rows) {
-  const pointsByYear = {};
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return [];
+  }
+
+  const lastRowByYear = {};
 
   rows.forEach((row) => {
     const mes = Number(row?.mes);
@@ -223,39 +227,37 @@ export function buildCasasEjecucionAnoData(rows) {
 
     const ano = Math.floor(mes / 12) + 1;
 
-    const inicidasAcumuladas = Number(
-      row?.casasIniciadasAcumuladas
-      ?? row?.casas_iniciadas
-      ?? row?.viviendas_iniciadas
-      ?? row?.casas_iniciadas_acumuladas
-    );
-
-    const terminadasAcumuladas = Number(
-      row?.casasTerminadasAcumuladas
-      ?? row?.casas_entregadas
-      ?? row?.viviendas_entregadas
-      ?? row?.casas_terminadas
-      ?? row?.casas_terminadas_acumuladas
-    );
-
-    if (!pointsByYear[ano]) {
-      pointsByYear[ano] = { inicidasAcumuladas: 0, terminadasAcumuladas: 0 };
-    }
-
-    if (Number.isFinite(inicidasAcumuladas)) {
-      pointsByYear[ano].inicidasAcumuladas = inicidasAcumuladas;
-    }
-
-    if (Number.isFinite(terminadasAcumuladas)) {
-      pointsByYear[ano].terminadasAcumuladas = terminadasAcumuladas;
+    if (!lastRowByYear[ano] || mes > lastRowByYear[ano].mes) {
+      lastRowByYear[ano] = row;
     }
   });
 
-  const points = Object.entries(pointsByYear)
-    .map(([ano, data]) => ({
-      ano: Number(ano),
-      casasAno: Math.max(0, data.inicidasAcumuladas - data.terminadasAcumuladas)
-    }))
+  const points = Object.entries(lastRowByYear)
+    .map(([ano, row]) => {
+      const inicidasAcumuladas = Number(
+        row?.casasIniciadasAcumuladas
+        ?? row?.casas_iniciadas
+        ?? row?.viviendas_iniciadas
+        ?? row?.casas_iniciadas_acumuladas
+      );
+
+      const terminadasAcumuladas = Number(
+        row?.casasTerminadasAcumuladas
+        ?? row?.casas_entregadas
+        ?? row?.viviendas_entregadas
+        ?? row?.casas_terminadas
+        ?? row?.casas_terminadas_acumuladas
+      );
+
+      return {
+        ano: Number(ano),
+        casasAno: Math.max(
+          0,
+          (Number.isFinite(inicidasAcumuladas) ? inicidasAcumuladas : 0) -
+          (Number.isFinite(terminadasAcumuladas) ? terminadasAcumuladas : 0)
+        )
+      };
+    })
     .sort((a, b) => a.ano - b.ano);
 
   return points;
