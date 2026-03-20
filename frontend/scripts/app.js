@@ -237,7 +237,10 @@ function applyRoleUI(user) {
   dom.buttonReiniciarPlan.disabled = readOnlyMode;
   document.getElementById("btn-crear-adherente").disabled = readOnlyMode;
   dom.buttonCrearAdherentesLote.disabled = readOnlyMode;
-  document.getElementById("btn-cambiar-estado").disabled = readOnlyMode;
+  const buttonCambiarEstado = document.getElementById("btn-cambiar-estado");
+  if (buttonCambiarEstado) {
+    buttonCambiarEstado.disabled = readOnlyMode;
+  }
   document.getElementById("btn-registrar-pago").disabled = readOnlyMode;
   dom.buttonRegistrarPagosLote.disabled = readOnlyMode;
   dom.buttonEliminarPago.disabled = readOnlyMode;
@@ -1009,29 +1012,6 @@ dom.adherenteForm.addEventListener("submit", withUiFeedback(async (event) => {
 }));
 
 dom.adherenteLoteForm.addEventListener("submit", withUiFeedback(crearAdherentesLoteFlow));
-
-dom.adherenteEstadoForm.addEventListener("submit", withUiFeedback(async (event) => {
-  event.preventDefault();
-  const data = new FormData(dom.adherenteEstadoForm);
-  const adherenteId = Number(data.get("adherenteIdEstado"));
-  const estado = String(data.get("estadoAdherente"));
-
-  try {
-    await actualizarEstadoAdherente(adherenteId, estado);
-  } catch (error) {
-    if (Number(error?.status || 0) === 404) {
-      writeLog(dom.systemLog, "Cambiar estado adherente", {
-        adherenteId,
-        message: "No encontrado o fuera de tu alcance"
-      });
-      await actualizarAdherentes();
-      return;
-    }
-    throw error;
-  }
-
-  await actualizarAdherentes();
-}));
 
 dom.buttonListarPagos.addEventListener("click", withUiFeedback(actualizarPagos));
 dom.pagoForm.addEventListener("submit", withUiFeedback(async (event) => {

@@ -3,7 +3,6 @@ export const dom = {
   operacionForm: document.getElementById("operacion-form"),
   adherenteForm: document.getElementById("adherente-form"),
   adherenteLoteForm: document.getElementById("adherente-lote-form"),
-  adherenteEstadoForm: document.getElementById("adherente-estado-form"),
   adminCreateUserForm: document.getElementById("admin-create-user-form"),
   pagoForm: document.getElementById("pago-form"),
   pagoLoteForm: document.getElementById("pago-lote-form"),
