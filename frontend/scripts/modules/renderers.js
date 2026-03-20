@@ -63,7 +63,7 @@ export function buildCasasMesData(rows) {
     points.push({ mes, casasMes });
   });
 
-  return points;
+  return points.sort((a, b) => a.mes - b.mes);
 }
 
 export function renderCasasChart(target, summaryTarget, rows) {
@@ -75,55 +75,163 @@ export function renderCasasChart(target, summaryTarget, rows) {
     return;
   }
 
+  target.classList.remove("casas-chart-empty");
+  target.innerHTML = `
+    <div class="casas-chart-shell">
+      <svg viewBox="0 0 900 240" role="img" aria-label="Casas iniciadas por mes"></svg>
+      <div class="casas-chart-tooltip hidden"></div>
+    </div>
+    <p class="casas-chart-hint">Rueda del mouse para zoom. Mové el cursor para ver valores por mes.</p>
+  `;
+
+  const shell = target.querySelector(".casas-chart-shell");
+  const svg = target.querySelector("svg");
+  const tooltip = target.querySelector(".casas-chart-tooltip");
+  if (!shell || !svg || !tooltip) {
+    return;
+  }
+
   const width = 900;
   const height = 240;
   const padding = { top: 16, right: 16, bottom: 34, left: 40 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
+  const minVisible = Math.min(8, points.length);
+  let visibleCount = points.length;
+  let startIndex = 0;
+  let hoveredIndex = -1;
 
-  const maxY = Math.max(1, ...points.map((item) => Number(item.casasMes || 0)));
-  const stepX = points.length > 1 ? innerWidth / (points.length - 1) : innerWidth;
+  const clampStart = (start, count) => {
+    const maxStart = Math.max(0, points.length - count);
+    return Math.min(Math.max(0, start), maxStart);
+  };
 
-  const toX = (index) => padding.left + (index * stepX);
-  const toY = (value) => padding.top + innerHeight - ((value / maxY) * innerHeight);
+  const getVisiblePoints = () => points.slice(startIndex, startIndex + visibleCount);
 
-  const linePoints = points
-    .map((point, index) => `${toX(index)},${toY(point.casasMes)}`)
-    .join(" ");
+  const renderSvg = () => {
+    const visible = getVisiblePoints();
+    const maxY = Math.max(1, ...visible.map((item) => Number(item.casasMes || 0)));
+    const stepX = visible.length > 1 ? innerWidth / (visible.length - 1) : innerWidth;
 
-  const bars = points
-    .map((point, index) => {
+    const toX = (index) => padding.left + (index * stepX);
+    const toY = (value) => padding.top + innerHeight - ((value / maxY) * innerHeight);
+
+    const linePoints = visible.map((point, index) => `${toX(index)},${toY(point.casasMes)}`).join(" ");
+
+    const bars = visible.map((point, index) => {
       const x = toX(index) - 6;
       const y = toY(point.casasMes);
       const h = padding.top + innerHeight - y;
-      return `<rect x="${x}" y="${y}" width="12" height="${Math.max(0, h)}" rx="2" fill="rgba(0, 109, 91, 0.25)" />`;
-    })
-    .join("");
+      const isHovered = index === hoveredIndex;
+      return `<rect x="${x}" y="${y}" width="12" height="${Math.max(0, h)}" rx="2" fill="${isHovered ? "rgba(212, 111, 42, 0.45)" : "rgba(0, 109, 91, 0.25)"}" />`;
+    }).join("");
 
-  const dots = points
-    .map((point, index) => `<circle cx="${toX(index)}" cy="${toY(point.casasMes)}" r="3" fill="#006d5b" />`)
-    .join("");
+    const dots = visible.map((point, index) => {
+      const isHovered = index === hoveredIndex;
+      return `<circle cx="${toX(index)}" cy="${toY(point.casasMes)}" r="${isHovered ? 5 : 3}" fill="${isHovered ? "#d46f2a" : "#006d5b"}" />`;
+    }).join("");
 
-  const labels = points
-    .filter((_, index) => index === 0 || index === points.length - 1 || index % Math.ceil(points.length / 8) === 0)
-    .map((point, index, selected) => {
-      const originalIndex = points.findIndex((item) => item.mes === point.mes && item.casasMes === point.casasMes);
-      return `<text x="${toX(originalIndex)}" y="${height - 10}" text-anchor="middle" font-size="10" fill="#5f6663">M${point.mes}</text>`;
-    })
-    .join("");
+    const labels = visible
+      .filter((_, index) => index === 0 || index === visible.length - 1 || index % Math.ceil(visible.length / 8) === 0)
+      .map((point) => {
+        const idx = visible.findIndex((item) => item.mes === point.mes && item.casasMes === point.casasMes);
+        return `<text x="${toX(idx)}" y="${height - 10}" text-anchor="middle" font-size="10" fill="#5f6663">M${point.mes}</text>`;
+      })
+      .join("");
 
-  target.classList.remove("casas-chart-empty");
-  target.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Casas iniciadas por mes">
+    const hoverLine = hoveredIndex >= 0 && hoveredIndex < visible.length
+      ? `<line x1="${toX(hoveredIndex)}" y1="${padding.top}" x2="${toX(hoveredIndex)}" y2="${padding.top + innerHeight}" stroke="#d46f2a" stroke-dasharray="3 3" />`
+      : "";
+
+    svg.innerHTML = `
       <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${width - padding.right}" y2="${padding.top + innerHeight}" stroke="#cfd9d5" />
       <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + innerHeight}" stroke="#cfd9d5" />
       ${bars}
       <polyline points="${linePoints}" fill="none" stroke="#006d5b" stroke-width="2" />
+      ${hoverLine}
       ${dots}
       ${labels}
-      <text x="${padding.left}" y="12" font-size="10" fill="#5f6663">Max: ${maxY}</text>
-    </svg>
-  `;
+      <text x="${padding.left}" y="12" font-size="10" fill="#5f6663">Max visible: ${maxY}</text>
+    `;
+  };
+
+  const showTooltip = (event, point) => {
+    tooltip.classList.remove("hidden");
+    tooltip.textContent = `Mes ${point.mes}: ${point.casasMes} casa(s) iniciada(s)`;
+    const rect = shell.getBoundingClientRect();
+    const x = event.clientX - rect.left + 12;
+    const y = event.clientY - rect.top - 28;
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${Math.max(6, y)}px`;
+  };
+
+  const hideTooltip = () => {
+    tooltip.classList.add("hidden");
+  };
+
+  svg.addEventListener("mousemove", (event) => {
+    const rect = svg.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    if (x < padding.left || x > rect.width - padding.right) {
+      hoveredIndex = -1;
+      hideTooltip();
+      renderSvg();
+      return;
+    }
+
+    const visible = getVisiblePoints();
+    const localX = x - padding.left;
+    const relative = innerWidth > 0 ? localX / innerWidth : 0;
+    const index = Math.round(relative * Math.max(visible.length - 1, 0));
+    hoveredIndex = Math.min(Math.max(0, index), visible.length - 1);
+    renderSvg();
+    showTooltip(event, visible[hoveredIndex]);
+  });
+
+  svg.addEventListener("mouseleave", () => {
+    hoveredIndex = -1;
+    hideTooltip();
+    renderSvg();
+  });
+
+  svg.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    if (points.length <= minVisible) {
+      return;
+    }
+
+    const rect = svg.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const visible = getVisiblePoints();
+    const localX = Math.min(Math.max(0, x - padding.left), innerWidth);
+    const rel = innerWidth > 0 ? localX / innerWidth : 0;
+    const anchorOffset = Math.round(rel * Math.max(visible.length - 1, 0));
+    const anchorIndex = startIndex + anchorOffset;
+
+    let nextVisible = visibleCount;
+    if (event.deltaY < 0) {
+      nextVisible = Math.max(minVisible, Math.floor(visibleCount * 0.85));
+    } else {
+      nextVisible = Math.min(points.length, Math.ceil(visibleCount * 1.15));
+    }
+
+    if (nextVisible === visibleCount) {
+      return;
+    }
+
+    const ratio = visibleCount > 1 ? anchorOffset / (visibleCount - 1) : 0;
+    const nextOffset = Math.round(ratio * Math.max(nextVisible - 1, 0));
+    startIndex = clampStart(anchorIndex - nextOffset, nextVisible);
+    visibleCount = nextVisible;
+    hoveredIndex = -1;
+    hideTooltip();
+    renderSvg();
+
+    const total = points.reduce((acc, item) => acc + Number(item.casasMes || 0), 0);
+    summaryTarget.textContent = `Meses graficados: ${points.length} | Casas iniciadas acumuladas en horizonte: ${total} | Zoom: ${points.length - visibleCount + 1}x`;
+  }, { passive: false });
+
+  renderSvg();
 
   const total = points.reduce((acc, item) => acc + Number(item.casasMes || 0), 0);
   summaryTarget.textContent = `Meses graficados: ${points.length} | Casas iniciadas acumuladas en horizonte: ${total}`;
