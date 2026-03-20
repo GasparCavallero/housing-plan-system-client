@@ -39,6 +39,7 @@ import {
   renderTimeline,
   renderCasasChart,
   renderCasasTerminadasChart,
+  renderCasasEjecucionChart,
   renderAdherentes,
   renderPagos,
   hasTimelineMetrics,
@@ -559,6 +560,7 @@ async function ejecutarSimulacionServidor(options = {}) {
     renderTimeline(dom.tableBody, rows);
     renderCasasChart(dom.casasChart, dom.casasChartSummary, rows);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, rows);
+    renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, rows);
     if (hasMetrics) {
       setSummary(dom.simSummary, `Simulación servidor ok: ${rows.length} fila(s) en ${horizonte} meses.`);
     } else {
@@ -570,6 +572,7 @@ async function ejecutarSimulacionServidor(options = {}) {
   } else {
     renderCasasChart(dom.casasChart, dom.casasChartSummary, []);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, []);
+    renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, []);
     const fondoFinal = typeof payload?.fondo_final_ars === "number"
       ? ` Fondo final: ${payload.fondo_final_ars.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS.`
       : "";

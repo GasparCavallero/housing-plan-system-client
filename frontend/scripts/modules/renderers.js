@@ -75,6 +75,50 @@ export function buildCasasMesData(rows) {
   return points.sort((a, b) => a.mes - b.mes);
 }
 
+export function buildCasasAnoData(rows) {
+  const pointsByYear = {};
+
+  rows.forEach((row) => {
+    const mes = Number(row?.mes);
+    if (!Number.isFinite(mes)) {
+      return;
+    }
+
+    const ano = Math.ceil(mes / 12);
+
+    const direct = Number(
+      row?.casasIniciadasMes
+      ?? row?.casas_iniciadas_mes
+      ?? row?.viviendas_iniciadas_mes
+      ?? row?.casas_mes
+      ?? row?.inicios_mes
+    );
+
+    const cumulative = Number(
+      row?.casasIniciadasAcumuladas
+      ?? row?.casas_iniciadas
+      ?? row?.viviendas_iniciadas
+    );
+
+    let casasAno = 0;
+    if (Number.isFinite(direct)) {
+      casasAno = Math.max(0, direct);
+    } else if (Number.isFinite(cumulative)) {
+      casasAno = Number.isFinite(cumulative) ? Math.max(0, cumulative) : 0;
+    } else {
+      casasAno = countStartsFromEvent(row?.evento ?? row?.evento_mes);
+    }
+
+    pointsByYear[ano] = (pointsByYear[ano] ?? 0) + casasAno;
+  });
+
+  const points = Object.entries(pointsByYear)
+    .map(([ano, casasAno]) => ({ ano: Number(ano), casasAno }))
+    .sort((a, b) => a.ano - b.ano);
+
+  return points;
+}
+
 export function buildCasasTerminadasMesData(rows) {
   const points = [];
   let previousCumulative = null;
@@ -123,10 +167,69 @@ export function buildCasasTerminadasMesData(rows) {
   return points.sort((a, b) => a.mes - b.mes);
 }
 
-function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, tooltipLabel, summaryLabel) {
+export function buildCasasTerminadasAnoData(rows) {
+  const pointsByYear = {};
+
+  rows.forEach((row) => {
+    const mes = Number(row?.mes);
+    if (!Number.isFinite(mes)) {
+      return;
+    }
+
+    const ano = Math.ceil(mes / 12);
+
+    const direct = Number(
+      row?.casasTerminadasMes
+      ?? row?.casas_terminadas_mes
+      ?? row?.viviendas_terminadas_mes
+      ?? row?.casas_finalizadas_mes
+      ?? row?.entregadas_mes
+    );
+
+    const cumulative = Number(
+      row?.casasTerminadasAcumuladas
+      ?? row?.casas_entregadas
+      ?? row?.viviendas_entregadas
+      ?? row?.casas_terminadas
+    );
+
+    let casasAno = 0;
+    if (Number.isFinite(direct)) {
+      casasAno = Math.max(0, direct);
+    } else if (Number.isFinite(cumulative)) {
+      casasAno = Number.isFinite(cumulative) ? Math.max(0, cumulative) : 0;
+    } else {
+      casasAno = countFinishesFromEvent(row?.evento ?? row?.evento_mes);
+    }
+
+    pointsByYear[ano] = (pointsByYear[ano] ?? 0) + casasAno;
+  });
+
+  const points = Object.entries(pointsByYear)
+    .map(([ano, casasAno]) => ({ ano: Number(ano), casasAno }))
+    .sort((a, b) => a.ano - b.ano);
+
+  return points;
+}
+
+export function buildCasasEjecucionAnoData(rows) {
+  const casasIniciadas = buildCasasAnoData(rows);
+  const casasTerminadas = buildCasasTerminadasAnoData(rows);
+
+  const terminadasMap = Object.fromEntries(casasTerminadas.map((item) => [item.ano, item.casasAno]));
+
+  const points = casasIniciadas.map((item) => ({
+    ano: item.ano,
+    casasAno: Math.max(0, item.casasAno - (terminadasMap[item.ano] ?? 0))
+  }));
+
+  return points;
+}
+
+function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, tooltipLabel, summaryLabel, periodLabel = "Mes") {
   if (!Array.isArray(points) || points.length === 0) {
     target.innerHTML = "Sin datos de simulación para graficar.";
-    summaryTarget.textContent = "Ejecutá una simulación para visualizar la evolución mensual.";
+    summaryTarget.textContent = "Ejecutá una simulación para visualizar la evolución.";
     target.classList.add("casas-chart-empty");
     return;
   }
@@ -137,7 +240,7 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
       <svg viewBox="0 0 900 240" role="img" aria-label="${chartLabel}"></svg>
       <div class="casas-chart-tooltip hidden"></div>
     </div>
-    <p class="casas-chart-hint">Rueda del mouse para zoom. Mové el cursor para ver valores por mes.</p>
+    <p class="casas-chart-hint">Rueda del mouse para zoom. Mové el cursor para ver valores por ${periodLabel.toLowerCase()}.</p>
   `;
 
   const shell = target.querySelector(".casas-chart-shell");
@@ -166,17 +269,20 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
 
   const renderSvg = () => {
     const visible = getVisiblePoints();
-    const maxY = Math.max(1, ...visible.map((item) => Number(item.casasMes || 0)));
+    const maxY = Math.max(1, ...visible.map((item) => Number(item.casasMes || item.casasAno || 0)));
     const stepX = visible.length > 1 ? innerWidth / (visible.length - 1) : innerWidth;
 
     const toX = (index) => padding.left + (index * stepX);
     const toY = (value) => padding.top + innerHeight - ((value / maxY) * innerHeight);
 
-    const linePoints = visible.map((point, index) => `${toX(index)},${toY(point.casasMes)}`).join(" ");
+    const getValue = (point) => Number(point.casasMes ?? point.casasAno ?? 0);
+    const getPeriod = (point) => point.mes ?? point.ano;
+
+    const linePoints = visible.map((point, index) => `${toX(index)},${toY(getValue(point))}`).join(" ");
 
     const bars = visible.map((point, index) => {
       const x = toX(index) - 6;
-      const y = toY(point.casasMes);
+      const y = toY(getValue(point));
       const h = padding.top + innerHeight - y;
       const isHovered = index === hoveredIndex;
       return `<rect x="${x}" y="${y}" width="12" height="${Math.max(0, h)}" rx="2" fill="${isHovered ? "rgba(212, 111, 42, 0.45)" : "rgba(0, 109, 91, 0.25)"}" />`;
@@ -184,14 +290,16 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
 
     const dots = visible.map((point, index) => {
       const isHovered = index === hoveredIndex;
-      return `<circle cx="${toX(index)}" cy="${toY(point.casasMes)}" r="${isHovered ? 5 : 3}" fill="${isHovered ? "#d46f2a" : "#006d5b"}" />`;
+      return `<circle cx="${toX(index)}" cy="${toY(getValue(point))}" r="${isHovered ? 5 : 3}" fill="${isHovered ? "#d46f2a" : "#006d5b"}" />`;
     }).join("");
 
     const labels = visible
       .filter((_, index) => index === 0 || index === visible.length - 1 || index % Math.ceil(visible.length / 8) === 0)
       .map((point) => {
-        const idx = visible.findIndex((item) => item.mes === point.mes && item.casasMes === point.casasMes);
-        return `<text x="${toX(idx)}" y="${height - 10}" text-anchor="middle" font-size="10" fill="#5f6663">M${point.mes}</text>`;
+        const idx = visible.findIndex((item) => (item.mes ?? item.ano) === getPeriod(point) && (item.casasMes ?? item.casasAno) === getValue(point));
+        const period = getPeriod(point);
+        const shortLabel = typeof period === "number" && periodLabel === "Año" ? `Y${period}` : `M${period}`;
+        return `<text x="${toX(idx)}" y="${height - 10}" text-anchor="middle" font-size="10" fill="#5f6663">${shortLabel}</text>`;
       })
       .join("");
 
@@ -212,8 +320,11 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
   };
 
   const showTooltip = (event, point) => {
+    const period = point.mes ?? point.ano;
+    const value = point.casasMes ?? point.casasAno;
+    const periodText = periodLabel === "Año" ? `Año ${period}` : `Mes ${period}`;
     tooltip.classList.remove("hidden");
-    tooltip.textContent = `Mes ${point.mes}: ${point.casasMes} ${tooltipLabel}`;
+    tooltip.textContent = `${periodText}: ${value} ${tooltipLabel}`;
     const rect = shell.getBoundingClientRect();
     const x = event.clientX - rect.left + 12;
     const y = event.clientY - rect.top - 28;
@@ -283,37 +394,52 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
     hideTooltip();
     renderSvg();
 
-    const total = points.reduce((acc, item) => acc + Number(item.casasMes || 0), 0);
-    summaryTarget.textContent = `Meses graficados: ${points.length} | ${summaryLabel}: ${total} | Zoom: ${points.length - visibleCount + 1}x`;
+    const total = points.reduce((acc, item) => acc + Number(item.casasMes || item.casasAno || 0), 0);
+    summaryTarget.textContent = `${periodLabel} graficados: ${points.length} | ${summaryLabel}: ${total} | Zoom: ${points.length - visibleCount + 1}x`;
   }, { passive: false });
 
   renderSvg();
 
-  const total = points.reduce((acc, item) => acc + Number(item.casasMes || 0), 0);
-  summaryTarget.textContent = `Meses graficados: ${points.length} | ${summaryLabel}: ${total}`;
+  const total = points.reduce((acc, item) => acc + Number(item.casasMes || item.casasAno || 0), 0);
+  summaryTarget.textContent = `${periodLabel} graficados: ${points.length} | ${summaryLabel}: ${total}`;
 }
 
 export function renderCasasChart(target, summaryTarget, rows) {
-  const points = buildCasasMesData(rows);
+  const points = buildCasasAnoData(rows);
   renderInteractiveCasasChart(
     target,
     summaryTarget,
     points,
-    "Casas iniciadas por mes",
+    "Casas iniciadas por año",
     "casa(s) iniciada(s)",
-    "Casas iniciadas acumuladas en horizonte"
+    "Casas iniciadas acumuladas",
+    "Año"
   );
 }
 
 export function renderCasasTerminadasChart(target, summaryTarget, rows) {
-  const points = buildCasasTerminadasMesData(rows);
+  const points = buildCasasTerminadasAnoData(rows);
   renderInteractiveCasasChart(
     target,
     summaryTarget,
     points,
-    "Casas terminadas por mes",
+    "Casas terminadas por año",
     "casa(s) terminada(s)",
-    "Casas terminadas acumuladas en horizonte"
+    "Casas terminadas acumuladas",
+    "Año"
+  );
+}
+
+export function renderCasasEjecucionChart(target, summaryTarget, rows) {
+  const points = buildCasasEjecucionAnoData(rows);
+  renderInteractiveCasasChart(
+    target,
+    summaryTarget,
+    points,
+    "Casas en ejecución por año",
+    "casa(s) en ejecución",
+    "Casas en ejecución acumuladas",
+    "Año"
   );
 }
 
