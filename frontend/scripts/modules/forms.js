@@ -20,16 +20,3 @@ export function setConfigToForm(form, config) {
   form.elements.tipoCambio.value = config.tipo_cambio;
 }
 
-export function getCuotasFromForm(form) {
-  const data = new FormData(form);
-  const metrosCuadrados = Number(data.get("metrosCuadrados"));
-  const valorPorM2 = Number(data.get("valorPorM2"));
-  const cantidadCuotas = Number(data.get("cantidadCuotas"));
-  const valorTotalVivienda = metrosCuadrados * valorPorM2;
-  const cuotaCompleta = valorTotalVivienda / cantidadCuotas;
-
-  return {
-    mediaCuota: cuotaCompleta * 0.5,
-    cuotaCompleta
-  };
-}

@@ -100,8 +100,9 @@
         </label>
       </form>
       <p class="config-help">
-        Media cuota hasta adjudicación.<br />
-        Cuota completa desde adjudicación.<br />
+        Hasta adjudicación paga media cuota (50% de la cuota completa del mes).<br />
+        Luego paga cuota completa.<br />
+        El sistema recalcula la cuota para cumplir el objetivo de casas en el plazo de cuotas.<br />
         Tope de pago por adherente: 180 cuotas.<br />
         valor_total_vivienda = metros_cuadrados_vivienda * valor_por_m2<br />
         cuota_completa = valor_total_vivienda / cantidad_cuotas<br />
@@ -134,7 +135,7 @@
         <article class="kpi-card">
           <p>Ingreso estimado mensual</p>
           <h3 id="kpi-ingreso-mensual">-</h3>
-          <small>Basado en estado e historial de cada adherente</small>
+          <small>Tomado del backend, con cuota dinámica mensual</small>
         </article>
       </div>
     </section>
