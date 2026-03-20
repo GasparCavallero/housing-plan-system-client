@@ -24,7 +24,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="./css/styles.css?v=20260320-1" />
+  <link rel="stylesheet" href="./css/styles.css?v=20260320-2" />
 </head>
 
 <body>
@@ -99,14 +99,23 @@
           <input type="number" name="tipoCambio" min="1" value="1200" required />
         </label>
         <label>
-          Media cuota (ARS)
-          <input type="number" name="mediaCuota" min="1" value="250000" required />
+          Porcentaje media cuota (%)
+          <input type="number" name="porcentajeMediaCuota" min="0.01" max="100" step="0.01" value="0.5" required />
         </label>
         <label>
-          Cuota completa (ARS)
-          <input type="number" name="cuotaCompleta" min="1" value="500000" required />
+          Porcentaje cuota completa (%)
+          <input type="number" name="porcentajeCuotaCompleta" min="0.01" max="100" step="0.01" value="1" required />
+        </label>
+        <label>
+          Meses media cuota inicial
+          <input type="number" name="mesesMediaCuotaInicial" min="1" value="7" required />
         </label>
       </form>
+      <p class="config-help">
+        valor_total_vivienda = metros_cuadrados_vivienda * valor_por_m2 · media_cuota = valor_total_vivienda *
+        (porcentaje_media_cuota / 100) · cuota_completa = valor_total_vivienda * (porcentaje_cuota_completa / 100). Cada
+        adherente paga media cuota durante los primeros meses_media_cuota_inicial y luego cuota completa.
+      </p>
       <div class="actions multi-actions">
         <button id="btn-guardar-config" class="btn btn-secondary">Guardar configuración</button>
         <button id="btn-cargar-resumen" class="btn btn-ghost">Actualizar resumen</button>
@@ -134,7 +143,7 @@
         <article class="kpi-card">
           <p>Ingreso estimado mensual</p>
           <h3 id="kpi-ingreso-mensual">-</h3>
-          <small>Basado en estados actuales</small>
+          <small>Basado en cuotas_pagadas y meses_media_cuota_inicial</small>
         </article>
       </div>
     </section>
@@ -290,7 +299,7 @@
     </div>
   </div>
 
-  <script type="module" src="./scripts/app.js?v=20260320-1"></script>
+  <script type="module" src="./scripts/app.js?v=20260320-2"></script>
 </body>
 
 </html>

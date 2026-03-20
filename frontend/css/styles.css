@@ -254,6 +254,13 @@ input:focus {
   gap: 0.5rem;
 }
 
+.config-help {
+  margin: 0.8rem 0 0;
+  font-size: 0.83rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .config-modal {
   position: fixed;
   inset: 0;

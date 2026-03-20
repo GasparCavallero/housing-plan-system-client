@@ -280,7 +280,10 @@ function normalizePlanConfig(raw) {
     metros_cuadrados_vivienda: Number(raw.metros_cuadrados_vivienda ?? raw.metrosCuadradosVivienda ?? raw.metrosCuadrados),
     valor_por_m2: Number(raw.valor_por_m2 ?? raw.valorPorM2),
     duracion_construccion_meses: Number(raw.duracion_construccion_meses ?? raw.duracionConstruccionMeses),
-    tipo_cambio: Number(raw.tipo_cambio ?? raw.tipoCambio)
+    tipo_cambio: Number(raw.tipo_cambio ?? raw.tipoCambio),
+    porcentaje_media_cuota: Number(raw.porcentaje_media_cuota ?? raw.porcentajeMediaCuota ?? 0.5),
+    porcentaje_cuota_completa: Number(raw.porcentaje_cuota_completa ?? raw.porcentajeCuotaCompleta ?? 1),
+    meses_media_cuota_inicial: Number(raw.meses_media_cuota_inicial ?? raw.mesesMediaCuotaInicial ?? 7)
   };
 
   return isPlanConfigShape(normalized) ? normalized : null;
@@ -297,7 +300,10 @@ function isPlanConfigShape(config) {
     "metros_cuadrados_vivienda",
     "valor_por_m2",
     "duracion_construccion_meses",
-    "tipo_cambio"
+    "tipo_cambio",
+    "porcentaje_media_cuota",
+    "porcentaje_cuota_completa",
+    "meses_media_cuota_inicial"
   ];
 
   return keys.every((key) => config[key] !== undefined && config[key] !== null);
@@ -339,6 +345,9 @@ function renderConfigListInModal() {
             <p><strong>Cuotas:</strong> ${Number(config.cantidad_cuotas).toLocaleString("es-AR")}</p>
             <p><strong>Valor por m2:</strong> ${Number(config.valor_por_m2).toLocaleString("es-AR")}</p>
             <p><strong>Duración obra (meses):</strong> ${Number(config.duracion_construccion_meses).toLocaleString("es-AR")}</p>
+            <p><strong>% media cuota:</strong> ${Number(config.porcentaje_media_cuota).toLocaleString("es-AR")}</p>
+            <p><strong>% cuota completa:</strong> ${Number(config.porcentaje_cuota_completa).toLocaleString("es-AR")}</p>
+            <p><strong>Meses media cuota inicial:</strong> ${Number(config.meses_media_cuota_inicial).toLocaleString("es-AR")}</p>
           </div>
           <button class="btn btn-secondary js-config-apply" type="button" data-config-index="${index}">Usar esta configuración</button>
         </article>
