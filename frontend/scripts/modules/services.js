@@ -148,6 +148,27 @@ export async function actualizarEstadoAdherente(adherenteId, estado) {
   });
 }
 
+export async function actualizarAdherente(adherenteId, payload) {
+  const body = JSON.stringify(payload);
+
+  try {
+    return await apiRequest(`/adherentes/${adherenteId}`, {
+      method: "PATCH",
+      body
+    });
+  } catch (error) {
+    const status = Number(error?.status || 0);
+    if (status !== 404 && status !== 405) {
+      throw error;
+    }
+
+    return apiRequest(`/adherentes/${adherenteId}`, {
+      method: "PUT",
+      body
+    });
+  }
+}
+
 export async function eliminarAdherente(adherenteId) {
   try {
     return await apiRequest(`/adherentes/${adherenteId}`, {
@@ -180,12 +201,18 @@ export async function registrarPago(adherenteId, montoArs, mes) {
   });
 }
 
-export async function actualizarPago(pagoId, adherenteId, montoArs, mes) {
-  const body = JSON.stringify({
+export async function actualizarPago(pagoId, adherenteId, montoArs, mes, fecha = null) {
+  const payload = {
     adherente_id: adherenteId,
     monto_ars: montoArs,
     mes
-  });
+  };
+
+  if (fecha) {
+    payload.fecha = fecha;
+  }
+
+  const body = JSON.stringify(payload);
 
   try {
     return await apiRequest(`/pagos/${pagoId}`, {

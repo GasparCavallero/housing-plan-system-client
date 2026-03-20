@@ -15,6 +15,7 @@ import {
   reiniciarPlan,
   listarAdherentes,
   crearAdherente,
+  actualizarAdherente,
   actualizarEstadoAdherente,
   eliminarAdherente,
   listarPagos,
@@ -236,7 +237,6 @@ function applyRoleUI(user) {
   dom.buttonReiniciarPlan.disabled = readOnlyMode;
   document.getElementById("btn-crear-adherente").disabled = readOnlyMode;
   dom.buttonCrearAdherentesLote.disabled = readOnlyMode;
-  dom.buttonEliminarAdherente.disabled = readOnlyMode;
   document.getElementById("btn-cambiar-estado").disabled = readOnlyMode;
   document.getElementById("btn-registrar-pago").disabled = readOnlyMode;
   dom.buttonRegistrarPagosLote.disabled = readOnlyMode;
@@ -629,30 +629,58 @@ async function actualizarPagos() {
   writeLog(dom.systemLog, "Listado de pagos", items);
 }
 
-async function editarAdherenteDesdeFila(adherenteId, estadoActual) {
-  const estadosValidos = ["activo", "en_construccion", "adjudicado"];
-  const estadoIngresado = window.prompt(
-    "Nuevo estado del adherente (activo, en_construccion, adjudicado)",
-    String(estadoActual || "activo")
-  );
+function getRowField(row, field) {
+  const input = row?.querySelector(`[data-field="${field}"]`);
+  return input ? String(input.value || "").trim() : "";
+}
 
-  if (estadoIngresado === null) {
-    return;
+async function guardarAdherenteDesdeFila(button) {
+  const adherenteId = Number(button.getAttribute("data-adherente-id") || 0);
+  if (!Number.isFinite(adherenteId) || adherenteId < 1) {
+    throw new Error("ID de adherente inválido.");
   }
 
-  const estado = String(estadoIngresado || "").trim();
-  if (!estadosValidos.includes(estado)) {
-    throw new Error("Estado inválido. Usá: activo, en_construccion o adjudicado.");
+  const row = button.closest("tr");
+  const nombre = getRowField(row, "nombre");
+  const estado = getRowField(row, "estado");
+  const cuotasPagadas = Number(getRowField(row, "cuotas_pagadas"));
+  const cuotasBonificadas = Number(getRowField(row, "cuotas_bonificadas_por_licitacion"));
+
+  if (!nombre) {
+    throw new Error("El nombre del adherente es obligatorio.");
+  }
+  if (!["activo", "en_construccion", "adjudicado"].includes(estado)) {
+    throw new Error("Estado inválido.");
+  }
+  if (!Number.isFinite(cuotasPagadas) || cuotasPagadas < 0) {
+    throw new Error("Cuotas pagadas inválidas.");
+  }
+  if (!Number.isFinite(cuotasBonificadas) || cuotasBonificadas < 0) {
+    throw new Error("Cuotas bonificadas inválidas.");
   }
 
   try {
-    await actualizarEstadoAdherente(adherenteId, estado);
+    await actualizarAdherente(adherenteId, {
+      nombre,
+      estado,
+      cuotas_pagadas: cuotasPagadas,
+      cuotas_bonificadas_por_licitacion: cuotasBonificadas
+    });
   } catch (error) {
-    if (Number(error?.status || 0) === 404) {
+    const status = Number(error?.status || 0);
+    if (status === 404) {
       writeLog(dom.systemLog, "Editar adherente", {
         adherenteId,
         message: "No encontrado o fuera de tu alcance"
       });
+      await actualizarAdherentes();
+      return;
+    }
+
+    if (status === 405) {
+      // Compatibilidad con backends que solo exponen endpoint de estado.
+      await actualizarEstadoAdherente(adherenteId, estado);
+      setSummary(dom.simSummary, "Backend parcial: se actualizó solo el estado del adherente.");
       await actualizarAdherentes();
       return;
     }
@@ -662,7 +690,7 @@ async function editarAdherenteDesdeFila(adherenteId, estadoActual) {
   await actualizarAdherentes();
 }
 
-async function eliminarAdherentePorId(adherenteId, focusBackElement = dom.buttonEliminarAdherente) {
+async function eliminarAdherentePorId(adherenteId, focusBackElement = null) {
   const confirmacion = await pedirConfirmacion({
     title: "Eliminar adherente",
     message: `Se eliminará el adherente ID ${adherenteId}. Esta acción puede afectar pagos y estado del plan.`,
@@ -693,23 +721,18 @@ async function eliminarAdherentePorId(adherenteId, focusBackElement = dom.button
   await actualizarAdherentes();
 }
 
-async function editarPagoDesdeFila(pagoId, adherenteIdActual, montoArsActual, mesActual) {
-  const adherenteInput = window.prompt("Adherente ID", String(adherenteIdActual ?? ""));
-  if (adherenteInput === null) {
-    return;
-  }
-  const montoInput = window.prompt("Monto ARS", String(montoArsActual ?? ""));
-  if (montoInput === null) {
-    return;
-  }
-  const mesInput = window.prompt("Mes", String(mesActual ?? ""));
-  if (mesInput === null) {
-    return;
+async function guardarPagoDesdeFila(button) {
+  const pagoId = Number(button.getAttribute("data-pago-id") || 0);
+  if (!Number.isFinite(pagoId) || pagoId < 1) {
+    throw new Error("ID de pago inválido.");
   }
 
-  const adherenteId = Number(adherenteInput);
-  const montoArs = Number(montoInput);
-  const mes = Number(mesInput);
+  const row = button.closest("tr");
+  const adherenteId = Number(getRowField(row, "adherente_id"));
+  const montoArs = Number(getRowField(row, "monto_ars"));
+  const mes = Number(getRowField(row, "mes"));
+  const fechaRaw = getRowField(row, "fecha");
+  const fecha = fechaRaw ? new Date(fechaRaw).toISOString() : null;
 
   if (!Number.isFinite(adherenteId) || adherenteId < 1) {
     throw new Error("Adherente ID inválido.");
@@ -720,9 +743,12 @@ async function editarPagoDesdeFila(pagoId, adherenteIdActual, montoArsActual, me
   if (!Number.isFinite(mes) || mes < 1) {
     throw new Error("Mes inválido.");
   }
+  if (fechaRaw && Number.isNaN(new Date(fechaRaw).getTime())) {
+    throw new Error("Fecha inválida.");
+  }
 
   try {
-    await actualizarPago(pagoId, adherenteId, montoArs, mes);
+    await actualizarPago(pagoId, adherenteId, montoArs, mes, fecha);
   } catch (error) {
     if (Number(error?.status || 0) === 404) {
       writeLog(dom.systemLog, "Editar pago", {
@@ -901,19 +927,6 @@ async function registrarPagosLoteFlow(event) {
   });
 }
 
-async function eliminarAdherenteFlow(event) {
-  event.preventDefault();
-  const data = new FormData(dom.adherenteEliminarForm);
-  const adherenteId = Number(data.get("adherenteIdEliminar") || 0);
-
-  if (!Number.isFinite(adherenteId) || adherenteId < 1) {
-    throw new Error("Ingresá un ID de adherente válido.");
-  }
-
-  await eliminarAdherentePorId(adherenteId, dom.buttonEliminarAdherente);
-  dom.adherenteEliminarForm.reset();
-}
-
 async function eliminarPagoFlow(event) {
   event.preventDefault();
   const data = new FormData(dom.pagoEliminarForm);
@@ -951,7 +964,6 @@ dom.adherenteForm.addEventListener("submit", withUiFeedback(async (event) => {
 }));
 
 dom.adherenteLoteForm.addEventListener("submit", withUiFeedback(crearAdherentesLoteFlow));
-dom.adherenteEliminarForm.addEventListener("submit", withUiFeedback(eliminarAdherenteFlow));
 
 dom.adherenteEstadoForm.addEventListener("submit", withUiFeedback(async (event) => {
   event.preventDefault();
@@ -994,14 +1006,9 @@ dom.pagoLoteForm.addEventListener("submit", withUiFeedback(registrarPagosLoteFlo
 dom.pagoEliminarForm.addEventListener("submit", withUiFeedback(eliminarPagoFlow));
 
 dom.adherentesBody.addEventListener("click", withUiFeedback(async (event) => {
-  const editButton = event.target.closest(".js-edit-adherente");
-  if (editButton) {
-    const adherenteId = Number(editButton.getAttribute("data-adherente-id") || 0);
-    const estadoActual = String(editButton.getAttribute("data-adherente-estado") || "activo");
-    if (!Number.isFinite(adherenteId) || adherenteId < 1) {
-      throw new Error("ID de adherente inválido.");
-    }
-    await editarAdherenteDesdeFila(adherenteId, estadoActual);
+  const saveButton = event.target.closest(".js-save-adherente");
+  if (saveButton) {
+    await guardarAdherenteDesdeFila(saveButton);
     return;
   }
 
@@ -1016,16 +1023,9 @@ dom.adherentesBody.addEventListener("click", withUiFeedback(async (event) => {
 }));
 
 dom.pagosBody.addEventListener("click", withUiFeedback(async (event) => {
-  const editButton = event.target.closest(".js-edit-pago");
-  if (editButton) {
-    const pagoId = Number(editButton.getAttribute("data-pago-id") || 0);
-    const adherenteId = Number(editButton.getAttribute("data-adherente-id") || 0);
-    const montoArs = Number(editButton.getAttribute("data-monto-ars") || 0);
-    const mes = Number(editButton.getAttribute("data-mes") || 0);
-    if (!Number.isFinite(pagoId) || pagoId < 1) {
-      throw new Error("ID de pago inválido.");
-    }
-    await editarPagoDesdeFila(pagoId, adherenteId, montoArs, mes);
+  const saveButton = event.target.closest(".js-save-pago");
+  if (saveButton) {
+    await guardarPagoDesdeFila(saveButton);
     return;
   }
 
