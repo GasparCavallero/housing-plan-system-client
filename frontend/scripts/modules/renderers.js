@@ -573,15 +573,57 @@ export function normalizeTimeline(payload) {
     const mediaCuotaMes = toNumberOrNull(row.mediaCuotaMes ?? row.media_cuota_mes ?? row.media_cuota_mes_ars ?? row.cuota_mes_media);
     const ingresoMes = toNumberOrNull(row.ingresoMes ?? row.ingreso_mes ?? row.ingreso_mes_ars ?? row.ingreso_mensual_ars);
     const fondo = toNumberOrNull(row.fondo ?? row.fondo_cierre ?? row.fondo_ars ?? row.fondo_final_ars ?? row.fondo_mes_ars ?? row.saldo_fondo_ars);
-    const casasIniciadasMes = toNumberOrNull(row.casasIniciadasMes ?? row.casas_iniciadas_mes ?? row.viviendas_iniciadas_mes ?? row.casas_mes ?? row.inicios_mes);
-    const casasIniciadasAcumuladas = toNumberOrNull(row.casasIniciadasAcumuladas ?? row.casas_iniciadas ?? row.viviendas_iniciadas);
+    const casasIniciadasMes = toNumberOrNull(
+      row.casasIniciadasMes
+      ?? row.casas_iniciadas_mes
+      ?? row.viviendas_iniciadas_mes
+      ?? row.casas_mes
+      ?? row.inicios_mes
+      ?? row.casas_iniciadas_del_mes
+    );
+    const casasIniciadasAcumuladas = toNumberOrNull(
+      row.casasIniciadasAcumuladas
+      ?? row.casas_iniciadas
+      ?? row.viviendas_iniciadas
+      ?? row.casas_iniciadas_acumuladas
+    );
+    const casasTerminadasMes = toNumberOrNull(
+      row.casasTerminadasMes
+      ?? row.casas_terminadas_mes
+      ?? row.viviendas_terminadas_mes
+      ?? row.casas_finalizadas_mes
+      ?? row.entregadas_mes
+      ?? row.casas_entregadas_mes
+    );
+    const casasTerminadasAcumuladas = toNumberOrNull(
+      row.casasTerminadasAcumuladas
+      ?? row.casas_terminadas
+      ?? row.casas_entregadas
+      ?? row.viviendas_terminadas
+      ?? row.viviendas_entregadas
+      ?? row.casas_terminadas_acumuladas
+    );
 
     let evento = row.evento ?? row.evento_mes ?? row.descripcion ?? row.detalle ?? null;
     if (!evento && row.casa_numero != null && mes != null) {
       evento = `Inicio casa ${row.casa_numero}`;
     }
 
-    return { mes, activos, enConstruccion, adjudicados, cuotaCompletaMes, mediaCuotaMes, ingresoMes, fondo, casasIniciadasMes, casasIniciadasAcumuladas, evento };
+    return {
+      mes,
+      activos,
+      enConstruccion,
+      adjudicados,
+      cuotaCompletaMes,
+      mediaCuotaMes,
+      ingresoMes,
+      fondo,
+      casasIniciadasMes,
+      casasIniciadasAcumuladas,
+      casasTerminadasMes,
+      casasTerminadasAcumuladas,
+      evento
+    };
   };
 
   const pickArray = (input) => {

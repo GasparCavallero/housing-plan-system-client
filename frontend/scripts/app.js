@@ -1194,8 +1194,6 @@ if (sessionOk) {
     await navController.showSection("estado-financiero");
   }
 
-  if (userSwitchedSession) {
-    await withUiFeedback(() => ejecutarSimulacionServidor({ skipNavigation: true }))();
-    userSwitchedSession = false;
-  }
+  await withUiFeedback(() => ejecutarSimulacionServidor({ skipNavigation: true }))();
+  userSwitchedSession = false;
 }
