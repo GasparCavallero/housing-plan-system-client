@@ -29,9 +29,24 @@ export function updateKpiFromResumen(kpi, resumen, estadoPlan = null) {
   kpi.fondoUsd.textContent = formatterUsd.format(resumen.fondo_usd);
   kpi.ingresoMensual.textContent = formatterArs.format(resumen.ingreso_mensual_ars);
 
-  if (estadoPlan) {
-    kpi.viviendasIniciadas.textContent = String(estadoPlan.casas_iniciadas ?? 0);
-    kpi.viviendasFinalizadas.textContent = `Finalizadas: ${estadoPlan.casas_entregadas ?? 0}`;
+  const estado = estadoPlan?.estado ?? estadoPlan ?? null;
+  const cuotasActuales = estadoPlan?.cuotas_actuales ?? estadoPlan?.cuotasActuales ?? null;
+
+  if (estado) {
+    kpi.viviendasIniciadas.textContent = String(estado.casas_iniciadas ?? 0);
+    kpi.viviendasFinalizadas.textContent = `Finalizadas: ${estado.casas_entregadas ?? 0}`;
+  }
+
+  if (kpi.cuotaCompletaMes) {
+    kpi.cuotaCompletaMes.textContent = typeof cuotasActuales?.cuota_completa_mes_ars === "number"
+      ? formatterArs.format(cuotasActuales.cuota_completa_mes_ars)
+      : "-";
+  }
+
+  if (kpi.mediaCuotaMes) {
+    kpi.mediaCuotaMes.textContent = typeof cuotasActuales?.media_cuota_mes_ars === "number"
+      ? formatterArs.format(cuotasActuales.media_cuota_mes_ars)
+      : "-";
   }
 }
 
@@ -63,8 +78,10 @@ export function renderTimeline(tableBody, rows) {
       "adherentes_adjudicados",
       "cuotaCompletaMes",
       "cuota_completa_mes",
+      "cuota_completa_mes_ars",
       "mediaCuotaMes",
       "media_cuota_mes",
+      "media_cuota_mes_ars",
       "ingresoMes",
       "ingreso_mes",
       "fondo",
@@ -96,9 +113,9 @@ export function renderTimeline(tableBody, rows) {
       <td>${row.activos ?? row.adherentes_activos ?? "-"}</td>
       <td>${row.enConstruccion ?? row.adherentes_en_construccion ?? "-"}</td>
       <td>${row.adjudicados ?? row.adherentes_adjudicados ?? "-"}</td>
-      <td>${typeof row.cuotaCompletaMes === "number" ? formatterArs.format(row.cuotaCompletaMes) : (typeof row.cuota_completa_mes === "number" ? formatterArs.format(row.cuota_completa_mes) : "-")}</td>
-      <td>${typeof row.mediaCuotaMes === "number" ? formatterArs.format(row.mediaCuotaMes) : (typeof row.media_cuota_mes === "number" ? formatterArs.format(row.media_cuota_mes) : "-")}</td>
-      <td>${typeof row.ingresoMes === "number" ? formatterArs.format(row.ingresoMes) : (typeof row.ingreso_mes === "number" ? formatterArs.format(row.ingreso_mes) : "-")}</td>
+      <td>${typeof row.cuotaCompletaMes === "number" ? formatterArs.format(row.cuotaCompletaMes) : (typeof row.cuota_completa_mes === "number" ? formatterArs.format(row.cuota_completa_mes) : (typeof row.cuota_completa_mes_ars === "number" ? formatterArs.format(row.cuota_completa_mes_ars) : "-"))}</td>
+      <td>${typeof row.mediaCuotaMes === "number" ? formatterArs.format(row.mediaCuotaMes) : (typeof row.media_cuota_mes === "number" ? formatterArs.format(row.media_cuota_mes) : (typeof row.media_cuota_mes_ars === "number" ? formatterArs.format(row.media_cuota_mes_ars) : "-"))}</td>
+      <td>${typeof row.ingresoMes === "number" ? formatterArs.format(row.ingresoMes) : (typeof row.ingreso_mes === "number" ? formatterArs.format(row.ingreso_mes) : (typeof row.ingreso_mes_ars === "number" ? formatterArs.format(row.ingreso_mes_ars) : "-"))}</td>
       <td>${typeof row.fondo === "number" ? formatterArs.format(row.fondo) : (typeof row.fondo_cierre === "number" ? formatterArs.format(row.fondo_cierre) : "-")}</td>
       <td class="evento">${row.evento || row.evento_mes || "-"}</td>
     </tr>
@@ -120,8 +137,10 @@ export function hasTimelineMetrics(rows) {
       "adherentes_adjudicados",
       "cuotaCompletaMes",
       "cuota_completa_mes",
+      "cuota_completa_mes_ars",
       "mediaCuotaMes",
       "media_cuota_mes",
+      "media_cuota_mes_ars",
       "ingresoMes",
       "ingreso_mes",
       "fondo",
@@ -231,8 +250,8 @@ export function normalizeTimeline(payload) {
     const activos = row.activos ?? row.adherentes_activos ?? row.cantidad_activos ?? null;
     const enConstruccion = row.enConstruccion ?? row.en_construccion ?? row.adherentes_en_construccion ?? null;
     const adjudicados = row.adjudicados ?? row.adherentes_adjudicados ?? row.casas_adjudicadas ?? null;
-    const cuotaCompletaMes = row.cuotaCompletaMes ?? row.cuota_completa_mes ?? row.cuota_mes_completa ?? null;
-    const mediaCuotaMes = row.mediaCuotaMes ?? row.media_cuota_mes ?? row.cuota_mes_media ?? null;
+    const cuotaCompletaMes = row.cuotaCompletaMes ?? row.cuota_completa_mes ?? row.cuota_completa_mes_ars ?? row.cuota_mes_completa ?? null;
+    const mediaCuotaMes = row.mediaCuotaMes ?? row.media_cuota_mes ?? row.media_cuota_mes_ars ?? row.cuota_mes_media ?? null;
     const ingresoMes = row.ingresoMes ?? row.ingreso_mes ?? row.ingreso_mes_ars ?? row.ingreso_mensual_ars ?? null;
     const fondo = row.fondo ?? row.fondo_cierre ?? row.fondo_ars ?? row.fondo_final_ars ?? null;
 

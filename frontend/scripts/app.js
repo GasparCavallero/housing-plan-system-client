@@ -628,8 +628,8 @@ async function cargarResumenServidor() {
     cargarEstadoPlan()
   ]);
 
-  updateKpiFromResumen(dom.kpi, resumen, estadoPlan?.estado);
-  writeLog(dom.systemLog, "Resumen financiero", { resumen, estado: estadoPlan?.estado });
+  updateKpiFromResumen(dom.kpi, resumen, estadoPlan);
+  writeLog(dom.systemLog, "Resumen financiero", { resumen, estado: estadoPlan?.estado, cuotas_actuales: estadoPlan?.cuotas_actuales });
 }
 
 async function guardarConfiguracionServidor() {
@@ -654,6 +654,24 @@ async function procesarMesServidor() {
   }
 
   const payload = await procesarMes(metodo, ofertas);
+  const cuotaCompletaMes = Number(payload?.cuota_completa_mes_ars);
+  const mediaCuotaMes = Number(payload?.media_cuota_mes_ars);
+  const ingresoMes = Number(payload?.ingreso_mes_ars);
+
+  if ([cuotaCompletaMes, mediaCuotaMes, ingresoMes].some((value) => Number.isFinite(value))) {
+    const partes = [];
+    if (Number.isFinite(cuotaCompletaMes)) {
+      partes.push(`Cuota completa mes: ${cuotaCompletaMes.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`);
+    }
+    if (Number.isFinite(mediaCuotaMes)) {
+      partes.push(`Media cuota mes: ${mediaCuotaMes.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`);
+    }
+    if (Number.isFinite(ingresoMes)) {
+      partes.push(`Ingreso mes: ${ingresoMes.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`);
+    }
+    setSummary(dom.simSummary, `Procesar mes ok. ${partes.join(" | ")}`);
+  }
+
   writeLog(dom.systemLog, "Procesar mes", payload);
   await cargarResumenServidor();
 }

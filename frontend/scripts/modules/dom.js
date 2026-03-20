@@ -47,6 +47,8 @@ export const dom = {
     fondoUsd: document.getElementById("kpi-fondo-usd"),
     viviendasIniciadas: document.getElementById("kpi-viviendas-iniciadas"),
     viviendasFinalizadas: document.getElementById("kpi-viviendas-finalizadas"),
-    ingresoMensual: document.getElementById("kpi-ingreso-mensual")
+    ingresoMensual: document.getElementById("kpi-ingreso-mensual"),
+    cuotaCompletaMes: document.getElementById("kpi-cuota-completa-mes"),
+    mediaCuotaMes: document.getElementById("kpi-media-cuota-mes")
   }
 };
