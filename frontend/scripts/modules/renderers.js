@@ -213,54 +213,8 @@ export function buildCasasTerminadasAnoData(rows) {
 }
 
 export function buildCasasEjecucionAnoData(rows) {
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return [];
-  }
-
-  const lastRowByYear = {};
-
-  rows.forEach((row) => {
-    const mes = Number(row?.mes);
-    if (!Number.isFinite(mes)) {
-      return;
-    }
-
-    const ano = Math.floor(mes / 12) + 1;
-
-    if (!lastRowByYear[ano] || mes > lastRowByYear[ano].mes) {
-      lastRowByYear[ano] = row;
-    }
-  });
-
-  const points = Object.entries(lastRowByYear)
-    .map(([ano, row]) => {
-      const inicidasAcumuladas = Number(
-        row?.casasIniciadasAcumuladas
-        ?? row?.casas_iniciadas
-        ?? row?.viviendas_iniciadas
-        ?? row?.casas_iniciadas_acumuladas
-      );
-
-      const terminadasAcumuladas = Number(
-        row?.casasTerminadasAcumuladas
-        ?? row?.casas_entregadas
-        ?? row?.viviendas_entregadas
-        ?? row?.casas_terminadas
-        ?? row?.casas_terminadas_acumuladas
-      );
-
-      return {
-        ano: Number(ano),
-        casasAno: Math.max(
-          0,
-          (Number.isFinite(inicidasAcumuladas) ? inicidasAcumuladas : 0) -
-          (Number.isFinite(terminadasAcumuladas) ? terminadasAcumuladas : 0)
-        )
-      };
-    })
-    .sort((a, b) => a.ano - b.ano);
-
-  return points;
+  // Casas que ENTRARON en ejecución = casas que fueron iniciadas en cada año
+  return buildCasasAnoData(rows);
 }
 
 function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, tooltipLabel, summaryLabel, periodLabel = "Mes") {
