@@ -462,9 +462,13 @@ export function updateKpiFromResumen(kpi, resumen, estadoPlan = null) {
   }
 
   if (kpi.cuotaCompletaMes) {
-    kpi.cuotaCompletaMes.textContent = typeof cuotasActuales?.cuota_completa_mes_ars === "number"
-      ? formatterArs.format(cuotasActuales.cuota_completa_mes_ars)
-      : "-";
+    if (typeof cuotasActuales?.cuota_completa_mes_ars === "number") {
+      kpi.cuotaCompletaMes.textContent = cuotasActuales.cuota_completa_mes_ars === 0
+        ? "Objetivo cumplido (0 ARS)"
+        : formatterArs.format(cuotasActuales.cuota_completa_mes_ars);
+    } else {
+      kpi.cuotaCompletaMes.textContent = "-";
+    }
   }
 
   if (kpi.mediaCuotaMes) {

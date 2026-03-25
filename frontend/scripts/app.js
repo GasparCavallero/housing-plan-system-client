@@ -55,6 +55,10 @@ let isReadOnlyMode = false;
 let adherentesItems = [];
 let pagosItems = [];
 
+function formatArsValue(value) {
+  return `${value.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`;
+}
+
 function redirectToLogin() {
   window.location.href = "./login.html";
 }
@@ -121,6 +125,36 @@ function initSectionNav() {
   if (!nav || !layout) {
     return null;
   }
+
+  const ensureNavLink = (id, label, insertAfterId = null) => {
+    let link = nav.querySelector(`a[href="#${id}"]`);
+    if (!link) {
+      link = document.createElement("a");
+      link.href = `#${id}`;
+      link.textContent = label;
+
+      if (insertAfterId) {
+        const anchor = nav.querySelector(`a[href="#${insertAfterId}"]`);
+        if (anchor?.nextSibling) {
+          nav.insertBefore(link, anchor.nextSibling);
+        } else if (anchor) {
+          nav.appendChild(link);
+        } else {
+          nav.appendChild(link);
+        }
+      } else {
+        nav.appendChild(link);
+      }
+    }
+
+    if (id !== "admin-panel") {
+      link.classList.remove("hidden");
+    }
+
+    return link;
+  };
+
+  ensureNavLink("grafico-casas", "Gráfico de casas", "simulacion");
 
   const links = Array.from(nav.querySelectorAll("a[href^='#']"));
   const sections = links
@@ -227,6 +261,11 @@ function applyRoleUI(user) {
 
   dom.adminPanel.classList.toggle("hidden", !esAdmin);
   dom.navLinkAdmin.classList.toggle("hidden", !esAdmin);
+
+  document
+    .querySelectorAll('.section-nav a[href^="#"]:not([href="#admin-panel"])')
+    .forEach((link) => link.classList.remove("hidden"));
+
   dom.adminRoleLabel.textContent = esAdmin ? "Perfil admin" : "-";
   dom.adminUserData.textContent = `ID ${user.id} | ${user.username} | ${user.role} | activo: ${user.is_active ? "sí" : "no"}`;
 
@@ -678,22 +717,37 @@ async function procesarMesServidor() {
   }
 
   const payload = await procesarMes(metodo, ofertas);
+  const casasIniciadas = Number(payload?.casas_iniciadas);
+  const fondoArs = Number(payload?.fondo_ars);
   const cuotaCompletaMes = Number(payload?.cuota_completa_mes_ars);
   const mediaCuotaMes = Number(payload?.media_cuota_mes_ars);
   const ingresoMes = Number(payload?.ingreso_mes_ars);
 
-  if ([cuotaCompletaMes, mediaCuotaMes, ingresoMes].some((value) => Number.isFinite(value))) {
-    const partes = [];
-    if (Number.isFinite(cuotaCompletaMes)) {
-      partes.push(`Cuota completa mes: ${cuotaCompletaMes.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`);
+  const partes = [];
+  if (Number.isFinite(casasIniciadas)) {
+    partes.push(`Casas iniciadas (acumuladas): ${casasIniciadas}`);
+  }
+  if (Number.isFinite(fondoArs)) {
+    partes.push(`Fondo actual: ${formatArsValue(fondoArs)}`);
+  }
+  if (Number.isFinite(cuotaCompletaMes)) {
+    if (cuotaCompletaMes === 0) {
+      partes.push("Cuota completa mes: objetivo cumplido (0 ARS)");
+    } else {
+      partes.push(`Cuota completa mes: ${formatArsValue(cuotaCompletaMes)}`);
     }
-    if (Number.isFinite(mediaCuotaMes)) {
-      partes.push(`Media cuota mes: ${mediaCuotaMes.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`);
-    }
-    if (Number.isFinite(ingresoMes)) {
-      partes.push(`Ingreso mes: ${ingresoMes.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`);
-    }
+  }
+  if (Number.isFinite(mediaCuotaMes)) {
+    partes.push(`Media cuota mes: ${formatArsValue(mediaCuotaMes)}`);
+  }
+  if (Number.isFinite(ingresoMes)) {
+    partes.push(`Ingreso mes: ${formatArsValue(ingresoMes)} (puede variar según adjudicaciones)`);
+  }
+
+  if (partes.length > 0) {
     setSummary(dom.simSummary, `Procesar mes ok. ${partes.join(" | ")}`);
+  } else {
+    setSummary(dom.simSummary, "Procesar mes ok.");
   }
 
   writeLog(dom.systemLog, "Procesar mes", payload);
