@@ -100,10 +100,15 @@ export async function guardarConfiguracion(config) {
   });
 }
 
-export async function simularServidor(horizonteMeses = 36, ofertas = []) {
+export async function simularServidor(horizonteMeses = null, ofertas = []) {
+  const body = { ofertas };
+  if (Number.isFinite(horizonteMeses) && horizonteMeses > 0) {
+    body.horizonte_meses = horizonteMeses;
+  }
+
   return apiRequest("/planes/simular", {
     method: "POST",
-    body: JSON.stringify({ horizonte_meses: horizonteMeses, ofertas })
+    body: JSON.stringify(body)
   });
 }
 

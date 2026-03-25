@@ -716,10 +716,12 @@ async function ejecutarSimulacionServidor(options = {}) {
   }
 
   const data = new FormData(dom.operacionForm);
-  const horizonte = Number(data.get("horizonteMeses") || 36);
+  const horizonteRaw = String(data.get("horizonteMeses") || "").trim();
+  const horizonte = horizonteRaw ? Number(horizonteRaw) : null;
   const ofertas = buildOptionalOfertas(data);
   const payload = await simularServidor(horizonte, ofertas);
   const rows = normalizeTimeline(payload);
+  const horizonteTexto = Number.isFinite(horizonte) && horizonte > 0 ? String(horizonte) : "el horizonte configurado";
 
   if (rows.length > 0) {
     const hasMetrics = hasTimelineMetrics(rows);
@@ -729,11 +731,11 @@ async function ejecutarSimulacionServidor(options = {}) {
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, rows);
     renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, rows);
     if (hasMetrics) {
-      setSummary(dom.simSummary, `Simulación servidor ok: ${rows.length} fila(s) en ${horizonte} meses.`);
+      setSummary(dom.simSummary, `Simulación servidor ok: ${rows.length} fila(s) en ${horizonteTexto}.`);
     } else {
       setSummary(
         dom.simSummary,
-        `Simulación servidor ok: ${rows.length} evento(s) en ${horizonte} meses. La API no devolvió métricas mensuales en esta respuesta.`
+        `Simulación servidor ok: ${rows.length} evento(s) en ${horizonteTexto}. La API no devolvió métricas mensuales en esta respuesta.`
       );
     }
   } else {
@@ -766,7 +768,7 @@ async function ejecutarSimulacionServidor(options = {}) {
 
     setSummary(
       dom.simSummary,
-      `Simulación servidor ejecutada, pero no hubo eventos de casas en ${horizonte} meses.${fondoFinal}${diagnostico}`
+      `Simulación servidor ejecutada, pero no hubo eventos de casas en ${horizonteTexto}.${fondoFinal}${diagnostico}`
     );
   }
 
