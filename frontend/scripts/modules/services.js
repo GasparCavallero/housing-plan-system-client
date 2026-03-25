@@ -100,17 +100,17 @@ export async function guardarConfiguracion(config) {
   });
 }
 
-export async function simularServidor(horizonteMeses = 36) {
+export async function simularServidor(horizonteMeses = 36, ofertas = []) {
   return apiRequest("/planes/simular", {
     method: "POST",
-    body: JSON.stringify({ horizonte_meses: horizonteMeses })
+    body: JSON.stringify({ horizonte_meses: horizonteMeses, ofertas })
   });
 }
 
-export async function procesarMes(metodo = "sorteo", ofertas = []) {
+export async function procesarMes(ofertas = []) {
   return apiRequest("/planes/procesar-mes", {
     method: "POST",
-    body: JSON.stringify({ metodo_adjudicacion: metodo, ofertas })
+    body: JSON.stringify({ ofertas })
   });
 }
 

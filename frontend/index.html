@@ -204,10 +204,7 @@
       </div>
       <form id="operacion-form" class="inline-form">
         <input type="number" name="horizonteMeses" min="1" value="36" placeholder="Horizonte meses" required />
-        <select name="metodoAdjudicacion" aria-label="Método de adjudicación">
-          <option value="sorteo">Sorteo</option>
-          <option value="licitacion">Licitación</option>
-        </select>
+        <span class="config-help">Ofertas de licitación (opcional):</span>
         <input type="number" name="ofertaAdherenteId" min="1" placeholder="ID adherente que licita (opcional)" />
         <input type="number" name="ofertaPorcentaje" min="0.01" max="100" step="0.01"
           placeholder="% de cuotas restantes ofertado (opcional)" />

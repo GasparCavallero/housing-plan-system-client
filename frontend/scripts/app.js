@@ -151,6 +151,21 @@ function validateConfigBusinessRules(payload) {
   }
 }
 
+function buildOptionalOfertas(formData) {
+  const ofertaAdherenteId = Number(formData.get("ofertaAdherenteId") || 0);
+  const ofertaPorcentaje = Number(formData.get("ofertaPorcentaje") || 0);
+  const ofertas = [];
+
+  if (ofertaAdherenteId > 0 && ofertaPorcentaje > 0) {
+    ofertas.push({
+      adherente_id: ofertaAdherenteId,
+      porcentaje_cuotas_restantes: ofertaPorcentaje
+    });
+  }
+
+  return ofertas;
+}
+
 function redirectToLogin() {
   window.location.href = "./login.html";
 }
@@ -702,7 +717,8 @@ async function ejecutarSimulacionServidor(options = {}) {
 
   const data = new FormData(dom.operacionForm);
   const horizonte = Number(data.get("horizonteMeses") || 36);
-  const payload = await simularServidor(horizonte);
+  const ofertas = buildOptionalOfertas(data);
+  const payload = await simularServidor(horizonte, ofertas);
   const rows = normalizeTimeline(payload);
 
   if (rows.length > 0) {
@@ -833,19 +849,8 @@ async function guardarConfiguracionServidor() {
 
 async function procesarMesServidor() {
   const data = new FormData(dom.operacionForm);
-  const metodo = String(data.get("metodoAdjudicacion") || "sorteo");
-  const ofertaAdherenteId = Number(data.get("ofertaAdherenteId") || 0);
-  const ofertaPorcentaje = Number(data.get("ofertaPorcentaje") || 0);
-  const ofertas = [];
-
-  if (metodo === "licitacion" && ofertaAdherenteId > 0 && ofertaPorcentaje > 0) {
-    ofertas.push({
-      adherente_id: ofertaAdherenteId,
-      porcentaje_cuotas_restantes: ofertaPorcentaje
-    });
-  }
-
-  const payload = await procesarMes(metodo, ofertas);
+  const ofertas = buildOptionalOfertas(data);
+  const payload = await procesarMes(ofertas);
   const casasIniciadas = Number(payload?.casas_iniciadas);
   const casasEntregadas = Number(payload?.casas_entregadas);
   const fondoArs = Number(payload?.fondo_ars);
@@ -882,20 +887,16 @@ async function procesarMesServidor() {
   if (Number.isFinite(mediaCuotaMes)) {
     partes.push(`Media cuota mes: ${formatArsValue(mediaCuotaMes)}`);
   }
-  if (Number.isFinite(ingresoAportesMes)) {
-    partes.push(`Ingreso aportes mes: ${formatArsValue(ingresoAportesMes)}`);
-  }
-  if (Number.isFinite(ingresoLicitacionMes)) {
-    partes.push(`Ingreso licitación mes: ${formatArsValue(ingresoLicitacionMes)}`);
-  }
-  if (Number.isFinite(ingresoMes)) {
-    partes.push(`Ingreso total mes: ${formatArsValue(ingresoMes)}`);
-  }
+  const lineasIngresos = [
+    `Ingreso por aportes: ${formatArsValue(Number.isFinite(ingresoAportesMes) ? ingresoAportesMes : 0)}`,
+    `Ingreso extraordinario licitación: ${formatArsValue(Number.isFinite(ingresoLicitacionMes) ? ingresoLicitacionMes : 0)}`,
+    `Ingreso total mes: ${formatArsValue(Number.isFinite(ingresoMes) ? ingresoMes : 0)}`
+  ];
 
   if (partes.length > 0) {
-    setSummary(dom.simSummary, `Procesar mes ok. ${partes.join(" | ")}`);
+    setSummary(dom.simSummary, `Procesar mes ok. ${partes.join(" | ")}\n${lineasIngresos.join("\n")}`);
   } else {
-    setSummary(dom.simSummary, "Procesar mes ok.");
+    setSummary(dom.simSummary, `Procesar mes ok.\n${lineasIngresos.join("\n")}`);
   }
 
   writeLog(dom.systemLog, "Procesar mes", payload);
