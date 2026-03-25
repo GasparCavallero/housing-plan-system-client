@@ -481,6 +481,7 @@ export function updateKpiFromResumen(kpi, resumen, estadoPlan = null) {
   kpi.fondoArs.textContent = formatterArs.format(resumen.fondo_ars);
   kpi.fondoUsd.textContent = formatterUsd.format(resumen.fondo_usd);
   kpi.ingresoMensual.textContent = formatterArs.format(resumen.ingreso_mensual_ars);
+  const ingresoMensualActual = toFiniteNumber(resumen?.ingreso_mensual_ars);
 
   const estado = estadoPlan?.estado ?? estadoPlan ?? null;
   const cuotasActuales = estadoPlan?.cuotas_actuales ?? estadoPlan?.cuotasActuales ?? null;
@@ -496,9 +497,13 @@ export function updateKpiFromResumen(kpi, resumen, estadoPlan = null) {
     const cuotaMostrada = Number.isFinite(cuotaCompleta) ? cuotaCompleta : cuotaFallback;
 
     if (Number.isFinite(cuotaMostrada)) {
-      kpi.cuotaCompletaMes.textContent = cuotaMostrada === 0
-        ? "Objetivo cumplido (0 ARS)"
-        : formatterArs.format(cuotaMostrada);
+      if (cuotaMostrada === 0) {
+        kpi.cuotaCompletaMes.textContent = ingresoMensualActual > 0
+          ? "Objetivo de inicios cumplido (cobro vigente)"
+          : "Fin de cobro (0 ARS)";
+      } else {
+        kpi.cuotaCompletaMes.textContent = formatterArs.format(cuotaMostrada);
+      }
     } else {
       kpi.cuotaCompletaMes.textContent = "-";
     }

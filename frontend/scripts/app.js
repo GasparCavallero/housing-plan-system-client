@@ -718,6 +718,7 @@ async function procesarMesServidor() {
 
   const payload = await procesarMes(metodo, ofertas);
   const casasIniciadas = Number(payload?.casas_iniciadas);
+  const casasEntregadas = Number(payload?.casas_entregadas);
   const fondoArs = Number(payload?.fondo_ars);
   const cuotaCompletaMes = Number(payload?.cuota_completa_mes_ars);
   const mediaCuotaMes = Number(payload?.media_cuota_mes_ars);
@@ -726,13 +727,23 @@ async function procesarMesServidor() {
   const partes = [];
   if (Number.isFinite(casasIniciadas)) {
     partes.push(`Casas iniciadas (acumuladas): ${casasIniciadas}`);
+    dom.kpi.viviendasIniciadas.textContent = String(casasIniciadas);
+  }
+  if (Number.isFinite(casasEntregadas)) {
+    partes.push(`Casas entregadas (acumuladas): ${casasEntregadas}`);
+    dom.kpi.viviendasFinalizadas.textContent = `Finalizadas: ${casasEntregadas}`;
   }
   if (Number.isFinite(fondoArs)) {
     partes.push(`Fondo actual: ${formatArsValue(fondoArs)}`);
   }
   if (Number.isFinite(cuotaCompletaMes)) {
-    if (cuotaCompletaMes === 0) {
-      partes.push("Cuota completa mes: objetivo cumplido (0 ARS)");
+    const hayAportesVigentes = Number.isFinite(ingresoMes) ? ingresoMes > 0 : true;
+    if (cuotaCompletaMes === 0 && hayAportesVigentes) {
+      partes.push("Estado: objetivo de inicios cumplido; se continúa cobrando cuotas pendientes");
+      partes.push("Cuota completa mes: 0 ARS (sin nuevos inicios)");
+    } else if (cuotaCompletaMes === 0) {
+      partes.push("Estado: objetivo de inicios cumplido y fin de cobro (sin aportes vigentes)");
+      partes.push("Cuota completa mes: 0 ARS");
     } else {
       partes.push(`Cuota completa mes: ${formatArsValue(cuotaCompletaMes)}`);
     }
