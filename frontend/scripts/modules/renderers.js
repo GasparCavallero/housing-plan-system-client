@@ -2,6 +2,9 @@ import { formatterArs, formatterUsd } from "./formatters.js";
 import { toUsd } from "./simulation.js";
 
 export function writeLog(target, title, payload) {
+  if (!target) {
+    return;
+  }
   const safe = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
   target.textContent = `${title}\n${safe}`;
 }
