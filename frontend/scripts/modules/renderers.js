@@ -447,6 +447,35 @@ export function updateKpi(kpi, config, result) {
 }
 
 export function updateKpiFromResumen(kpi, resumen, estadoPlan = null) {
+  const toFiniteNumber = (value) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim() !== "") {
+      const normalized = value.replace(/\./g, "").replace(",", ".").trim();
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
+  const estimateCuotaCompleta = () => {
+    const config = estadoPlan?.configuracion;
+    if (!config) {
+      return null;
+    }
+
+    const metros = toFiniteNumber(config.metros_cuadrados_vivienda);
+    const valorPorM2 = toFiniteNumber(config.valor_por_m2);
+    const cantidadCuotas = toFiniteNumber(config.cantidad_cuotas);
+
+    if (![metros, valorPorM2, cantidadCuotas].every((value) => Number.isFinite(value) && value > 0)) {
+      return null;
+    }
+
+    return (metros * valorPorM2) / cantidadCuotas;
+  };
+
   kpi.valorViviendaArs.textContent = formatterArs.format(resumen.valor_vivienda_ars);
   kpi.valorViviendaUsd.textContent = formatterUsd.format(resumen.valor_vivienda_usd);
   kpi.fondoArs.textContent = formatterArs.format(resumen.fondo_ars);
@@ -462,18 +491,27 @@ export function updateKpiFromResumen(kpi, resumen, estadoPlan = null) {
   }
 
   if (kpi.cuotaCompletaMes) {
-    if (typeof cuotasActuales?.cuota_completa_mes_ars === "number") {
-      kpi.cuotaCompletaMes.textContent = cuotasActuales.cuota_completa_mes_ars === 0
+    const cuotaCompleta = toFiniteNumber(cuotasActuales?.cuota_completa_mes_ars);
+    const cuotaFallback = estimateCuotaCompleta();
+    const cuotaMostrada = Number.isFinite(cuotaCompleta) ? cuotaCompleta : cuotaFallback;
+
+    if (Number.isFinite(cuotaMostrada)) {
+      kpi.cuotaCompletaMes.textContent = cuotaMostrada === 0
         ? "Objetivo cumplido (0 ARS)"
-        : formatterArs.format(cuotasActuales.cuota_completa_mes_ars);
+        : formatterArs.format(cuotaMostrada);
     } else {
       kpi.cuotaCompletaMes.textContent = "-";
     }
   }
 
   if (kpi.mediaCuotaMes) {
-    kpi.mediaCuotaMes.textContent = typeof cuotasActuales?.media_cuota_mes_ars === "number"
-      ? formatterArs.format(cuotasActuales.media_cuota_mes_ars)
+    const mediaCuota = toFiniteNumber(cuotasActuales?.media_cuota_mes_ars);
+    const cuotaCompleta = toFiniteNumber(cuotasActuales?.cuota_completa_mes_ars) ?? estimateCuotaCompleta();
+    const mediaFallback = Number.isFinite(cuotaCompleta) ? (cuotaCompleta * 0.5) : null;
+    const mediaMostrada = Number.isFinite(mediaCuota) ? mediaCuota : mediaFallback;
+
+    kpi.mediaCuotaMes.textContent = Number.isFinite(mediaMostrada)
+      ? formatterArs.format(mediaMostrada)
       : "-";
   }
 }
