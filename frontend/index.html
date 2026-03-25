@@ -103,6 +103,22 @@
           <input type="number" name="porcentajeMediaCuota" min="0.000001" step="0.000001" value="0.416667" required />
         </label>
         <label>
+          Meses de media cuota inicial
+          <input type="number" name="mesesMediaCuotaInicial" min="0" step="1" value="7" required />
+        </label>
+        <label>
+          Metodología del plan
+          <select name="metodologiaPlan" aria-label="Metodología del plan" required>
+            <option value="dinamico">dinamico</option>
+            <option value="legacy">legacy</option>
+          </select>
+        </label>
+        <label id="legacy-cronograma-field" class="hidden">
+          Cronograma adjudicaciones anual (CSV)
+          <input type="text" name="cronogramaAdjudicacionesAnual" placeholder="5,5,5,6,6,7" />
+          <small>Formato legacy: enteros no negativos separados por coma. Ejemplo: 5,5,5,6,6,7.</small>
+        </label>
+        <label>
           Duración construcción (meses)
           <input type="number" name="duracionConstruccionMeses" min="1" value="6" required />
         </label>
@@ -120,6 +136,8 @@
         No quedan casas para iniciar: se continúa cobrando cuotas pendientes mientras haya aportes vigentes.<br />
         El sistema recalcula la cuota para cumplir el objetivo de casas en el plazo de cuotas usando los
         porcentajes.<br />
+        Los porcentajes son porcentaje real del valor total (ejemplo: 0.56 significa 0.56%).<br />
+        Si la metodología es legacy, el cupo anual de inicios se controla por cronograma.<br />
         Tope de pago por adherente: 180 cuotas.<br />
         valor_total_vivienda = metros_cuadrados_vivienda * valor_por_m2<br />
         cuota_completa = valor_total_vivienda * (porcentaje_cuota_completa / 100)<br />
@@ -171,6 +189,8 @@
       <div class="panel-head">
         <h2>Simulación mensual</h2>
         <p id="sim-summary">Ejecutá la simulación para ver proyecciones.</p>
+        <p class="config-help">Si la metodología es legacy, el backend aplica cupo anual de adjudicaciones y el
+          crecimiento de inicios puede ser más controlado.</p>
       </div>
       <form id="operacion-form" class="inline-form">
         <input type="number" name="horizonteMeses" min="1" value="36" placeholder="Horizonte meses" required />

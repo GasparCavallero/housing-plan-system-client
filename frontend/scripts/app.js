@@ -57,6 +57,7 @@ let pagosItems = [];
 
 const DEFAULT_PORCENTAJE_CUOTA_COMPLETA = 0.8333333333;
 const DEFAULT_PORCENTAJE_MEDIA_CUOTA = 0.4166666667;
+const DEFAULT_METODOLOGIA_PLAN = "dinamico";
 
 function formatArsValue(value) {
   return `${value.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`;
@@ -86,13 +87,59 @@ function updateConfigPreview() {
   previewTarget.textContent = `Preview: valor_total_vivienda = ${formatArsValue(valorTotalVivienda)} | cuota_completa = ${formatArsValue(cuotaCompleta)} | media_cuota = ${formatArsValue(mediaCuota)}`;
 }
 
+function updateMetodologiaUI() {
+  const legacyField = document.getElementById("legacy-cronograma-field");
+  if (!legacyField || !dom.form) {
+    return;
+  }
+
+  const metodologia = String(dom.form.elements.metodologiaPlan?.value || DEFAULT_METODOLOGIA_PLAN).trim().toLowerCase();
+  const isLegacy = metodologia === "legacy";
+  legacyField.classList.toggle("hidden", !isLegacy);
+
+  const cronogramaInput = dom.form.elements.cronogramaAdjudicacionesAnual;
+  if (cronogramaInput) {
+    cronogramaInput.required = isLegacy;
+    if (!isLegacy) {
+      cronogramaInput.value = "";
+    }
+  }
+}
+
+function isValidCronogramaCsv(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return false;
+  }
+
+  const items = normalized.split(",").map((part) => part.trim());
+  if (items.length === 0) {
+    return false;
+  }
+
+  return items.every((item) => /^\d+$/.test(item));
+}
+
 function validateConfigBusinessRules(payload) {
+  const metodologia = String(payload.metodologia_plan || "").trim().toLowerCase();
+  if (!["dinamico", "legacy"].includes(metodologia)) {
+    throw new Error("La metodología del plan debe ser dinamico o legacy.");
+  }
+
   if (!Number.isFinite(payload.porcentaje_cuota_completa) || payload.porcentaje_cuota_completa <= 0) {
     throw new Error("El porcentaje de cuota completa debe ser mayor a 0.");
   }
 
   if (!Number.isFinite(payload.porcentaje_media_cuota) || payload.porcentaje_media_cuota <= 0) {
     throw new Error("El porcentaje de media cuota debe ser mayor a 0.");
+  }
+
+  if (!Number.isFinite(payload.meses_media_cuota_inicial) || payload.meses_media_cuota_inicial < 0) {
+    throw new Error("Los meses de media cuota inicial deben ser un entero mayor o igual a 0.");
+  }
+
+  if (metodologia === "legacy" && !isValidCronogramaCsv(payload.cronograma_adjudicaciones_anual)) {
+    throw new Error("El cronograma anual debe tener enteros no negativos separados por coma. Ejemplo: 5,5,5,6,6,7.");
   }
 }
 
@@ -419,12 +466,15 @@ function normalizePlanConfig(raw) {
   }
 
   const normalized = {
+    metodologia_plan: String(raw.metodologia_plan ?? raw.metodologiaPlan ?? DEFAULT_METODOLOGIA_PLAN).trim().toLowerCase(),
+    cronograma_adjudicaciones_anual: String(raw.cronograma_adjudicaciones_anual ?? raw.cronogramaAdjudicacionesAnual ?? "").trim() || null,
     cantidad_cuotas: Number(raw.cantidad_cuotas ?? raw.cantidadCuotas),
     cantidad_de_adherentes: Number(raw.cantidad_de_adherentes ?? raw.cantidadAdherentes),
     metros_cuadrados_vivienda: Number(raw.metros_cuadrados_vivienda ?? raw.metrosCuadradosVivienda ?? raw.metrosCuadrados),
     valor_por_m2: Number(raw.valor_por_m2 ?? raw.valorPorM2),
     porcentaje_cuota_completa: Number(raw.porcentaje_cuota_completa ?? raw.porcentajeCuotaCompleta ?? DEFAULT_PORCENTAJE_CUOTA_COMPLETA),
     porcentaje_media_cuota: Number(raw.porcentaje_media_cuota ?? raw.porcentajeMediaCuota ?? DEFAULT_PORCENTAJE_MEDIA_CUOTA),
+    meses_media_cuota_inicial: Number(raw.meses_media_cuota_inicial ?? raw.mesesMediaCuotaInicial ?? 7),
     duracion_construccion_meses: Number(raw.duracion_construccion_meses ?? raw.duracionConstruccionMeses),
     tipo_cambio: Number(raw.tipo_cambio ?? raw.tipoCambio)
   };
@@ -438,12 +488,14 @@ function isPlanConfigShape(config) {
   }
 
   const keys = [
+    "metodologia_plan",
     "cantidad_cuotas",
     "cantidad_de_adherentes",
     "metros_cuadrados_vivienda",
     "valor_por_m2",
     "porcentaje_cuota_completa",
     "porcentaje_media_cuota",
+    "meses_media_cuota_inicial",
     "duracion_construccion_meses",
     "tipo_cambio"
   ];
@@ -498,8 +550,11 @@ function renderConfigListInModal() {
             <p><strong>m2 vivienda:</strong> ${Number(config.metros_cuadrados_vivienda).toLocaleString("es-AR")}</p>
             <p><strong>Cuotas:</strong> ${Number(config.cantidad_cuotas).toLocaleString("es-AR")}</p>
             <p><strong>Valor por m2:</strong> ${Number(config.valor_por_m2).toLocaleString("es-AR")}</p>
+            <p><strong>Metodología:</strong> ${String(config.metodologia_plan || DEFAULT_METODOLOGIA_PLAN)}</p>
             <p><strong>% cuota completa:</strong> ${Number(config.porcentaje_cuota_completa).toLocaleString("es-AR")}%</p>
             <p><strong>% media cuota:</strong> ${Number(config.porcentaje_media_cuota).toLocaleString("es-AR")}%</p>
+            <p><strong>Meses media cuota inicial:</strong> ${Number(config.meses_media_cuota_inicial).toLocaleString("es-AR")}</p>
+            <p><strong>Cronograma anual:</strong> ${config.cronograma_adjudicaciones_anual || "-"}</p>
             <p><strong>Duración obra (meses):</strong> ${Number(config.duracion_construccion_meses).toLocaleString("es-AR")}</p>
           </div>
           <button class="btn btn-secondary js-config-apply" type="button" data-config-index="${index}">Usar esta configuración</button>
@@ -712,6 +767,7 @@ async function cargarConfiguracionServidor(options = {}) {
   if (configuracionesUsuario.length === 1 || !showPicker) {
     setConfigToForm(dom.form, configuracionesUsuario[0].configuracion);
     syncSimulationHorizonFromConfig(configuracionesUsuario[0].configuracion);
+    updateMetodologiaUI();
     updateConfigPreview();
     writeLog(dom.systemLog, "Configuración cargada", configuracionesUsuario[0]);
     return;
@@ -725,6 +781,7 @@ async function cargarConfiguracionServidor(options = {}) {
 
   setConfigToForm(dom.form, selected.configuracion);
   syncSimulationHorizonFromConfig(selected.configuracion);
+  updateMetodologiaUI();
   updateConfigPreview();
   writeLog(dom.systemLog, "Configuración cargada", selected);
   setSummary(dom.simSummary, `Configuración aplicada (${buildConfigLabel(selected, configuracionesUsuario.indexOf(selected))}).`);
@@ -742,6 +799,9 @@ async function cargarResumenServidor() {
 
 async function guardarConfiguracionServidor() {
   const payload = getConfig(dom.form);
+  if (payload.metodologia_plan !== "legacy") {
+    payload.cronograma_adjudicaciones_anual = null;
+  }
   validateConfigBusinessRules(payload);
 
   const mediaMayorQueCompleta = payload.porcentaje_media_cuota > payload.porcentaje_cuota_completa;
@@ -1248,6 +1308,7 @@ dom.pagosSearch?.addEventListener("input", () => {
 });
 
 dom.form?.addEventListener("input", () => {
+  updateMetodologiaUI();
   updateConfigPreview();
 });
 
@@ -1315,6 +1376,7 @@ dom.adminCreateUserForm.addEventListener("submit", withUiFeedback(crearUsuarioAd
 
 navController = initSectionNav();
 clearBusinessUiState();
+updateMetodologiaUI();
 updateConfigPreview();
 const sessionOk = await bootstrapSession();
 if (sessionOk) {
