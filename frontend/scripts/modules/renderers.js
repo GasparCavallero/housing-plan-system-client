@@ -467,13 +467,16 @@ export function updateKpiFromResumen(kpi, resumen, estadoPlan = null) {
 
     const metros = toFiniteNumber(config.metros_cuadrados_vivienda);
     const valorPorM2 = toFiniteNumber(config.valor_por_m2);
-    const cantidadCuotas = toFiniteNumber(config.cantidad_cuotas);
+    const porcentajeCuotaCompleta = toFiniteNumber(
+      config.porcentaje_cuota_completa ?? config.porcentajeCuotaCompleta
+    );
 
-    if (![metros, valorPorM2, cantidadCuotas].every((value) => Number.isFinite(value) && value > 0)) {
+    if (![metros, valorPorM2, porcentajeCuotaCompleta].every((value) => Number.isFinite(value) && value > 0)) {
       return null;
     }
 
-    return (metros * valorPorM2) / cantidadCuotas;
+    const valorTotalVivienda = metros * valorPorM2;
+    return valorTotalVivienda * (porcentajeCuotaCompleta / 100);
   };
 
   kpi.valorViviendaArs.textContent = formatterArs.format(resumen.valor_vivienda_ars);
@@ -512,7 +515,22 @@ export function updateKpiFromResumen(kpi, resumen, estadoPlan = null) {
   if (kpi.mediaCuotaMes) {
     const mediaCuota = toFiniteNumber(cuotasActuales?.media_cuota_mes_ars);
     const cuotaCompleta = toFiniteNumber(cuotasActuales?.cuota_completa_mes_ars) ?? estimateCuotaCompleta();
-    const mediaFallback = Number.isFinite(cuotaCompleta) ? (cuotaCompleta * 0.5) : null;
+    const porcentajeCuotaCompleta = toFiniteNumber(
+      estadoPlan?.configuracion?.porcentaje_cuota_completa
+      ?? estadoPlan?.configuracion?.porcentajeCuotaCompleta
+    );
+    const porcentajeMediaCuota = toFiniteNumber(
+      estadoPlan?.configuracion?.porcentaje_media_cuota
+      ?? estadoPlan?.configuracion?.porcentajeMediaCuota
+    );
+    const mediaFallback = (
+      Number.isFinite(cuotaCompleta)
+      && Number.isFinite(porcentajeCuotaCompleta)
+      && Number.isFinite(porcentajeMediaCuota)
+      && porcentajeCuotaCompleta > 0
+    )
+      ? (cuotaCompleta * (porcentajeMediaCuota / porcentajeCuotaCompleta))
+      : null;
     const mediaMostrada = Number.isFinite(mediaCuota) ? mediaCuota : mediaFallback;
 
     kpi.mediaCuotaMes.textContent = Number.isFinite(mediaMostrada)

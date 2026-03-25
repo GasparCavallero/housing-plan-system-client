@@ -95,6 +95,15 @@
           <input type="number" name="valorPorM2" min="1" value="950000" required />
         </label>
         <label>
+          Porcentaje cuota completa (% del valor total)
+          <input type="number" name="porcentajeCuotaCompleta" min="0.000001" step="0.000001" value="0.833333"
+            required />
+        </label>
+        <label>
+          Porcentaje media cuota (% del valor total)
+          <input type="number" name="porcentajeMediaCuota" min="0.000001" step="0.000001" value="0.416667" required />
+        </label>
+        <label>
           Duración construcción (meses)
           <input type="number" name="duracionConstruccionMeses" min="1" value="6" required />
         </label>
@@ -103,15 +112,19 @@
           <input type="number" name="tipoCambio" min="1" value="1200" required />
         </label>
       </form>
+      <p id="config-preview" class="config-help">
+        Preview: valor_total_vivienda = - | cuota_completa = - | media_cuota = -
+      </p>
       <p class="config-help">
-        Hasta adjudicación paga media cuota (50% de la cuota completa del mes).<br />
-        Luego paga cuota completa.<br />
+        Hasta adjudicación paga media cuota según porcentaje configurado.<br />
+        Luego paga cuota completa según porcentaje configurado.<br />
         No quedan casas para iniciar: se continúa cobrando cuotas pendientes mientras haya aportes vigentes.<br />
-        El sistema recalcula la cuota para cumplir el objetivo de casas en el plazo de cuotas.<br />
+        El sistema recalcula la cuota para cumplir el objetivo de casas en el plazo de cuotas usando los
+        porcentajes.<br />
         Tope de pago por adherente: 180 cuotas.<br />
         valor_total_vivienda = metros_cuadrados_vivienda * valor_por_m2<br />
-        cuota_completa = valor_total_vivienda / cantidad_cuotas<br />
-        media_cuota = cuota_completa * 0.5
+        cuota_completa = valor_total_vivienda * (porcentaje_cuota_completa / 100)<br />
+        media_cuota = valor_total_vivienda * (porcentaje_media_cuota / 100)
       </p>
       <div class="actions multi-actions">
         <button id="btn-guardar-config" class="btn btn-secondary">Guardar configuración</button>
@@ -150,7 +163,7 @@
         <article class="kpi-card">
           <p>Media cuota del mes</p>
           <h3 id="kpi-media-cuota-mes">-</h3>
-          <small>50% de la cuota completa del mes</small>
+          <small>Según porcentajes configurados en /configuracion</small>
         </article>
       </div>
     </section>

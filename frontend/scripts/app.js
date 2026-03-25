@@ -55,8 +55,45 @@ let isReadOnlyMode = false;
 let adherentesItems = [];
 let pagosItems = [];
 
+const DEFAULT_PORCENTAJE_CUOTA_COMPLETA = 0.8333333333;
+const DEFAULT_PORCENTAJE_MEDIA_CUOTA = 0.4166666667;
+
 function formatArsValue(value) {
   return `${value.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`;
+}
+
+function updateConfigPreview() {
+  const previewTarget = document.getElementById("config-preview");
+  if (!previewTarget || !dom.form) {
+    return;
+  }
+
+  const data = new FormData(dom.form);
+  const metros = Number(data.get("metrosCuadrados") || 0);
+  const valorPorM2 = Number(data.get("valorPorM2") || 0);
+  const porcentajeCuotaCompleta = Number(data.get("porcentajeCuotaCompleta") || 0);
+  const porcentajeMediaCuota = Number(data.get("porcentajeMediaCuota") || 0);
+
+  if (![metros, valorPorM2, porcentajeCuotaCompleta, porcentajeMediaCuota].every((value) => Number.isFinite(value) && value > 0)) {
+    previewTarget.textContent = "Preview: valor_total_vivienda = - | cuota_completa = - | media_cuota = -";
+    return;
+  }
+
+  const valorTotalVivienda = metros * valorPorM2;
+  const cuotaCompleta = valorTotalVivienda * (porcentajeCuotaCompleta / 100);
+  const mediaCuota = valorTotalVivienda * (porcentajeMediaCuota / 100);
+
+  previewTarget.textContent = `Preview: valor_total_vivienda = ${formatArsValue(valorTotalVivienda)} | cuota_completa = ${formatArsValue(cuotaCompleta)} | media_cuota = ${formatArsValue(mediaCuota)}`;
+}
+
+function validateConfigBusinessRules(payload) {
+  if (!Number.isFinite(payload.porcentaje_cuota_completa) || payload.porcentaje_cuota_completa <= 0) {
+    throw new Error("El porcentaje de cuota completa debe ser mayor a 0.");
+  }
+
+  if (!Number.isFinite(payload.porcentaje_media_cuota) || payload.porcentaje_media_cuota <= 0) {
+    throw new Error("El porcentaje de media cuota debe ser mayor a 0.");
+  }
 }
 
 function redirectToLogin() {
@@ -386,6 +423,8 @@ function normalizePlanConfig(raw) {
     cantidad_de_adherentes: Number(raw.cantidad_de_adherentes ?? raw.cantidadAdherentes),
     metros_cuadrados_vivienda: Number(raw.metros_cuadrados_vivienda ?? raw.metrosCuadradosVivienda ?? raw.metrosCuadrados),
     valor_por_m2: Number(raw.valor_por_m2 ?? raw.valorPorM2),
+    porcentaje_cuota_completa: Number(raw.porcentaje_cuota_completa ?? raw.porcentajeCuotaCompleta ?? DEFAULT_PORCENTAJE_CUOTA_COMPLETA),
+    porcentaje_media_cuota: Number(raw.porcentaje_media_cuota ?? raw.porcentajeMediaCuota ?? DEFAULT_PORCENTAJE_MEDIA_CUOTA),
     duracion_construccion_meses: Number(raw.duracion_construccion_meses ?? raw.duracionConstruccionMeses),
     tipo_cambio: Number(raw.tipo_cambio ?? raw.tipoCambio)
   };
@@ -403,6 +442,8 @@ function isPlanConfigShape(config) {
     "cantidad_de_adherentes",
     "metros_cuadrados_vivienda",
     "valor_por_m2",
+    "porcentaje_cuota_completa",
+    "porcentaje_media_cuota",
     "duracion_construccion_meses",
     "tipo_cambio"
   ];
@@ -457,6 +498,8 @@ function renderConfigListInModal() {
             <p><strong>m2 vivienda:</strong> ${Number(config.metros_cuadrados_vivienda).toLocaleString("es-AR")}</p>
             <p><strong>Cuotas:</strong> ${Number(config.cantidad_cuotas).toLocaleString("es-AR")}</p>
             <p><strong>Valor por m2:</strong> ${Number(config.valor_por_m2).toLocaleString("es-AR")}</p>
+            <p><strong>% cuota completa:</strong> ${Number(config.porcentaje_cuota_completa).toLocaleString("es-AR")}%</p>
+            <p><strong>% media cuota:</strong> ${Number(config.porcentaje_media_cuota).toLocaleString("es-AR")}%</p>
             <p><strong>Duración obra (meses):</strong> ${Number(config.duracion_construccion_meses).toLocaleString("es-AR")}</p>
           </div>
           <button class="btn btn-secondary js-config-apply" type="button" data-config-index="${index}">Usar esta configuración</button>
@@ -669,6 +712,7 @@ async function cargarConfiguracionServidor(options = {}) {
   if (configuracionesUsuario.length === 1 || !showPicker) {
     setConfigToForm(dom.form, configuracionesUsuario[0].configuracion);
     syncSimulationHorizonFromConfig(configuracionesUsuario[0].configuracion);
+    updateConfigPreview();
     writeLog(dom.systemLog, "Configuración cargada", configuracionesUsuario[0]);
     return;
   }
@@ -681,6 +725,7 @@ async function cargarConfiguracionServidor(options = {}) {
 
   setConfigToForm(dom.form, selected.configuracion);
   syncSimulationHorizonFromConfig(selected.configuracion);
+  updateConfigPreview();
   writeLog(dom.systemLog, "Configuración cargada", selected);
   setSummary(dom.simSummary, `Configuración aplicada (${buildConfigLabel(selected, configuracionesUsuario.indexOf(selected))}).`);
 }
@@ -697,9 +742,19 @@ async function cargarResumenServidor() {
 
 async function guardarConfiguracionServidor() {
   const payload = getConfig(dom.form);
+  validateConfigBusinessRules(payload);
+
+  const mediaMayorQueCompleta = payload.porcentaje_media_cuota > payload.porcentaje_cuota_completa;
   const response = await guardarConfiguracion(payload);
   syncSimulationHorizonFromConfig(payload);
+  updateConfigPreview();
   writeLog(dom.systemLog, "Configuración guardada", response);
+
+  if (mediaMayorQueCompleta) {
+    setSummary(dom.simSummary, "Configuración guardada. Advertencia: se recomienda que % media cuota sea menor o igual que % cuota completa.");
+  } else {
+    setSummary(dom.simSummary, "Configuración guardada correctamente.");
+  }
 }
 
 async function procesarMesServidor() {
@@ -1192,6 +1247,10 @@ dom.pagosSearch?.addEventListener("input", () => {
   applyPagosFilter();
 });
 
+dom.form?.addEventListener("input", () => {
+  updateConfigPreview();
+});
+
 dom.adherentesBody.addEventListener("click", withUiFeedback(async (event) => {
   const editButton = event.target.closest(".js-edit-adherente");
   if (editButton) {
@@ -1256,6 +1315,7 @@ dom.adminCreateUserForm.addEventListener("submit", withUiFeedback(crearUsuarioAd
 
 navController = initSectionNav();
 clearBusinessUiState();
+updateConfigPreview();
 const sessionOk = await bootstrapSession();
 if (sessionOk) {
   if (navController) {
