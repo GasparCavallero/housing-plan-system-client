@@ -4,6 +4,8 @@ export function getConfig(form) {
   return {
     metodologia_plan: String(data.get("metodologiaPlan") || "dinamico"),
     cronograma_adjudicaciones_anual: String(data.get("cronogramaAdjudicacionesAnual") || "").trim() || null,
+    periodicidad_licitacion_meses: Number(data.get("periodicidadLicitacionMeses")),
+    porcentaje_licitacion_extraordinaria: Number(data.get("porcentajeLicitacionExtraordinaria")),
     cantidad_cuotas: Number(data.get("cantidadCuotas")),
     cantidad_de_adherentes: Number(data.get("cantidadAdherentes")),
     metros_cuadrados_vivienda: Number(data.get("metrosCuadrados")),
@@ -19,6 +21,8 @@ export function getConfig(form) {
 export function setConfigToForm(form, config) {
   form.elements.metodologiaPlan.value = config.metodologia_plan ?? config.metodologiaPlan ?? "dinamico";
   form.elements.cronogramaAdjudicacionesAnual.value = config.cronograma_adjudicaciones_anual ?? config.cronogramaAdjudicacionesAnual ?? "";
+  form.elements.periodicidadLicitacionMeses.value = config.periodicidad_licitacion_meses ?? config.periodicidadLicitacionMeses ?? 3;
+  form.elements.porcentajeLicitacionExtraordinaria.value = config.porcentaje_licitacion_extraordinaria ?? config.porcentajeLicitacionExtraordinaria ?? 0;
   form.elements.cantidadCuotas.value = config.cantidad_cuotas;
   form.elements.cantidadAdherentes.value = config.cantidad_de_adherentes;
   form.elements.metrosCuadrados.value = config.metros_cuadrados_vivienda;

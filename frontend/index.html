@@ -113,6 +113,14 @@
             <option value="legacy">legacy</option>
           </select>
         </label>
+        <label>
+          Periodicidad licitación (meses)
+          <input type="number" name="periodicidadLicitacionMeses" min="1" step="1" value="3" required />
+        </label>
+        <label>
+          % licitación extraordinaria
+          <input type="number" name="porcentajeLicitacionExtraordinaria" min="0" step="0.0001" value="0" required />
+        </label>
         <label id="legacy-cronograma-field" class="hidden">
           Cronograma adjudicaciones anual (CSV)
           <input type="text" name="cronogramaAdjudicacionesAnual" placeholder="5,5,5,6,6,7" />
@@ -138,6 +146,8 @@
         porcentajes.<br />
         Los porcentajes son porcentaje real del valor total (ejemplo: 0.56 significa 0.56%).<br />
         Si la metodología es legacy, el cupo anual de inicios se controla por cronograma.<br />
+        Si querés aplicar ingreso extraordinario por licitación en procesar mes, usar método de adjudicación:
+        licitación.<br />
         Tope de pago por adherente: 180 cuotas.<br />
         valor_total_vivienda = metros_cuadrados_vivienda * valor_por_m2<br />
         cuota_completa = valor_total_vivienda * (porcentaje_cuota_completa / 100)<br />
@@ -213,6 +223,7 @@
               <th>Activos</th>
               <th>En construcción</th>
               <th>Adjudicados</th>
+              <th>Ingreso licitación mes</th>
               <th>Ingreso mes</th>
               <th>Fondo cierre</th>
               <th>Evento</th>

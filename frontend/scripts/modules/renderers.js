@@ -550,6 +550,7 @@ export function renderTimeline(tableBody, rows) {
     <th>Adjudicados</th>
     <th>Cuota completa mes</th>
     <th>Media cuota mes</th>
+    <th>Ingreso licitación mes</th>
     <th>Ingreso mes</th>
     <th>Fondo cierre</th>
     <th>Evento</th>
@@ -574,6 +575,8 @@ export function renderTimeline(tableBody, rows) {
       "mediaCuotaMes",
       "media_cuota_mes",
       "media_cuota_mes_ars",
+      "ingresoLicitacionMes",
+      "ingreso_licitacion_mes_ars",
       "ingresoMes",
       "ingreso_mes",
       "fondo",
@@ -607,6 +610,7 @@ export function renderTimeline(tableBody, rows) {
       <td>${row.adjudicados ?? row.adherentes_adjudicados ?? "-"}</td>
       <td>${typeof row.cuotaCompletaMes === "number" ? formatterArs.format(row.cuotaCompletaMes) : (typeof row.cuota_completa_mes === "number" ? formatterArs.format(row.cuota_completa_mes) : (typeof row.cuota_completa_mes_ars === "number" ? formatterArs.format(row.cuota_completa_mes_ars) : "-"))}</td>
       <td>${typeof row.mediaCuotaMes === "number" ? formatterArs.format(row.mediaCuotaMes) : (typeof row.media_cuota_mes === "number" ? formatterArs.format(row.media_cuota_mes) : (typeof row.media_cuota_mes_ars === "number" ? formatterArs.format(row.media_cuota_mes_ars) : "-"))}</td>
+      <td>${typeof row.ingresoLicitacionMes === "number" ? formatterArs.format(row.ingresoLicitacionMes) : (typeof row.ingreso_licitacion_mes_ars === "number" ? formatterArs.format(row.ingreso_licitacion_mes_ars) : formatterArs.format(0))}</td>
       <td>${typeof row.ingresoMes === "number" ? formatterArs.format(row.ingresoMes) : (typeof row.ingreso_mes === "number" ? formatterArs.format(row.ingreso_mes) : (typeof row.ingreso_mes_ars === "number" ? formatterArs.format(row.ingreso_mes_ars) : "-"))}</td>
       <td>${typeof row.fondo === "number" ? formatterArs.format(row.fondo) : (typeof row.fondo_cierre === "number" ? formatterArs.format(row.fondo_cierre) : "-")}</td>
       <td class="evento">${row.evento || row.evento_mes || "-"}</td>
@@ -633,6 +637,8 @@ export function hasTimelineMetrics(rows) {
       "mediaCuotaMes",
       "media_cuota_mes",
       "media_cuota_mes_ars",
+      "ingresoLicitacionMes",
+      "ingreso_licitacion_mes_ars",
       "ingresoMes",
       "ingreso_mes",
       "fondo",
@@ -756,6 +762,7 @@ export function normalizeTimeline(payload) {
     const adjudicados = toNumberOrNull(row.adjudicados ?? row.adherentes_adjudicados ?? row.casas_adjudicadas);
     const cuotaCompletaMes = toNumberOrNull(row.cuotaCompletaMes ?? row.cuota_completa_mes ?? row.cuota_completa_mes_ars ?? row.cuota_mes_completa);
     const mediaCuotaMes = toNumberOrNull(row.mediaCuotaMes ?? row.media_cuota_mes ?? row.media_cuota_mes_ars ?? row.cuota_mes_media);
+    const ingresoLicitacionMes = toNumberOrNull(row.ingresoLicitacionMes ?? row.ingreso_licitacion_mes_ars ?? row.ingreso_licitacion_mes ?? row.ingreso_licitacion ?? 0);
     const ingresoMes = toNumberOrNull(row.ingresoMes ?? row.ingreso_mes ?? row.ingreso_mes_ars ?? row.ingreso_mensual_ars);
     const fondo = toNumberOrNull(row.fondo ?? row.fondo_cierre ?? row.fondo_ars ?? row.fondo_final_ars ?? row.fondo_mes_ars ?? row.saldo_fondo_ars);
     const casasIniciadasMes = toNumberOrNull(
@@ -801,6 +808,7 @@ export function normalizeTimeline(payload) {
       adjudicados,
       cuotaCompletaMes,
       mediaCuotaMes,
+      ingresoLicitacionMes,
       ingresoMes,
       fondo,
       casasIniciadasMes,

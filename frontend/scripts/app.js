@@ -138,6 +138,14 @@ function validateConfigBusinessRules(payload) {
     throw new Error("Los meses de media cuota inicial deben ser un entero mayor o igual a 0.");
   }
 
+  if (!Number.isFinite(payload.periodicidad_licitacion_meses) || payload.periodicidad_licitacion_meses < 1) {
+    throw new Error("La periodicidad de licitación debe ser un entero mayor o igual a 1.");
+  }
+
+  if (!Number.isFinite(payload.porcentaje_licitacion_extraordinaria) || payload.porcentaje_licitacion_extraordinaria < 0) {
+    throw new Error("El porcentaje de licitación extraordinaria debe ser mayor o igual a 0.");
+  }
+
   if (metodologia === "legacy" && !isValidCronogramaCsv(payload.cronograma_adjudicaciones_anual)) {
     throw new Error("El cronograma anual debe tener enteros no negativos separados por coma. Ejemplo: 5,5,5,6,6,7.");
   }
@@ -468,6 +476,8 @@ function normalizePlanConfig(raw) {
   const normalized = {
     metodologia_plan: String(raw.metodologia_plan ?? raw.metodologiaPlan ?? DEFAULT_METODOLOGIA_PLAN).trim().toLowerCase(),
     cronograma_adjudicaciones_anual: String(raw.cronograma_adjudicaciones_anual ?? raw.cronogramaAdjudicacionesAnual ?? "").trim() || null,
+    periodicidad_licitacion_meses: Number(raw.periodicidad_licitacion_meses ?? raw.periodicidadLicitacionMeses ?? 3),
+    porcentaje_licitacion_extraordinaria: Number(raw.porcentaje_licitacion_extraordinaria ?? raw.porcentajeLicitacionExtraordinaria ?? 0),
     cantidad_cuotas: Number(raw.cantidad_cuotas ?? raw.cantidadCuotas),
     cantidad_de_adherentes: Number(raw.cantidad_de_adherentes ?? raw.cantidadAdherentes),
     metros_cuadrados_vivienda: Number(raw.metros_cuadrados_vivienda ?? raw.metrosCuadradosVivienda ?? raw.metrosCuadrados),
@@ -489,6 +499,8 @@ function isPlanConfigShape(config) {
 
   const keys = [
     "metodologia_plan",
+    "periodicidad_licitacion_meses",
+    "porcentaje_licitacion_extraordinaria",
     "cantidad_cuotas",
     "cantidad_de_adherentes",
     "metros_cuadrados_vivienda",
@@ -551,6 +563,8 @@ function renderConfigListInModal() {
             <p><strong>Cuotas:</strong> ${Number(config.cantidad_cuotas).toLocaleString("es-AR")}</p>
             <p><strong>Valor por m2:</strong> ${Number(config.valor_por_m2).toLocaleString("es-AR")}</p>
             <p><strong>Metodología:</strong> ${String(config.metodologia_plan || DEFAULT_METODOLOGIA_PLAN)}</p>
+            <p><strong>Periodicidad licitación (meses):</strong> ${Number(config.periodicidad_licitacion_meses).toLocaleString("es-AR")}</p>
+            <p><strong>% licitación extraordinaria:</strong> ${Number(config.porcentaje_licitacion_extraordinaria).toLocaleString("es-AR")}%</p>
             <p><strong>% cuota completa:</strong> ${Number(config.porcentaje_cuota_completa).toLocaleString("es-AR")}%</p>
             <p><strong>% media cuota:</strong> ${Number(config.porcentaje_media_cuota).toLocaleString("es-AR")}%</p>
             <p><strong>Meses media cuota inicial:</strong> ${Number(config.meses_media_cuota_inicial).toLocaleString("es-AR")}</p>
@@ -837,7 +851,9 @@ async function procesarMesServidor() {
   const fondoArs = Number(payload?.fondo_ars);
   const cuotaCompletaMes = Number(payload?.cuota_completa_mes_ars);
   const mediaCuotaMes = Number(payload?.media_cuota_mes_ars);
-  const ingresoMes = Number(payload?.ingreso_mes_ars);
+  const ingresoAportesMes = Number(payload?.ingreso_aportes_mes_ars ?? 0);
+  const ingresoLicitacionMes = Number(payload?.ingreso_licitacion_mes_ars ?? 0);
+  const ingresoMes = Number(payload?.ingreso_mes_ars ?? 0);
 
   const partes = [];
   if (Number.isFinite(casasIniciadas)) {
@@ -866,8 +882,14 @@ async function procesarMesServidor() {
   if (Number.isFinite(mediaCuotaMes)) {
     partes.push(`Media cuota mes: ${formatArsValue(mediaCuotaMes)}`);
   }
+  if (Number.isFinite(ingresoAportesMes)) {
+    partes.push(`Ingreso aportes mes: ${formatArsValue(ingresoAportesMes)}`);
+  }
+  if (Number.isFinite(ingresoLicitacionMes)) {
+    partes.push(`Ingreso licitación mes: ${formatArsValue(ingresoLicitacionMes)}`);
+  }
   if (Number.isFinite(ingresoMes)) {
-    partes.push(`Ingreso mes: ${formatArsValue(ingresoMes)} (puede variar según adjudicaciones)`);
+    partes.push(`Ingreso total mes: ${formatArsValue(ingresoMes)}`);
   }
 
   if (partes.length > 0) {
