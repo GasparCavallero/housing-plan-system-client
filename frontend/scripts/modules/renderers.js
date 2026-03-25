@@ -859,7 +859,19 @@ export function normalizeTimeline(payload) {
 
   const rows = Array.isArray(payload) ? payload : pickArray(payload) || [];
 
-  return rows
+  const normalizedRows = rows
     .map(mapRow)
     .filter((row) => row && Object.values(row).some((value) => value !== null && value !== undefined));
+
+  const hasZeroBasedMonths = normalizedRows.some((row) => Number(row?.mes) === 0);
+  if (hasZeroBasedMonths) {
+    normalizedRows.forEach((row) => {
+      const mes = Number(row?.mes);
+      if (Number.isFinite(mes)) {
+        row.mes = mes + 1;
+      }
+    });
+  }
+
+  return normalizedRows;
 }
