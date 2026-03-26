@@ -79,6 +79,7 @@ function estimateValorViviendaArsFromForm() {
   return Number((metros * valorPorM2).toFixed(2));
 }
 
+// Preview de cuotas: ahora la cuota se calcula SOLO sobre el valor del metro cuadrado, no sobre el total de la vivienda.
 function updateConfigPreview() {
   const previewTarget = document.getElementById("config-preview");
   if (!previewTarget || !dom.form) {
@@ -86,21 +87,19 @@ function updateConfigPreview() {
   }
 
   const data = new FormData(dom.form);
-  const metros = Number(data.get("metrosCuadrados") || 0);
   const valorPorM2 = Number(data.get("valorPorM2") || 0);
   const porcentajeCuotaCompleta = Number(data.get("porcentajeCuotaCompleta") || 0);
   const porcentajeMediaCuota = Number(data.get("porcentajeMediaCuota") || 0);
 
-  if (![metros, valorPorM2, porcentajeCuotaCompleta, porcentajeMediaCuota].every((value) => Number.isFinite(value) && value > 0)) {
-    previewTarget.textContent = "Preview: valor_total_vivienda = - | cuota_completa = - | media_cuota = -";
+  if (![valorPorM2, porcentajeCuotaCompleta, porcentajeMediaCuota].every((value) => Number.isFinite(value) && value > 0)) {
+    previewTarget.textContent = "Preview: cuota_completa = - | media_cuota = -";
     return;
   }
 
-  const valorTotalVivienda = metros * valorPorM2;
-  const cuotaCompleta = valorTotalVivienda * (porcentajeCuotaCompleta / 100);
-  const mediaCuota = valorTotalVivienda * (porcentajeMediaCuota / 100);
+  const cuotaCompleta = valorPorM2 * (porcentajeCuotaCompleta / 100);
+  const mediaCuota = valorPorM2 * (porcentajeMediaCuota / 100);
 
-  previewTarget.textContent = `Preview: valor_total_vivienda = ${formatArsValue(valorTotalVivienda)} | cuota_completa = ${formatArsValue(cuotaCompleta)} | media_cuota = ${formatArsValue(mediaCuota)}`;
+  previewTarget.textContent = `Preview: cuota_completa = ${formatArsValue(cuotaCompleta)} | media_cuota = ${formatArsValue(mediaCuota)}`;
 }
 
 function updateMetodologiaUI() {
