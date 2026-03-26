@@ -1,3 +1,9 @@
+.formula-mono {
+  font-family: "IBM Plex Mono", "Space Grotesk", monospace;
+  font-size: 0.98em;
+  background: none;
+  color: inherit;
+}
 :root {
   --bg: #f4efe8;
   --surface: #fffaf3;
