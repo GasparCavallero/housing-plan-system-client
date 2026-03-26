@@ -17,6 +17,8 @@ export const dom = {
   casasFinishChartSummary: document.getElementById("casas-finish-chart-summary"),
   casasEjecucionChart: document.getElementById("casas-ejecucion-chart"),
   casasEjecucionChartSummary: document.getElementById("casas-ejecucion-chart-summary"),
+  recaudacionChart: document.getElementById("recaudacion-chart"),
+  recaudacionChartSummary: document.getElementById("recaudacion-chart-summary"),
   adherentesSummary: document.getElementById("adherentes-summary"),
   pagosSummary: document.getElementById("pagos-summary"),
   adherentesSearch: document.getElementById("adherentes-search"),

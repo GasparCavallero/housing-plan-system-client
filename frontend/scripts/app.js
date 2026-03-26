@@ -40,6 +40,7 @@ import {
   renderCasasChart,
   renderCasasTerminadasChart,
   renderCasasEjecucionChart,
+  renderRecaudacionChart,
   renderAdherentes,
   renderPagos,
   hasTimelineMetrics,
@@ -61,6 +62,21 @@ const DEFAULT_METODOLOGIA_PLAN = "dinamico";
 
 function formatArsValue(value) {
   return `${value.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`;
+}
+
+function estimateValorViviendaArsFromForm() {
+  if (!dom.form) {
+    return null;
+  }
+
+  const config = getConfig(dom.form);
+  const metros = Number(config.metros_cuadrados_vivienda);
+  const valorPorM2 = Number(config.valor_por_m2);
+  if (!Number.isFinite(metros) || !Number.isFinite(valorPorM2) || metros <= 0 || valorPorM2 <= 0) {
+    return null;
+  }
+
+  return Number((metros * valorPorM2).toFixed(2));
 }
 
 function updateConfigPreview() {
@@ -420,6 +436,20 @@ function clearBusinessUiState() {
   if (dom.casasFinishChartSummary) {
     dom.casasFinishChartSummary.textContent = "Ejecutá una simulación para visualizar la evolución mensual.";
   }
+  if (dom.casasEjecucionChart) {
+    dom.casasEjecucionChart.innerHTML = "Sin datos de simulación para graficar.";
+    dom.casasEjecucionChart.classList.add("casas-chart-empty");
+  }
+  if (dom.casasEjecucionChartSummary) {
+    dom.casasEjecucionChartSummary.textContent = "Ejecutá una simulación para visualizar la evolución anual.";
+  }
+  if (dom.recaudacionChart) {
+    dom.recaudacionChart.innerHTML = "Sin datos de simulación para graficar.";
+    dom.recaudacionChart.classList.add("casas-chart-empty");
+  }
+  if (dom.recaudacionChartSummary) {
+    dom.recaudacionChartSummary.textContent = "Ejecutá una simulación para visualizar recaudación anual y cobertura de viviendas.";
+  }
   if (dom.adherentesSearch) {
     dom.adherentesSearch.value = "";
   }
@@ -721,6 +751,7 @@ async function ejecutarSimulacionServidor(options = {}) {
   const ofertas = buildOptionalOfertas(data);
   const payload = await simularServidor(horizonte, ofertas);
   const rows = normalizeTimeline(payload);
+  const valorViviendaArs = estimateValorViviendaArsFromForm();
   const horizonteTexto = Number.isFinite(horizonte) && horizonte > 0 ? String(horizonte) : "el horizonte configurado";
 
   if (rows.length > 0) {
@@ -730,6 +761,7 @@ async function ejecutarSimulacionServidor(options = {}) {
     renderCasasChart(dom.casasChart, dom.casasChartSummary, rows);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, rows);
     renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, rows);
+    renderRecaudacionChart(dom.recaudacionChart, dom.recaudacionChartSummary, rows, valorViviendaArs);
     if (hasMetrics) {
       setSummary(dom.simSummary, `Simulación servidor ok: ${rows.length} fila(s) en ${horizonteTexto}.`);
     } else {
@@ -742,6 +774,7 @@ async function ejecutarSimulacionServidor(options = {}) {
     renderCasasChart(dom.casasChart, dom.casasChartSummary, []);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, []);
     renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, []);
+    renderRecaudacionChart(dom.recaudacionChart, dom.recaudacionChartSummary, [], valorViviendaArs);
     const fondoFinal = typeof payload?.fondo_final_ars === "number"
       ? ` Fondo final: ${payload.fondo_final_ars.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS.`
       : "";

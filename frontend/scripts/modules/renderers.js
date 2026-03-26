@@ -437,6 +437,161 @@ export function renderCasasEjecucionChart(target, summaryTarget, rows) {
   );
 }
 
+function roundMoney(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
+export function buildRecaudacionCasasAnoData(rows, valorViviendaArs) {
+  const pointsByYear = {};
+
+  rows.forEach((row) => {
+    const mes = Number(row?.mes);
+    if (!Number.isFinite(mes)) {
+      return;
+    }
+
+    const ano = Math.floor(mes / 12) + 1;
+    const ingresoMes = Number(row?.ingresoMes);
+    const ingresoSeguro = Number.isFinite(ingresoMes) && ingresoMes > 0 ? ingresoMes : 0;
+
+    pointsByYear[ano] = roundMoney((pointsByYear[ano] ?? 0) + ingresoSeguro);
+  });
+
+  return Object.entries(pointsByYear)
+    .map(([ano, recaudadoArs]) => {
+      const casasAlcanzables = Number.isFinite(valorViviendaArs) && valorViviendaArs > 0
+        ? Number((recaudadoArs / valorViviendaArs).toFixed(2))
+        : 0;
+
+      return {
+        ano: Number(ano),
+        recaudadoArs,
+        casasAlcanzables
+      };
+    })
+    .sort((a, b) => a.ano - b.ano);
+}
+
+export function renderRecaudacionChart(target, summaryTarget, rows, valorViviendaArs) {
+  const points = buildRecaudacionCasasAnoData(rows, valorViviendaArs);
+
+  if (!Array.isArray(points) || points.length === 0) {
+    target.innerHTML = "Sin datos de simulación para graficar.";
+    summaryTarget.textContent = "Ejecutá una simulación para visualizar recaudación y alcance anual.";
+    target.classList.add("casas-chart-empty");
+    return;
+  }
+
+  target.classList.remove("casas-chart-empty");
+  target.innerHTML = `
+    <div class="casas-chart-shell">
+      <svg viewBox="0 0 920 260" role="img" aria-label="Recaudación anual y casas alcanzables"></svg>
+      <div class="casas-chart-tooltip hidden"></div>
+    </div>
+    <div class="casas-chart-legend">
+      <span><i style="background: rgba(0, 109, 91, 0.4)"></i>Recaudación anual (ARS)</span>
+      <span><i style="background: #d46f2a"></i>Casas alcanzables en el año</span>
+    </div>
+    <p class="casas-chart-hint">Mové el cursor para ver recaudación y cobertura por año.</p>
+  `;
+
+  const shell = target.querySelector(".casas-chart-shell");
+  const svg = target.querySelector("svg");
+  const tooltip = target.querySelector(".casas-chart-tooltip");
+  if (!shell || !svg || !tooltip) {
+    return;
+  }
+
+  const width = 920;
+  const height = 260;
+  const padding = { top: 20, right: 52, bottom: 38, left: 58 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+
+  const maxRecaudado = Math.max(1, ...points.map((item) => Number(item.recaudadoArs || 0)));
+  const maxCasas = Math.max(1, ...points.map((item) => Number(item.casasAlcanzables || 0)));
+  const stepX = points.length > 1 ? innerWidth / (points.length - 1) : innerWidth;
+
+  const toX = (index) => padding.left + (index * stepX);
+  const toYRecaudado = (value) => padding.top + innerHeight - ((value / maxRecaudado) * innerHeight);
+  const toYCasas = (value) => padding.top + innerHeight - ((value / maxCasas) * innerHeight);
+
+  const barWidth = Math.min(28, Math.max(10, stepX * 0.45));
+
+  const bars = points.map((point, index) => {
+    const x = toX(index) - (barWidth / 2);
+    const y = toYRecaudado(Number(point.recaudadoArs || 0));
+    const h = (padding.top + innerHeight) - y;
+    return `<rect data-index="${index}" x="${x}" y="${y}" width="${barWidth}" height="${Math.max(0, h)}" rx="3" fill="rgba(0, 109, 91, 0.38)" />`;
+  }).join("");
+
+  const linePoints = points
+    .map((point, index) => `${toX(index)},${toYCasas(Number(point.casasAlcanzables || 0))}`)
+    .join(" ");
+
+  const dots = points
+    .map((point, index) => `<circle data-index="${index}" cx="${toX(index)}" cy="${toYCasas(Number(point.casasAlcanzables || 0))}" r="3.5" fill="#d46f2a" />`)
+    .join("");
+
+  const labels = points
+    .filter((_, index) => index === 0 || index === points.length - 1 || index % Math.ceil(points.length / 8) === 0)
+    .map((point) => {
+      const index = points.findIndex((item) => item.ano === point.ano);
+      return `<text x="${toX(index)}" y="${height - 12}" text-anchor="middle" font-size="10" fill="#5f6663">Y${point.ano}</text>`;
+    })
+    .join("");
+
+  svg.innerHTML = `
+    <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${width - padding.right}" y2="${padding.top + innerHeight}" stroke="#cfd9d5" />
+    <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + innerHeight}" stroke="#cfd9d5" />
+    <line x1="${width - padding.right}" y1="${padding.top}" x2="${width - padding.right}" y2="${padding.top + innerHeight}" stroke="#e2cbc0" />
+    ${bars}
+    <polyline points="${linePoints}" fill="none" stroke="#d46f2a" stroke-width="2" />
+    ${dots}
+    ${labels}
+    <text x="${padding.left}" y="12" font-size="10" fill="#5f6663">Max ARS: ${formatterArs.format(maxRecaudado)}</text>
+    <text x="${width - padding.right}" y="12" text-anchor="end" font-size="10" fill="#8a5532">Max casas: ${maxCasas.toFixed(2)}</text>
+  `;
+
+  const hideTooltip = () => {
+    tooltip.classList.add("hidden");
+  };
+
+  const showTooltip = (event, point) => {
+    tooltip.classList.remove("hidden");
+    tooltip.textContent = `Año ${point.ano}: ${formatterArs.format(point.recaudadoArs)} | Casas alcanzables: ${point.casasAlcanzables.toFixed(2)}`;
+    const rect = shell.getBoundingClientRect();
+    const x = event.clientX - rect.left + 12;
+    const y = event.clientY - rect.top - 28;
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${Math.max(8, y)}px`;
+  };
+
+  svg.addEventListener("mousemove", (event) => {
+    const rect = svg.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    if (x < padding.left || x > rect.width - padding.right) {
+      hideTooltip();
+      return;
+    }
+
+    const localX = x - padding.left;
+    const relative = innerWidth > 0 ? localX / innerWidth : 0;
+    const index = Math.round(relative * Math.max(points.length - 1, 0));
+    const safeIndex = Math.min(Math.max(0, index), points.length - 1);
+    showTooltip(event, points[safeIndex]);
+  });
+
+  svg.addEventListener("mouseleave", hideTooltip);
+
+  const totalRecaudado = roundMoney(points.reduce((acc, item) => acc + Number(item.recaudadoArs || 0), 0));
+  const casasAcumuladas = Number.isFinite(valorViviendaArs) && valorViviendaArs > 0
+    ? Number((totalRecaudado / valorViviendaArs).toFixed(2))
+    : 0;
+
+  summaryTarget.textContent = `Años graficados: ${points.length} | Recaudación total: ${formatterArs.format(totalRecaudado)} | Casas alcanzables acumuladas: ${casasAcumuladas.toFixed(2)}`;
+}
+
 export function updateKpi(kpi, config, result) {
   kpi.valorViviendaArs.textContent = formatterArs.format(result.viviendaArs);
   kpi.valorViviendaUsd.textContent = formatterUsd.format(toUsd(result.viviendaArs, config.tipo_cambio));
