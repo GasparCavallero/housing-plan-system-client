@@ -139,10 +139,10 @@
         Preview: valor_total_vivienda = - | cuota_completa = - | media_cuota = -
       </p>
       <!--
-        EXPLICACIÓN ACTUALIZADA (2026-03):
-        - El porcentaje de cuota completa y media cuota se aplica sobre (valor del metro × metros cuadrados).
-        - Ejemplo: cuota_completa = (valor_por_m2 × metros_cuadrados) × (porcentaje_cuota_completa / 100)
-        - Ejemplo: media_cuota = (valor_por_m2 × metros_cuadrados) × (porcentaje_media_cuota / 100)
+        EXPLICACIÓN ACTUALIZADA (2026-03-26):
+        - El porcentaje de cuota completa y media cuota se aplica sobre el valor del metro cuadrado.
+        - Ejemplo: cuota_completa = valor_por_m2 × (porcentaje_cuota_completa / 100)
+        - Ejemplo: media_cuota = valor_por_m2 × (porcentaje_media_cuota / 100)
         - Hasta adjudicación paga media cuota según porcentaje configurado.
         - Luego paga cuota completa según porcentaje configurado.
         - No quedan casas para iniciar: se continúa cobrando cuotas pendientes mientras haya aportes vigentes.
@@ -153,10 +153,8 @@
       -->
       <p class="config-help">
         <strong>Fórmula de cuota:</strong><br />
-        <span class="formula-mono">cuota_completa = (valor_por_m2 × metros_cuadrados) × (porcentaje_cuota_completa /
-          100)</span><br />
-        <span class="formula-mono">media_cuota = (valor_por_m2 × metros_cuadrados) × (porcentaje_media_cuota /
-          100)</span><br />
+        <span class="formula-mono">cuota_completa = valor_por_m2 × (porcentaje_cuota_completa / 100)</span><br />
+        <span class="formula-mono">media_cuota = valor_por_m2 × (porcentaje_media_cuota / 100)</span><br />
         <br />
         Hasta adjudicación paga media cuota según porcentaje configurado.<br />
         Luego paga cuota completa según porcentaje configurado.<br />
