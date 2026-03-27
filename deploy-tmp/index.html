@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Sistema de Ahorro para Viviendas</title>
+  <script>
+    (function () {
+      try {
+        var accessToken = localStorage.getItem("hps_access_token");
+        if (!accessToken) {
+          document.documentElement.style.visibility = "hidden";
+          window.location.replace("./login.html");
+        }
+      } catch (error) {
+        document.documentElement.style.visibility = "hidden";
+        window.location.replace("./login.html");
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css?v=20260325-1" />
+</head>
+
+<body>
+  <div class="bg-shape bg-shape-a"></div>
+  <div class="bg-shape bg-shape-b"></div>
+
+  <header class="hero">
+    <p class="eyebrow">Gestión interna</p>
+    <h1>Sistema de Ahorro para Viviendas</h1>
+    <p class="subtitle">Controlá planes, cuotas, adjudicaciones y simulación financiera en un único panel configurable.
+    </p>
+    <div class="session-bar">
+      <p id="session-status">Sin sesión</p>
+      <button id="btn-logout" class="btn btn-secondary" type="button">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <nav class="section-nav" aria-label="Navegación de secciones">
+    <a id="nav-link-admin" href="#admin-panel">Admin</a>
+    <a href="#configuracion">Configuración + Estado</a>
+    <a href="#simulacion">Simulación</a>
+    <a href="#grafico-casas">Gráfico de casas</a>
+    <a href="#adherentes">Adherentes</a>
+    <a href="#pagos">Pagos</a>
+  </nav>
+
+  <main class="layout">
+    <section id="admin-panel" class="panel panel-admin hidden">
+      <div class="panel-head">
+        <h2>Panel administrador</h2>
+        <p id="admin-role-label">-</p>
+      </div>
+      <div class="admin-user-box">
+        <p id="admin-user-data">Cargando datos de sesión...</p>
+      </div>
+      <form id="admin-create-user-form" class="inline-form">
+        <input type="text" name="username" placeholder="Nuevo usuario" minlength="3" required />
+        <input type="password" name="password" placeholder="Password (min 8)" minlength="8" required />
+        <select name="role" aria-label="Rol de nuevo usuario" required>
+          <option value="operador">operador</option>
+          <option value="admin">admin</option>
+        </select>
+        <button id="btn-admin-create-user" class="btn btn-primary" type="submit">Crear usuario</button>
+      </form>
+    </section>
+
+    <section id="configuracion" class="panel panel-config">
+      <h2>Configuración del plan</h2>
+      <form id="config-form" class="form-grid">
+        <label>
+          Cantidad de cuotas
+          <input type="number" name="cantidadCuotas" min="1" value="180" required />
+        </label>
+        <label>
+          Cantidad de adherentes
+          <input type="number" name="cantidadAdherentes" min="1" value="120" required />
+        </label>
+        <label>
+          Metros cuadrados vivienda
+          <input type="number" name="metrosCuadrados" min="1" value="60" required />
+        </label>
+        <label>
+          Valor por m² (ARS)
+          <input type="number" name="valorPorM2" min="1" value="950000" required />
+        </label>
+        <label>
+          Porcentaje cuota completa (% del valor total)
+          <input type="number" name="porcentajeCuotaCompleta" min="0.000001" step="0.000001" value="0.833333"
+            required />
+        </label>
+        <label>
+          Porcentaje media cuota (% del valor total)
+          <input type="number" name="porcentajeMediaCuota" min="0.000001" step="0.000001" value="0.416667" required />
+        </label>
+        <label>
+          Meses de media cuota inicial
+          <input type="number" name="mesesMediaCuotaInicial" min="0" step="1" value="7" required />
+        </label>
+        <label>
+          Metodología del plan
+          <select name="metodologiaPlan" aria-label="Metodología del plan" required>
+            <option value="dinamico">dinamico</option>
+            <option value="legacy">legacy</option>
+          </select>
+        </label>
+        <label>
+          Periodicidad licitación (meses)
+          <input type="number" name="periodicidadLicitacionMeses" min="1" step="1" value="3" required />
+        </label>
+        <label>
+          % licitación extraordinaria
+          <input type="number" name="porcentajeLicitacionExtraordinaria" min="0" step="0.0001" value="0" required />
+        </label>
+        <label id="legacy-cronograma-field" class="hidden">
+          Cronograma adjudicaciones anual (CSV)
+          <input type="text" name="cronogramaAdjudicacionesAnual" placeholder="5,5,5,6,6,7" />
+          <small>Formato legacy: enteros no negativos separados por coma. Ejemplo: 5,5,5,6,6,7.</small>
+        </label>
+        <label>
+          Duración construcción (meses)
+          <input type="number" name="duracionConstruccionMeses" min="1" value="6" required />
+        </label>
+        <label>
+          Tipo de cambio ARS/USD
+          <input type="number" name="tipoCambio" min="1" value="1200" required />
+        </label>
+      </form>
+      <p id="config-preview" class="config-help">
+        Preview: valor_total_vivienda = - | cuota_completa = - | media_cuota = -
+      </p>
+      <!--
+        EXPLICACIÓN ACTUALIZADA (2026-03-26):
+        - El porcentaje de cuota completa y media cuota se aplica sobre el valor del metro cuadrado.
+        - Ejemplo: cuota_completa = valor_por_m2 × (porcentaje_cuota_completa / 100)
+        - Ejemplo: media_cuota = valor_por_m2 × (porcentaje_media_cuota / 100)
+        - Hasta adjudicación paga media cuota según porcentaje configurado.
+        - Luego paga cuota completa según porcentaje configurado.
+        - No quedan casas para iniciar: se continúa cobrando cuotas pendientes mientras haya aportes vigentes.
+        - El sistema recalcula la cuota para cumplir el objetivo de casas en el plazo de cuotas usando los porcentajes.
+        - Si la metodología es legacy, el cupo anual de inicios se controla por cronograma.
+        - Si querés aplicar ingreso extraordinario por licitación en procesar mes, usar método de adjudicación: licitación.
+        - Tope de pago por adherente: 180 cuotas.
+      -->
+      <p class="config-help">
+        <strong>Fórmula de cuota:</strong><br />
+        <span class="formula-mono">cuota_completa = valor_por_m2 × (porcentaje_cuota_completa / 100)</span><br />
+        <span class="formula-mono">media_cuota = valor_por_m2 × (porcentaje_media_cuota / 100)</span><br />
+        <br />
+        Hasta adjudicación paga media cuota según porcentaje configurado.<br />
+        Luego paga cuota completa según porcentaje configurado.<br />
+        No quedan casas para iniciar: se continúa cobrando cuotas pendientes mientras haya aportes vigentes.<br />
+        El sistema recalcula la cuota para cumplir el objetivo de casas en el plazo de cuotas usando los
+        porcentajes.<br />
+        Si la metodología es legacy, el cupo anual de inicios se controla por cronograma.<br />
+        Si querés aplicar ingreso extraordinario por licitación en procesar mes, usar método de adjudicación:
+        licitación.<br />
+        Tope de pago por adherente: 180 cuotas.<br />
+      </p>
+      <div class="actions multi-actions">
+        <button id="btn-guardar-config" class="btn btn-secondary">Guardar configuración</button>
+        <button id="btn-cargar-resumen" class="btn btn-ghost">Actualizar estado financiero</button>
+      </div>
+    </section>
+
+    <section id="estado-financiero" class="panel panel-kpi">
+      <h2>Estado financiero</h2>
+      <div class="kpi-grid">
+        <article class="kpi-card">
+          <p>Valor vivienda</p>
+          <h3 id="kpi-valor-vivienda-ars">-</h3>
+          <small id="kpi-valor-vivienda-usd">-</small>
+        </article>
+        <article class="kpi-card">
+          <p>Fondo actual</p>
+          <h3 id="kpi-fondo-ars">-</h3>
+          <small id="kpi-fondo-usd">-</small>
+        </article>
+        <article class="kpi-card">
+          <p>Viviendas iniciadas</p>
+          <h3 id="kpi-viviendas-iniciadas">0</h3>
+          <small id="kpi-viviendas-finalizadas">Finalizadas: 0</small>
+        </article>
+        <article class="kpi-card">
+          <p>Ingreso estimado mensual</p>
+          <h3 id="kpi-ingreso-mensual">-</h3>
+          <small>Tomado del backend, con variaciones por adjudicaciones y cuota dinámica mensual</small>
+        </article>
+        <article class="kpi-card">
+          <p>Cuota completa del mes</p>
+          <h3 id="kpi-cuota-completa-mes">-</h3>
+          <small>Desde /planes/estado.cuotas_actuales</small>
+        </article>
+        <article class="kpi-card">
+          <p>Media cuota del mes</p>
+          <h3 id="kpi-media-cuota-mes">-</h3>
+          <small>Según porcentajes configurados en /configuracion</small>
+        </article>
+      </div>
+    </section>
+
+    <section id="simulacion" class="panel panel-timeline">
+      <div class="panel-head">
+        <h2>Simulación mensual</h2>
+        <p id="sim-summary">Ejecutá la simulación para ver proyecciones.</p>
+        <p class="config-help">Si la metodología es legacy, el backend aplica cupo anual de adjudicaciones y el
+          crecimiento de inicios puede ser más controlado.</p>
+      </div>
+      <form id="operacion-form" class="inline-form">
+        <input type="number" name="horizonteMeses" min="1" placeholder="Horizonte meses (opcional, por defecto 36)" />
+        <span class="config-help">Ofertas de licitación (opcional):</span>
+        <input type="number" name="ofertaAdherenteId" min="1" placeholder="ID adherente que licita (opcional)" />
+        <input type="number" name="ofertaPorcentaje" min="0.01" max="100" step="0.01"
+          placeholder="% de cuotas restantes ofertado (opcional)" />
+        <button id="btn-simular-servidor" class="btn btn-primary" type="button">Simular</button>
+        <button id="btn-procesar-mes" class="btn btn-secondary" type="button">Procesar mes</button>
+        <button id="btn-reiniciar-plan" class="btn btn-ghost" type="button">Reiniciar plan</button>
+      </form>
+      <div class="table-wrap sim-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Mes</th>
+              <th>Activos</th>
+              <th>En construcción</th>
+              <th>Adjudicados</th>
+              <th>Ingreso licitación mes</th>
+              <th>Ingreso mes</th>
+              <th>Fondo cierre</th>
+              <th>Evento</th>
+            </tr>
+          </thead>
+          <tbody id="sim-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="grafico-casas" class="panel panel-chart">
+      <div class="panel-head">
+        <h2>Casas iniciadas por año</h2>
+        <p id="casas-chart-summary">Ejecutá una simulación para visualizar la evolución anual.</p>
+      </div>
+      <div id="casas-chart" class="casas-chart casas-chart-empty">Sin datos de simulación para graficar.</div>
+      <div class="panel-head">
+        <h2>Casas terminadas por año</h2>
+        <p id="casas-finish-chart-summary">Ejecutá una simulación para visualizar la evolución anual.</p>
+      </div>
+      <div id="casas-finish-chart" class="casas-chart casas-chart-empty">Sin datos de simulación para graficar.</div>
+      <div class="panel-head">
+        <h2>Casas en ejecución por año</h2>
+        <p id="casas-ejecucion-chart-summary">Ejecutá una simulación para visualizar la evolución anual.</p>
+      </div>
+      <div id="casas-ejecucion-chart" class="casas-chart casas-chart-empty">Sin datos de simulación para graficar.</div>
+      <div class="panel-head">
+        <h2>Plata recaudada y casas alcanzables por año</h2>
+        <p id="recaudacion-chart-summary">Ejecutá una simulación para visualizar recaudación anual y cobertura de
+          viviendas.</p>
+      </div>
+      <div id="recaudacion-chart" class="casas-chart casas-chart-empty">Sin datos de simulación para graficar.</div>
+    </section>
+
+    <section id="adherentes" class="panel panel-adherentes">
+      <div class="panel-head">
+        <h2>Adherentes</h2>
+        <p id="adherentes-summary">Sin datos cargados.</p>
+      </div>
+      <form id="adherente-form" class="inline-form">
+        <input type="text" name="nombre" placeholder="Nombre nuevo adherente" required />
+        <button id="btn-crear-adherente" class="btn btn-primary" type="submit">Crear</button>
+        <button id="btn-listar-adherentes" class="btn btn-ghost" type="button">Actualizar lista</button>
+      </form>
+      <form id="adherente-lote-form" class="inline-form">
+        <input type="number" name="cantidad" min="1" max="200" value="10" placeholder="Cantidad" required />
+        <input type="text" name="prefijo" value="Adherente" placeholder="Prefijo nombre" required />
+        <button id="btn-crear-adherentes-lote" class="btn btn-secondary" type="submit">Carga rápida temporal</button>
+      </form>
+      <form class="inline-form" role="search" aria-label="Buscar adherentes">
+        <input id="adherentes-search" type="search" placeholder="Buscar adherentes por ID, nombre, estado o cuotas" />
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Estado</th>
+              <th>Cuotas pagadas</th>
+              <th>Bonificadas</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="adherentes-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="pagos" class="panel panel-pagos">
+      <div class="panel-head">
+        <h2>Pagos</h2>
+        <p id="pagos-summary">Sin datos cargados.</p>
+      </div>
+      <form id="pago-form" class="inline-form pago-form">
+        <input type="number" name="adherenteId" min="1" placeholder="Adherente ID" required />
+        <input type="number" name="montoArs" min="1" step="0.01" placeholder="Monto ARS" required />
+        <input type="number" name="mes" min="1" placeholder="Mes" required />
+        <button id="btn-registrar-pago" class="btn btn-primary" type="submit">Registrar pago</button>
+        <button id="btn-listar-pagos" class="btn btn-ghost" type="button">Actualizar pagos</button>
+      </form>
+      <form id="pago-lote-form" class="inline-form pago-form">
+        <input type="number" name="cantidadPagos" min="1" max="300" value="10" placeholder="Cantidad" required />
+        <input type="number" name="adherenteInicial" min="1" value="1" placeholder="Adherente inicial" required />
+        <input type="number" name="montoLoteArs" min="1" step="0.01" value="100000" placeholder="Monto ARS" required />
+        <input type="number" name="mesLote" min="1" value="1" placeholder="Mes" required />
+        <button id="btn-registrar-pagos-lote" class="btn btn-secondary" type="submit">Carga rápida temporal</button>
+      </form>
+      <form id="pago-eliminar-form" class="inline-form pago-form">
+        <input type="number" name="pagoIdEliminar" min="1" placeholder="ID pago a eliminar" required />
+        <button id="btn-eliminar-pago" class="btn btn-secondary" type="submit">Eliminar pago</button>
+      </form>
+      <form class="inline-form pago-form" role="search" aria-label="Buscar pagos">
+        <input id="pagos-search" type="search" placeholder="Buscar pagos por ID, adherente, monto, mes o fecha" />
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Adherente</th>
+              <th>Monto</th>
+              <th>Mes</th>
+              <th>Fecha</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="pagos-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="confirm-modal" class="confirm-modal hidden" role="dialog" aria-modal="true"
+    aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message">
+    <div class="confirm-modal-card">
+      <p class="eyebrow">Confirmación</p>
+      <h2 id="confirm-modal-title">Confirmar acción</h2>
+      <p id="confirm-modal-message">¿Querés continuar?</p>
+      <div class="confirm-modal-actions">
+        <button id="btn-confirm-cancel" class="btn btn-ghost" type="button">Cancelar</button>
+        <button id="btn-confirm-accept" class="btn btn-secondary" type="button">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="config-modal" class="config-modal hidden" role="dialog" aria-modal="true"
+    aria-labelledby="config-modal-title" aria-describedby="config-modal-subtitle">
+    <div class="config-modal-card">
+      <div class="panel-head">
+        <h2 id="config-modal-title">Elegí una configuración</h2>
+        <button id="btn-config-modal-close" class="btn btn-ghost" type="button">Cerrar</button>
+      </div>
+      <p id="config-modal-subtitle">Estas son las configuraciones guardadas para tu usuario.</p>
+      <div id="config-modal-list" class="config-modal-list"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/app.js?v=20260325-1"></script>
+</body>
+
+</html>
