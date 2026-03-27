@@ -46,6 +46,7 @@ import {
   hasTimelineMetrics,
   normalizeTimeline
 } from "./modules/renderers.js";
+import { renderCasasChart as renderCasasChartChartJS } from "./chart-casas-iniciadas.js";
 
 setRefreshHandler(refreshToken);
 
@@ -757,7 +758,7 @@ async function ejecutarSimulacionServidor(options = {}) {
     const hasMetrics = hasTimelineMetrics(rows);
 
     renderTimeline(dom.tableBody, rows);
-    renderCasasChart(dom.casasChart, dom.casasChartSummary, rows);
+    renderCasasChartChartJS(rows);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, rows);
     renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, rows);
     renderRecaudacionChart(dom.recaudacionChart, dom.recaudacionChartSummary, rows, valorViviendaArs);
@@ -770,7 +771,7 @@ async function ejecutarSimulacionServidor(options = {}) {
       );
     }
   } else {
-    renderCasasChart(dom.casasChart, dom.casasChartSummary, []);
+    renderCasasChartChartJS([]);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, []);
     renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, []);
     renderRecaudacionChart(dom.recaudacionChart, dom.recaudacionChartSummary, [], valorViviendaArs);
