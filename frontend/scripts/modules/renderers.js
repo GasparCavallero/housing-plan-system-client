@@ -279,7 +279,7 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
       const y = toY(getValue(point));
       const h = padding.top + innerHeight - y;
       const isHovered = index === hoveredIndex;
-      return `<rect x="${x}" y="${y}" width="12" height="${Math.max(0, h)}" rx="2" fill="${isHovered ? "rgba(212, 111, 42, 0.45)" : "rgba(0, 109, 91, 0.25)"}" />`;
+      return `<rect data-bar="${index}" x="${x}" y="${y}" width="12" height="${Math.max(0, h)}" rx="2" fill="${isHovered ? "rgba(212, 111, 42, 0.45)" : "rgba(0, 109, 91, 0.25)"}" />`;
     }).join("");
 
     const dots = visible.map((point, index) => {
@@ -301,6 +301,9 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
       ? `<line x1="${toX(hoveredIndex)}" y1="${padding.top}" x2="${toX(hoveredIndex)}" y2="${padding.top + innerHeight}" stroke="#d46f2a" stroke-dasharray="3 3" />`
       : "";
 
+    // Eje Y label
+    const yAxisLabel = `<text x="${padding.left - 30}" y="${padding.top + innerHeight / 2}" text-anchor="middle" font-size="12" fill="#5f6663" transform="rotate(-90,${padding.left - 30},${padding.top + innerHeight / 2})">Casas</text>`;
+
     svg.innerHTML = `
       <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${width - padding.right}" y2="${padding.top + innerHeight}" stroke="#cfd9d5" />
       <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + innerHeight}" stroke="#cfd9d5" />
@@ -310,6 +313,7 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
       ${dots}
       ${labels}
       <text x="${padding.left}" y="12" font-size="10" fill="#5f6663">Max visible: ${maxY}</text>
+      ${yAxisLabel}
     `;
   };
 
@@ -319,8 +323,24 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
     const periodText = periodLabel === "Año" ? `Año ${period}` : `Mes ${period}`;
     tooltip.classList.remove("hidden");
     tooltip.textContent = `${periodText}: ${value} ${tooltipLabel}`;
+    // Centrar el tooltip sobre la barra correspondiente
     const rect = shell.getBoundingClientRect();
-    const x = event.clientX - rect.left + 12;
+    // Buscar la barra SVG correspondiente
+    const svgRect = svg.getBoundingClientRect();
+    let bar = svg.querySelector(`rect[data-bar='${hoveredIndex}']`);
+    let barCenter = null;
+    if (bar) {
+      const barX = Number(bar.getAttribute('x'));
+      const barWidth = Number(bar.getAttribute('width'));
+      barCenter = barX + barWidth / 2;
+    }
+    // Si se encuentra la barra, usar su centro para el tooltip
+    let x;
+    if (barCenter !== null) {
+      x = barCenter + padding.left;
+    } else {
+      x = event.clientX - rect.left + 12;
+    }
     const y = event.clientY - rect.top - 28;
     tooltip.style.left = `${x}px`;
     tooltip.style.top = `${Math.max(6, y)}px`;
