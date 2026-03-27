@@ -1,15 +1,18 @@
 // Chart.js: Casas en ejecución por año (copia migrada)
 let chartCasasEjecucion = null;
 
-export function renderChartCasasEjecucionChartJS(points) {
-  const container = document.getElementById('casasEjecucionChartCanvas').parentElement;
+import { buildCasasEjecucionAnoData } from "./modules/renderers.js";
+
+export function renderChartCasasEjecucionChartJS(rows) {
+  const points = buildCasasEjecucionAnoData(rows).filter(p => p.ano > 0);
+  const container = document.getElementById('casasEjecucionChart')?.parentElement;
   if (!points || points.length === 0) {
     if (container) container.style.display = 'none';
     if (chartCasasEjecucion) { chartCasasEjecucion.destroy(); chartCasasEjecucion = null; }
     return;
   }
   if (container) container.style.display = '';
-  const ctx = document.getElementById('casasEjecucionChartCanvas').getContext('2d');
+  const ctx = document.getElementById('casasEjecucionChart').getContext('2d');
   if (chartCasasEjecucion) chartCasasEjecucion.destroy();
   const labels = points.map(p => `Año ${p.ano}`);
   const data = points.map(p => p.casasAno);

@@ -47,6 +47,9 @@ import {
   normalizeTimeline
 } from "./modules/renderers.js";
 import { renderCasasChart as renderCasasChartChartJS } from "./chart-casas-iniciadas.js";
+import { renderChartCasasTerminadasChartJS } from "./chart-casas-terminadas.js";
+import { renderChartCasasEjecucionChartJS } from "./chart-casas-ejecucion.js";
+import { renderChartRecaudacionChartJS } from "./chart-recaudacion.js";
 
 setRefreshHandler(refreshToken);
 
@@ -758,7 +761,12 @@ async function ejecutarSimulacionServidor(options = {}) {
     const hasMetrics = hasTimelineMetrics(rows);
 
     renderTimeline(dom.tableBody, rows);
+    // Chart.js
     renderCasasChartChartJS(rows);
+    renderChartCasasTerminadasChartJS(rows);
+    renderChartCasasEjecucionChartJS(rows);
+    renderChartRecaudacionChartJS(rows, valorViviendaArs);
+    // SVG
     renderCasasChart(dom.casasChart, dom.casasChartSummary, rows);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, rows);
     renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, rows);
@@ -773,6 +781,9 @@ async function ejecutarSimulacionServidor(options = {}) {
     }
   } else {
     renderCasasChartChartJS([]);
+    renderChartCasasTerminadasChartJS([]);
+    renderChartCasasEjecucionChartJS([]);
+    renderChartRecaudacionChartJS([], valorViviendaArs);
     renderCasasChart(dom.casasChart, dom.casasChartSummary, []);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, []);
     renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, []);

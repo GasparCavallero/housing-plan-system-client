@@ -1,15 +1,18 @@
 // Chart.js: Casas terminadas por año (copia migrada)
 let chartCasasTerminadas = null;
 
-export function renderChartCasasTerminadasChartJS(points) {
-  const container = document.getElementById('casasFinishChartCanvas').parentElement;
+import { buildCasasTerminadasAnoData } from "./modules/renderers.js";
+
+export function renderChartCasasTerminadasChartJS(rows) {
+  const points = buildCasasTerminadasAnoData(rows).filter(p => p.ano > 0);
+  const container = document.getElementById('casasFinishChart')?.parentElement;
   if (!points || points.length === 0) {
     if (container) container.style.display = 'none';
     if (chartCasasTerminadas) { chartCasasTerminadas.destroy(); chartCasasTerminadas = null; }
     return;
   }
   if (container) container.style.display = '';
-  const ctx = document.getElementById('casasFinishChartCanvas').getContext('2d');
+  const ctx = document.getElementById('casasFinishChart').getContext('2d');
   if (chartCasasTerminadas) chartCasasTerminadas.destroy();
   const labels = points.map(p => `Año ${p.ano}`);
   const data = points.map(p => p.casasAno);

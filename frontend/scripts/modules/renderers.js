@@ -420,6 +420,7 @@ function renderInteractiveCasasChart(target, summaryTarget, points, chartLabel, 
 
 export function renderCasasChart(target, summaryTarget, rows) {
   const points = buildCasasAnoData(rows);
+  target.classList.remove("casas-chart-empty");
   renderInteractiveCasasChart(
     target,
     summaryTarget,
@@ -433,6 +434,7 @@ export function renderCasasChart(target, summaryTarget, rows) {
 
 export function renderCasasTerminadasChart(target, summaryTarget, rows) {
   const points = buildCasasTerminadasAnoData(rows);
+  target.classList.remove("casas-chart-empty");
   renderInteractiveCasasChart(
     target,
     summaryTarget,
@@ -446,6 +448,7 @@ export function renderCasasTerminadasChart(target, summaryTarget, rows) {
 
 export function renderCasasEjecucionChart(target, summaryTarget, rows) {
   const points = buildCasasEjecucionAnoData(rows);
+  target.classList.remove("casas-chart-empty");
   renderInteractiveCasasChart(
     target,
     summaryTarget,
