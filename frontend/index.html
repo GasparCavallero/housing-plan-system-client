@@ -249,24 +249,26 @@
         <h2>Casas iniciadas por año</h2>
         <p id="casas-chart-summary">Ejecutá una simulación para visualizar la evolución anual.</p>
       </div>
-        <canvas id="casasChart"
-          style="max-width: 600px; height: 220px; background: #fff; border-radius: 8px; margin-bottom: 24px; display: block; margin-left: auto; margin-right: auto;"></canvas>
+      <canvas id="casasChart" class="main-chart-canvas"></canvas>
       <div class="panel-head">
         <h2>Casas terminadas por año</h2>
         <p id="casas-finish-chart-summary">Ejecutá una simulación para visualizar la evolución anual.</p>
       </div>
-      <div id="casas-finish-chart" class="casas-chart casas-chart-empty">Sin datos de simulación para graficar.</div>
+
+      <canvas id="casasFinishChart" class="main-chart-canvas"></canvas>
       <div class="panel-head">
         <h2>Casas en ejecución por año</h2>
         <p id="casas-ejecucion-chart-summary">Ejecutá una simulación para visualizar la evolución anual.</p>
       </div>
-      <div id="casas-ejecucion-chart" class="casas-chart casas-chart-empty">Sin datos de simulación para graficar.</div>
+
+      <canvas id="casasEjecucionChart" class="main-chart-canvas"></canvas>
       <div class="panel-head">
         <h2>Plata recaudada y casas alcanzables por año</h2>
         <p id="recaudacion-chart-summary">Ejecutá una simulación para visualizar recaudación anual y cobertura de
           viviendas.</p>
       </div>
-      <div id="recaudacion-chart" class="casas-chart casas-chart-empty">Sin datos de simulación para graficar.</div>
+
+      <canvas id="recaudacionChart" class="main-chart-canvas"></canvas>
     </section>
 
     <section id="adherentes" class="panel panel-adherentes">
@@ -323,7 +325,7 @@
         <input type="number" name="mesLote" min="1" value="1" placeholder="Mes" required />
         <button id="btn-registrar-pagos-lote" class="btn btn-secondary" type="submit">Carga rápida temporal</button>
       </form>
-      <form id="pago-eliminar-form" class="inline-form pago-form" style="display: none;">
+      <form id="pago-eliminar-form" class="inline-form pago-form hidden">
         <input type="number" name="pagoIdEliminar" min="1" placeholder="ID pago a eliminar" required />
         <button id="btn-eliminar-pago" class="btn btn-secondary" type="submit">Eliminar pago</button>
       </form>

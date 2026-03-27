@@ -1,3 +1,16 @@
+/* Gráficos principales Chart.js */
+.main-chart-canvas {
+  width: 100%;
+  max-width: 70vw;
+  height: 240px;
+  max-height: 240px;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 32px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
 .formula-mono {
   font-family: "IBM Plex Mono", "Space Grotesk", monospace;
   font-size: 0.98em;
