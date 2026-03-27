@@ -482,7 +482,6 @@ export function buildRecaudacionCasasAnoData(rows, valorViviendaArs) {
       const casasAlcanzables = Number.isFinite(valorViviendaArs) && valorViviendaArs > 0
         ? Number((recaudadoArs / valorViviendaArs).toFixed(2))
         : 0;
-
       return {
         ano: Number(ano),
         recaudadoArs,
