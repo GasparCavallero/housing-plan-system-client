@@ -759,6 +759,7 @@ async function ejecutarSimulacionServidor(options = {}) {
 
     renderTimeline(dom.tableBody, rows);
     renderCasasChartChartJS(rows);
+    renderCasasChart(dom.casasChart, dom.casasChartSummary, rows);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, rows);
     renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, rows);
     renderRecaudacionChart(dom.recaudacionChart, dom.recaudacionChartSummary, rows, valorViviendaArs);
@@ -772,6 +773,7 @@ async function ejecutarSimulacionServidor(options = {}) {
     }
   } else {
     renderCasasChartChartJS([]);
+    renderCasasChart(dom.casasChart, dom.casasChartSummary, []);
     renderCasasTerminadasChart(dom.casasFinishChart, dom.casasFinishChartSummary, []);
     renderCasasEjecucionChart(dom.casasEjecucionChart, dom.casasEjecucionChartSummary, []);
     renderRecaudacionChart(dom.recaudacionChart, dom.recaudacionChartSummary, [], valorViviendaArs);
