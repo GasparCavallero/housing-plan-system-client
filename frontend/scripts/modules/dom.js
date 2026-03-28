@@ -6,7 +6,7 @@ export const dom = {
   adminCreateUserForm: document.getElementById("admin-create-user-form"),
   pagoForm: document.getElementById("pago-form"),
   pagoLoteForm: document.getElementById("pago-lote-form"),
-  pagoEliminarForm: document.getElementById("pago-eliminar-form"),
+  // pagoEliminarForm eliminado
   tableBody: document.getElementById("sim-table-body"),
   adherentesBody: document.getElementById("adherentes-body"),
   pagosBody: document.getElementById("pagos-body"),
@@ -47,7 +47,7 @@ export const dom = {
   buttonCrearAdherentesLote: document.getElementById("btn-crear-adherentes-lote"),
   buttonRegistrarPagosLote: document.getElementById("btn-registrar-pagos-lote"),
   buttonListarPagos: document.getElementById("btn-listar-pagos"),
-  buttonEliminarPago: document.getElementById("btn-eliminar-pago"),
+  // buttonEliminarPago eliminado
   kpi: {
     valorViviendaArs: document.getElementById("kpi-valor-vivienda-ars"),
     valorViviendaUsd: document.getElementById("kpi-valor-vivienda-usd"),

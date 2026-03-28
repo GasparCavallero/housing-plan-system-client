@@ -414,7 +414,7 @@ function applyRoleUI(user) {
   }
   document.getElementById("btn-registrar-pago").disabled = readOnlyMode;
   dom.buttonRegistrarPagosLote.disabled = readOnlyMode;
-  dom.buttonEliminarPago.disabled = readOnlyMode;
+  // dom.buttonEliminarPago eliminado
   syncRowActionPermissions(readOnlyMode);
 }
 
@@ -1152,36 +1152,7 @@ async function guardarPagoDesdeFila(button) {
   await actualizarPagos();
 }
 
-async function eliminarPagoPorId(pagoId, focusBackElement = dom.buttonEliminarPago) {
-  const confirmacion = await pedirConfirmacion({
-    title: "Eliminar pago",
-    message: `Se eliminará el pago ID ${pagoId}. Esta acción no se puede deshacer.`,
-    acceptLabel: "Eliminar",
-    focusBackElement
-  });
-
-  if (!confirmacion) {
-    return;
-  }
-
-  let payload;
-  try {
-    payload = await eliminarPago(pagoId);
-  } catch (error) {
-    if (Number(error?.status || 0) === 404) {
-      writeLog(dom.systemLog, "Eliminar pago", {
-        pagoId,
-        message: "No encontrado o fuera de tu alcance"
-      });
-      await actualizarPagos();
-      return;
-    }
-    throw error;
-  }
-
-  writeLog(dom.systemLog, "Eliminar pago", { pagoId, payload });
-  await actualizarPagos();
-}
+// eliminarPagoPorId eliminado
 
 async function logoutFlow() {
   try {
@@ -1315,18 +1286,7 @@ async function registrarPagosLoteFlow(event) {
   });
 }
 
-async function eliminarPagoFlow(event) {
-  event.preventDefault();
-  const data = new FormData(dom.pagoEliminarForm);
-  const pagoId = Number(data.get("pagoIdEliminar") || 0);
-
-  if (!Number.isFinite(pagoId) || pagoId < 1) {
-    throw new Error("Ingresá un ID de pago válido.");
-  }
-
-  await eliminarPagoPorId(pagoId, dom.buttonEliminarPago);
-  dom.pagoEliminarForm.reset();
-}
+// eliminarPagoFlow eliminado
 
 dom.buttonSimularServidor.addEventListener("click", withUiFeedback(ejecutarSimulacionServidor));
 dom.buttonGuardarConfig.addEventListener("click", withUiFeedback(guardarConfiguracionServidor));
@@ -1368,7 +1328,7 @@ dom.pagoForm.addEventListener("submit", withUiFeedback(async (event) => {
   await actualizarPagos();
 }));
 dom.pagoLoteForm.addEventListener("submit", withUiFeedback(registrarPagosLoteFlow));
-dom.pagoEliminarForm.addEventListener("submit", withUiFeedback(eliminarPagoFlow));
+// Listener de pagoEliminarForm eliminado
 
 dom.adherentesSearch?.addEventListener("input", () => {
   applyAdherentesFilter();
