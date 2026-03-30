@@ -253,11 +253,6 @@
         <button id="btn-crear-adherente" class="btn btn-primary" type="submit">Crear</button>
         <button id="btn-listar-adherentes" class="btn btn-ghost" type="button">Actualizar lista</button>
       </form>
-      <form id="adherente-lote-form" class="inline-form">
-        <input type="number" name="cantidad" min="1" max="200" value="10" placeholder="Cantidad" required />
-        <input type="text" name="prefijo" value="Adherente" placeholder="Prefijo nombre" required />
-        <button id="btn-crear-adherentes-lote" class="btn btn-secondary" type="submit">Carga rápida temporal</button>
-      </form>
       <form class="inline-form" role="search" aria-label="Buscar adherentes">
         <input id="adherentes-search" type="search" placeholder="Buscar adherentes por ID, nombre, estado o cuotas" />
       </form>
@@ -289,13 +284,6 @@
         <input type="number" name="mes" min="1" placeholder="Mes" required />
         <button id="btn-registrar-pago" class="btn btn-primary" type="submit">Registrar pago</button>
         <button id="btn-listar-pagos" class="btn btn-ghost" type="button">Actualizar pagos</button>
-      </form>
-      <form id="pago-lote-form" class="inline-form pago-form">
-        <input type="number" name="cantidadPagos" min="1" max="300" value="10" placeholder="Cantidad" required />
-        <input type="number" name="adherenteInicial" min="1" value="1" placeholder="Adherente inicial" required />
-        <input type="number" name="montoLoteArs" min="1" step="0.01" value="100000" placeholder="Monto ARS" required />
-        <input type="number" name="mesLote" min="1" value="1" placeholder="Mes" required />
-        <button id="btn-registrar-pagos-lote" class="btn btn-secondary" type="submit">Carga rápida temporal</button>
       </form>
       <form class="inline-form pago-form" role="search" aria-label="Buscar pagos">
         <input id="pagos-search" type="search" placeholder="Buscar pagos por ID, adherente, monto, mes o fecha" />

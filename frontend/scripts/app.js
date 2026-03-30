@@ -387,13 +387,11 @@ function applyRoleUI(user) {
   dom.buttonGuardarConfig.disabled = readOnlyMode;
   dom.buttonReiniciarPlan.disabled = readOnlyMode;
   document.getElementById("btn-crear-adherente").disabled = readOnlyMode;
-  dom.buttonCrearAdherentesLote.disabled = readOnlyMode;
   const buttonCambiarEstado = document.getElementById("btn-cambiar-estado");
   if (buttonCambiarEstado) {
     buttonCambiarEstado.disabled = readOnlyMode;
   }
   document.getElementById("btn-registrar-pago").disabled = readOnlyMode;
-  dom.buttonRegistrarPagosLote.disabled = readOnlyMode;
   // dom.buttonEliminarPago eliminado
   syncRowActionPermissions(readOnlyMode);
 }
@@ -1137,78 +1135,6 @@ async function crearUsuarioAdminFlow(event) {
   writeLog(dom.systemLog, "Usuario creado por admin", user);
 }
 
-async function crearAdherentesLoteFlow(event) {
-  event.preventDefault();
-  const data = new FormData(dom.adherenteLoteForm);
-  const cantidad = Number(data.get("cantidad") || 0);
-  const prefijo = String(data.get("prefijo") || "Adherente").trim();
-
-  if (!Number.isFinite(cantidad) || cantidad < 1 || cantidad > 200) {
-    throw new Error("La cantidad debe estar entre 1 y 200.");
-  }
-  if (!prefijo) {
-    throw new Error("Ingresá un prefijo para los nombres.");
-  }
-
-  const actuales = await listarAdherentes();
-  const base = actuales.length;
-
-  for (let i = 1; i <= cantidad; i += 1) {
-    const nombre = `${prefijo} ${base + i}`;
-    await crearAdherente(nombre);
-  }
-
-  await actualizarAdherentes();
-  writeLog(dom.systemLog, "Carga rápida temporal", {
-    creados: cantidad,
-    prefijo
-  });
-}
-
-async function registrarPagosLoteFlow(event) {
-  event.preventDefault();
-  const data = new FormData(dom.pagoLoteForm);
-  const cantidad = Number(data.get("cantidadPagos") || 0);
-  const adherenteInicial = Number(data.get("adherenteInicial") || 0);
-  const montoArs = Number(data.get("montoLoteArs") || 0);
-  const mes = Number(data.get("mesLote") || 0);
-
-  if (!Number.isFinite(cantidad) || cantidad < 1 || cantidad > 300) {
-    throw new Error("La cantidad de pagos debe estar entre 1 y 300.");
-  }
-  if (!Number.isFinite(adherenteInicial) || adherenteInicial < 1) {
-    throw new Error("El adherente inicial debe ser mayor o igual a 1.");
-  }
-  if (!Number.isFinite(montoArs) || montoArs <= 0) {
-    throw new Error("El monto debe ser mayor a 0.");
-  }
-  if (!Number.isFinite(mes) || mes < 1) {
-    throw new Error("El mes debe ser mayor o igual a 1.");
-  }
-
-  let creados = 0;
-  let fallidos = 0;
-
-  for (let i = 0; i < cantidad; i += 1) {
-    const adherenteId = adherenteInicial + i;
-    try {
-      await registrarPago(adherenteId, montoArs, mes);
-      creados += 1;
-    } catch {
-      fallidos += 1;
-    }
-  }
-
-  await actualizarPagos();
-  writeLog(dom.systemLog, "Carga rápida temporal de pagos", {
-    cantidad,
-    adherenteInicial,
-    montoArs,
-    mes,
-    creados,
-    fallidos
-  });
-}
 
 // eliminarPagoFlow eliminado
 
@@ -1234,7 +1160,6 @@ dom.adherenteForm.addEventListener("submit", withUiFeedback(async (event) => {
   await actualizarAdherentes();
 }));
 
-dom.adherenteLoteForm.addEventListener("submit", withUiFeedback(crearAdherentesLoteFlow));
 
 dom.buttonListarPagos.addEventListener("click", withUiFeedback(actualizarPagos));
 dom.pagoForm.addEventListener("submit", withUiFeedback(async (event) => {
@@ -1250,7 +1175,6 @@ dom.pagoForm.addEventListener("submit", withUiFeedback(async (event) => {
   dom.pagoForm.reset();
   await actualizarPagos();
 }));
-dom.pagoLoteForm.addEventListener("submit", withUiFeedback(registrarPagosLoteFlow));
 // Listener de pagoEliminarForm eliminado
 
 dom.adherentesSearch?.addEventListener("input", () => {

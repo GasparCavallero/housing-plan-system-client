@@ -2,11 +2,8 @@ export const dom = {
   form: document.getElementById("config-form"),
   operacionForm: document.getElementById("operacion-form"),
   adherenteForm: document.getElementById("adherente-form"),
-  adherenteLoteForm: document.getElementById("adherente-lote-form"),
   adminCreateUserForm: document.getElementById("admin-create-user-form"),
   pagoForm: document.getElementById("pago-form"),
-  pagoLoteForm: document.getElementById("pago-lote-form"),
-  // pagoEliminarForm eliminado
   tableBody: document.getElementById("sim-table-body"),
   adherentesBody: document.getElementById("adherentes-body"),
   pagosBody: document.getElementById("pagos-body"),
@@ -43,10 +40,7 @@ export const dom = {
   buttonGuardarConfig: document.getElementById("btn-guardar-config"),
   buttonCargarResumen: document.getElementById("btn-cargar-resumen"),
   buttonListarAdherentes: document.getElementById("btn-listar-adherentes"),
-  buttonCrearAdherentesLote: document.getElementById("btn-crear-adherentes-lote"),
-  buttonRegistrarPagosLote: document.getElementById("btn-registrar-pagos-lote"),
   buttonListarPagos: document.getElementById("btn-listar-pagos"),
-  // buttonEliminarPago eliminado
   kpi: {
     valorViviendaArs: document.getElementById("kpi-valor-vivienda-ars"),
     valorViviendaUsd: document.getElementById("kpi-valor-vivienda-usd"),
