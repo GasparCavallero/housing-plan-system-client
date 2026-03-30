@@ -5,14 +5,14 @@ import { buildRecaudacionCasasAnoData } from "./modules/renderers.js";
 
 export function renderChartRecaudacionChartJS(rows, valorViviendaArs) {
   const points = buildRecaudacionCasasAnoData(rows, valorViviendaArs).filter(p => p.ano > 0);
-  const container = document.getElementById('recaudacionChart')?.parentElement;
+  const container = document.getElementById('recaudacion-chart')?.parentElement;
   if (!points || points.length === 0) {
     if (container) container.style.display = 'none';
     if (chartRecaudacion) { chartRecaudacion.destroy(); chartRecaudacion = null; }
     return;
   }
   if (container) container.style.display = '';
-  const ctx = document.getElementById('recaudacionChart').getContext('2d');
+  const ctx = document.getElementById('recaudacion-chart').getContext('2d');
   if (chartRecaudacion) chartRecaudacion.destroy();
   const labels = points.map(p => `Año ${p.ano}`);
   const dataRecaudado = points.map(p => p.recaudadoArs);

@@ -62,7 +62,7 @@ let pagosItems = [];
 
 const DEFAULT_PORCENTAJE_CUOTA_COMPLETA = 0.8333333333;
 const DEFAULT_PORCENTAJE_MEDIA_CUOTA = 0.4166666667;
-const DEFAULT_METODOLOGIA_PLAN = "dinamico";
+const DEFAULT_METODOLOGIA_PLAN = "legacy";
 
 function formatArsValue(value) {
   return `${value.toLocaleString("es-AR", { maximumFractionDigits: 2 })} ARS`;
@@ -112,16 +112,11 @@ function updateMetodologiaUI() {
     return;
   }
 
-  const metodologia = String(dom.form.elements.metodologiaPlan?.value || DEFAULT_METODOLOGIA_PLAN).trim().toLowerCase();
-  const isLegacy = metodologia === "legacy";
-  legacyField.classList.toggle("hidden", !isLegacy);
-
+  // Siempre legacy
+  legacyField.classList.remove("hidden");
   const cronogramaInput = dom.form.elements.cronogramaAdjudicacionesAnual;
   if (cronogramaInput) {
-    cronogramaInput.required = isLegacy;
-    if (!isLegacy) {
-      cronogramaInput.value = "";
-    }
+    cronogramaInput.required = true;
   }
 }
 
@@ -748,11 +743,10 @@ async function ejecutarSimulacionServidor(options = {}) {
     await navController.showSection("simulacion");
   }
 
-  const data = new FormData(dom.operacionForm);
-  const horizonteRaw = String(data.get("horizonteMeses") || "").trim();
-  const horizonte = horizonteRaw ? Number(horizonteRaw) : null;
-  const ofertas = buildOptionalOfertas(data);
-  const payload = await simularServidor(horizonte, ofertas);
+  // Usar la cantidad de cuotas de la configuración como horizonte
+  const config = getConfig(dom.form);
+  const horizonte = Number(config.cantidad_cuotas) || 36;
+  const payload = await simularServidor(horizonte, []);
   const rows = normalizeTimeline(payload);
   const valorViviendaArs = estimateValorViviendaArsFromForm();
   const horizonteTexto = Number.isFinite(horizonte) && horizonte > 0 ? String(horizonte) : "el horizonte configurado";

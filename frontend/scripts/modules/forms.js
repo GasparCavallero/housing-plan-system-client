@@ -2,7 +2,7 @@ export function getConfig(form) {
   const data = new FormData(form);
 
   return {
-    metodologia_plan: String(data.get("metodologiaPlan") || "dinamico"),
+    metodologia_plan: "legacy",
     cronograma_adjudicaciones_anual: String(data.get("cronogramaAdjudicacionesAnual") || "").trim() || null,
     periodicidad_licitacion_meses: Number(data.get("periodicidadLicitacionMeses")),
     porcentaje_licitacion_extraordinaria: Number(data.get("porcentajeLicitacionExtraordinaria")),
@@ -19,7 +19,7 @@ export function getConfig(form) {
 }
 
 export function setConfigToForm(form, config) {
-  form.elements.metodologiaPlan.value = config.metodologia_plan ?? config.metodologiaPlan ?? "dinamico";
+  // metodología eliminada, siempre legacy
   form.elements.cronogramaAdjudicacionesAnual.value = config.cronograma_adjudicaciones_anual ?? config.cronogramaAdjudicacionesAnual ?? "";
   form.elements.periodicidadLicitacionMeses.value = config.periodicidad_licitacion_meses ?? config.periodicidadLicitacionMeses ?? 3;
   form.elements.porcentajeLicitacionExtraordinaria.value = config.porcentaje_licitacion_extraordinaria ?? config.porcentajeLicitacionExtraordinaria ?? 0;

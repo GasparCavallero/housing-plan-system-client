@@ -1,9 +1,8 @@
 /* Gráficos principales Chart.js */
 .main-chart-canvas {
   width: 100%;
-  max-width: 70vw;
+  max-width: 1800px;
   height: 240px;
-  max-height: 240px;
   background: #fff;
   border-radius: 8px;
   margin-bottom: 32px;

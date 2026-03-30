@@ -107,11 +107,6 @@
           <input type="number" name="mesesMediaCuotaInicial" min="0" step="1" value="7" required />
         </label>
         <label>
-          Metodología del plan
-          <select name="metodologiaPlan" aria-label="Metodología del plan" required>
-            <option value="dinamico">dinamico</option>
-            <option value="legacy">legacy</option>
-          </select>
         </label>
         <label>
           Periodicidad licitación (meses)
@@ -138,19 +133,6 @@
       <p id="config-preview" class="config-help">
         Preview: valor_total_vivienda = - | cuota_completa = - | media_cuota = -
       </p>
-      <!--
-        EXPLICACIÓN ACTUALIZADA (2026-03-26):
-        - El porcentaje de cuota completa y media cuota se aplica sobre el valor del metro cuadrado.
-        - Ejemplo: cuota_completa = valor_por_m2 × (porcentaje_cuota_completa / 100)
-        - Ejemplo: media_cuota = valor_por_m2 × (porcentaje_media_cuota / 100)
-        - Hasta adjudicación paga media cuota según porcentaje configurado.
-        - Luego paga cuota completa según porcentaje configurado.
-        - No quedan casas para iniciar: se continúa cobrando cuotas pendientes mientras haya aportes vigentes.
-        - El sistema recalcula la cuota para cumplir el objetivo de casas en el plazo de cuotas usando los porcentajes.
-        - Si la metodología es legacy, el cupo anual de inicios se controla por cronograma.
-        - Si querés aplicar ingreso extraordinario por licitación en procesar mes, usar método de adjudicación: licitación.
-        - Tope de pago por adherente: 180 cuotas.
-      -->
       <p class="config-help">
         <strong>Fórmula de cuota:</strong><br />
         <span class="formula-mono">cuota_completa = valor_por_m2 × (porcentaje_cuota_completa / 100)</span><br />
@@ -161,9 +143,7 @@
         No quedan casas para iniciar: se continúa cobrando cuotas pendientes mientras haya aportes vigentes.<br />
         El sistema recalcula la cuota para cumplir el objetivo de casas en el plazo de cuotas usando los
         porcentajes.<br />
-        Si la metodología es legacy, el cupo anual de inicios se controla por cronograma.<br />
-        Si querés aplicar ingreso extraordinario por licitación en procesar mes, usar método de adjudicación:
-        licitación.<br />
+        El cupo anual de inicios se controla por cronograma.<br />
         Tope de pago por adherente: 180 cuotas.<br />
       </p>
       <div class="actions multi-actions">
@@ -193,17 +173,17 @@
         <article class="kpi-card">
           <p>Ingreso estimado mensual</p>
           <h3 id="kpi-ingreso-mensual">-</h3>
-          <small>Tomado del backend, con variaciones por adjudicaciones y cuota dinámica mensual</small>
+          <small>Con variaciones por adjudicaciones y cuota dinámica mensual</small>
         </article>
         <article class="kpi-card">
           <p>Cuota completa del mes</p>
           <h3 id="kpi-cuota-completa-mes">-</h3>
-          <small>Desde /planes/estado.cuotas_actuales</small>
+          <small>Según porcentajes configurados</small>
         </article>
         <article class="kpi-card">
           <p>Media cuota del mes</p>
           <h3 id="kpi-media-cuota-mes">-</h3>
-          <small>Según porcentajes configurados en /configuracion</small>
+          <small>Según porcentajes configurados</small>
         </article>
       </div>
     </section>
@@ -212,15 +192,8 @@
       <div class="panel-head">
         <h2>Simulación mensual</h2>
         <p id="sim-summary">Ejecutá la simulación para ver proyecciones.</p>
-        <p class="config-help">Si la metodología es legacy, el backend aplica cupo anual de adjudicaciones y el
-          crecimiento de inicios puede ser más controlado.</p>
       </div>
       <form id="operacion-form" class="inline-form">
-        <input type="number" name="horizonteMeses" min="1" placeholder="Horizonte meses (opcional, por defecto 36)" />
-        <span class="config-help">Ofertas de licitación (opcional):</span>
-        <input type="number" name="ofertaAdherenteId" min="1" placeholder="ID adherente que licita (opcional)" />
-        <input type="number" name="ofertaPorcentaje" min="0.01" max="100" step="0.01"
-          placeholder="% de cuotas restantes ofertado (opcional)" />
         <button id="btn-simular-servidor" class="btn btn-primary" type="button">Simular</button>
         <button id="btn-procesar-mes" class="btn btn-secondary" type="button">Procesar mes</button>
         <button id="btn-reiniciar-plan" class="btn btn-ghost" type="button">Reiniciar plan</button>
@@ -249,26 +222,26 @@
         <h2>Casas iniciadas por año</h2>
         <p id="casas-chart-summary">Ejecutá una simulación para visualizar la evolución anual.</p>
       </div>
-      <canvas id="casasChart" class="main-chart-canvas"></canvas>
+      <canvas id="casas-chart" class="main-chart-canvas"></canvas>
       <div class="panel-head">
         <h2>Casas terminadas por año</h2>
         <p id="casas-finish-chart-summary">Ejecutá una simulación para visualizar la evolución anual.</p>
       </div>
 
-      <canvas id="casasFinishChart" class="main-chart-canvas"></canvas>
+      <canvas id="casas-finish-chart" class="main-chart-canvas"></canvas>
       <div class="panel-head">
         <h2>Casas en ejecución por año</h2>
         <p id="casas-ejecucion-chart-summary">Ejecutá una simulación para visualizar la evolución anual.</p>
       </div>
 
-      <canvas id="casasEjecucionChart" class="main-chart-canvas"></canvas>
+      <canvas id="casas-ejecucion-chart" class="main-chart-canvas"></canvas>
       <div class="panel-head">
         <h2>Plata recaudada y casas alcanzables por año</h2>
         <p id="recaudacion-chart-summary">Ejecutá una simulación para visualizar recaudación anual y cobertura de
           viviendas.</p>
       </div>
 
-      <canvas id="recaudacionChart" class="main-chart-canvas"></canvas>
+      <canvas id="recaudacion-chart" class="main-chart-canvas"></canvas>
     </section>
 
     <section id="adherentes" class="panel panel-adherentes">

@@ -45,7 +45,7 @@ export function buildCasasAnoData(rows) {
 
 export function renderCasasChart(rows) {
   const { labels, values } = buildCasasAnoData(rows);
-  const ctx = document.getElementById('casasChart');
+  const ctx = document.getElementById('casas-chart');
   if (!ctx) return;
   if (casasChartInstance) casasChartInstance.destroy();
   casasChartInstance = new Chart(ctx, {
