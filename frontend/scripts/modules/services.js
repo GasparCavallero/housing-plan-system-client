@@ -112,12 +112,6 @@ export async function simularServidor(horizonteMeses = null, ofertas = []) {
   });
 }
 
-export async function procesarMes(ofertas = []) {
-  return apiRequest("/planes/procesar-mes", {
-    method: "POST",
-    body: JSON.stringify({ ofertas })
-  });
-}
 
 export async function reiniciarPlan() {
   try {

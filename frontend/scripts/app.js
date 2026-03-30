@@ -11,7 +11,7 @@ import {
   cargarEstadoPlan,
   guardarConfiguracion,
   simularServidor,
-  procesarMes,
+  // procesarMes eliminado
   reiniciarPlan,
   listarAdherentes,
   crearAdherente,
@@ -165,20 +165,6 @@ function validateConfigBusinessRules(payload) {
   }
 }
 
-function buildOptionalOfertas(formData) {
-  const ofertaAdherenteId = Number(formData.get("ofertaAdherenteId") || 0);
-  const ofertaPorcentaje = Number(formData.get("ofertaPorcentaje") || 0);
-  const ofertas = [];
-
-  if (ofertaAdherenteId > 0 && ofertaPorcentaje > 0) {
-    ofertas.push({
-      adherente_id: ofertaAdherenteId,
-      porcentaje_cuotas_restantes: ofertaPorcentaje
-    });
-  }
-
-  return ofertas;
-}
 
 function redirectToLogin() {
   window.location.href = "./login.html";
@@ -399,7 +385,6 @@ function applyRoleUI(user) {
   }
 
   dom.buttonGuardarConfig.disabled = readOnlyMode;
-  dom.buttonProcesarMes.disabled = readOnlyMode;
   dom.buttonReiniciarPlan.disabled = readOnlyMode;
   document.getElementById("btn-crear-adherente").disabled = readOnlyMode;
   dom.buttonCrearAdherentesLote.disabled = readOnlyMode;
@@ -889,61 +874,6 @@ async function guardarConfiguracionServidor() {
   }
 }
 
-async function procesarMesServidor() {
-  const data = new FormData(dom.operacionForm);
-  const ofertas = buildOptionalOfertas(data);
-  const payload = await procesarMes(ofertas);
-  const casasIniciadas = Number(payload?.casas_iniciadas);
-  const casasEntregadas = Number(payload?.casas_entregadas);
-  const fondoArs = Number(payload?.fondo_ars);
-  const cuotaCompletaMes = Number(payload?.cuota_completa_mes_ars);
-  const mediaCuotaMes = Number(payload?.media_cuota_mes_ars);
-  const ingresoAportesMes = Number(payload?.ingreso_aportes_mes_ars ?? 0);
-  const ingresoLicitacionMes = Number(payload?.ingreso_licitacion_mes_ars ?? 0);
-  const ingresoMes = Number(payload?.ingreso_mes_ars ?? 0);
-
-  const partes = [];
-  if (Number.isFinite(casasIniciadas)) {
-    partes.push(`Casas iniciadas (acumuladas): ${casasIniciadas}`);
-    dom.kpi.viviendasIniciadas.textContent = String(casasIniciadas);
-  }
-  if (Number.isFinite(casasEntregadas)) {
-    partes.push(`Casas entregadas (acumuladas): ${casasEntregadas}`);
-    dom.kpi.viviendasFinalizadas.textContent = `Finalizadas: ${casasEntregadas}`;
-  }
-  if (Number.isFinite(fondoArs)) {
-    partes.push(`Fondo actual: ${formatArsValue(fondoArs)}`);
-  }
-  if (Number.isFinite(cuotaCompletaMes)) {
-    const hayAportesVigentes = Number.isFinite(ingresoMes) ? ingresoMes > 0 : true;
-    if (cuotaCompletaMes === 0 && hayAportesVigentes) {
-      partes.push("Estado: objetivo de inicios cumplido; se continúa cobrando cuotas pendientes");
-      partes.push("Cuota completa mes: 0 ARS (sin nuevos inicios)");
-    } else if (cuotaCompletaMes === 0) {
-      partes.push("Estado: objetivo de inicios cumplido y fin de cobro (sin aportes vigentes)");
-      partes.push("Cuota completa mes: 0 ARS");
-    } else {
-      partes.push(`Cuota completa mes: ${formatArsValue(cuotaCompletaMes)}`);
-    }
-  }
-  if (Number.isFinite(mediaCuotaMes)) {
-    partes.push(`Media cuota mes: ${formatArsValue(mediaCuotaMes)}`);
-  }
-  const lineasIngresos = [
-    `Ingreso por aportes: ${formatArsValue(Number.isFinite(ingresoAportesMes) ? ingresoAportesMes : 0)}`,
-    `Ingreso extraordinario licitación: ${formatArsValue(Number.isFinite(ingresoLicitacionMes) ? ingresoLicitacionMes : 0)}`,
-    `Ingreso total mes: ${formatArsValue(Number.isFinite(ingresoMes) ? ingresoMes : 0)}`
-  ];
-
-  if (partes.length > 0) {
-    setSummary(dom.simSummary, `Procesar mes ok. ${partes.join(" | ")}\n${lineasIngresos.join("\n")}`);
-  } else {
-    setSummary(dom.simSummary, `Procesar mes ok.\n${lineasIngresos.join("\n")}`);
-  }
-
-  writeLog(dom.systemLog, "Procesar mes", payload);
-  await cargarResumenServidor();
-}
 
 async function reiniciarPlanServidor() {
   const confirmacion = await pedirConfirmacion({
@@ -1285,7 +1215,6 @@ async function registrarPagosLoteFlow(event) {
 dom.buttonSimularServidor.addEventListener("click", withUiFeedback(ejecutarSimulacionServidor));
 dom.buttonGuardarConfig.addEventListener("click", withUiFeedback(guardarConfiguracionServidor));
 dom.buttonCargarResumen.addEventListener("click", withUiFeedback(cargarResumenServidor));
-dom.buttonProcesarMes.addEventListener("click", withUiFeedback(procesarMesServidor));
 dom.buttonReiniciarPlan.addEventListener("click", withUiFeedback(reiniciarPlanServidor));
 
 dom.buttonLogout.addEventListener("click", withUiFeedback(logoutFlow));

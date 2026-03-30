@@ -39,7 +39,6 @@ export const dom = {
   systemLog: document.getElementById("system-log"),
   buttonLogout: document.getElementById("btn-logout"),
   buttonSimularServidor: document.getElementById("btn-simular-servidor"),
-  buttonProcesarMes: document.getElementById("btn-procesar-mes"),
   buttonReiniciarPlan: document.getElementById("btn-reiniciar-plan"),
   buttonGuardarConfig: document.getElementById("btn-guardar-config"),
   buttonCargarResumen: document.getElementById("btn-cargar-resumen"),
