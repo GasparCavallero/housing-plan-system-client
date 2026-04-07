@@ -100,10 +100,15 @@ export async function guardarConfiguracion(config) {
   });
 }
 
-export async function simularServidor(horizonteMeses = null, ofertas = []) {
+export async function simularServidor({ horizonteMeses = null, ofertas = [], configuracion = null } = {}) {
   const body = { ofertas };
   if (Number.isFinite(horizonteMeses) && horizonteMeses > 0) {
     body.horizonte_meses = horizonteMeses;
+  }
+
+  if (configuracion && typeof configuracion === "object") {
+    body.configuracion = configuracion;
+    Object.assign(body, configuracion);
   }
 
   return apiRequest("/planes/simular", {

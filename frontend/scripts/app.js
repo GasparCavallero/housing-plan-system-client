@@ -771,7 +771,11 @@ async function ejecutarSimulacionServidor(options = {}) {
     strictValidation: false
   });
   const horizonte = Number(config.cantidad_cuotas) || 36;
-  const payload = await simularServidor(horizonte, []);
+  const payload = await simularServidor({
+    horizonteMeses: horizonte,
+    ofertas: [],
+    configuracion: config
+  });
   const rows = normalizeTimeline(payload);
   const valorViviendaArs = estimateValorViviendaArsFromForm();
   const horizonteTexto = Number.isFinite(horizonte) && horizonte > 0 ? String(horizonte) : "el horizonte configurado";
