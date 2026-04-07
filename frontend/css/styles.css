@@ -197,6 +197,11 @@ h1 {
   animation-delay: 0.05s;
 }
 
+.panel-simulations,
+.panel-plan-overview {
+  grid-column: 1 / -1;
+}
+
 .panel-kpi {
   grid-column: span 7;
   animation-delay: 0.13s;
@@ -345,6 +350,255 @@ input:focus {
 
 .config-item-grid strong {
   color: var(--text);
+}
+
+.simulation-create-form input {
+  min-width: 220px;
+}
+
+.simulation-workspace {
+  display: grid;
+  grid-template-columns: minmax(250px, 340px) 1fr;
+  gap: 0.8rem;
+}
+
+.simulation-list {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.simulation-list-item {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 12px;
+  padding: 0.65rem;
+  cursor: pointer;
+}
+
+.simulation-list-item h4 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.simulation-list-item p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.simulation-list-item.is-active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 109, 91, 0.14);
+}
+
+.simulation-detail {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 0.8rem;
+}
+
+.simulation-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+textarea {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-strong);
+  padding: 0.56rem 0.65rem;
+  font: inherit;
+  color: var(--text);
+}
+
+.active-params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.active-params span {
+  border: 1px solid rgba(0, 109, 91, 0.24);
+  border-radius: 999px;
+  background: #edf7f4;
+  color: var(--primary-strong);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.offers-list {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.offer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  padding: 0.24rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.offer-chip button {
+  border: 0;
+  background: transparent;
+  color: #8b3f15;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plan-summary-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.plan-summary-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.6rem;
+}
+
+.plan-summary-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.plan-summary-card h4 {
+  margin: 0.3rem 0 0;
+}
+
+.plan-overview-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+
+.mt-1 {
+  margin-top: 1rem;
+}
+
+.house-cards {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.house-create-form {
+  margin-bottom: 0.6rem;
+  padding: 0.55rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+#house-create-status {
+  margin-top: -0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.house-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.75rem;
+}
+
+.house-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.house-grid {
+  margin-top: 0.6rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.progress-track {
+  width: 100%;
+  height: 10px;
+  background: #e8f1ef;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(120deg, var(--primary), var(--accent));
+}
+
+.house-items {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.house-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.55rem;
+}
+
+.item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.item-sub {
+  color: var(--muted);
+  margin: 0.3rem 0;
+  font-size: 0.82rem;
+}
+
+.row-compact {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn-table {
+  border: 1px solid rgba(0, 79, 65, 0.25);
+  background: #eef5f3;
+  color: var(--primary-strong);
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+@media (max-width: 1024px) {
+  .simulation-workspace,
+  .plan-overview-cols,
+  .plan-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .house-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .btn {

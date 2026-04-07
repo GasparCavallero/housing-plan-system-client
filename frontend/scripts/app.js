@@ -46,6 +46,7 @@ import {
   hasTimelineMetrics,
   normalizeTimeline
 } from "./modules/renderers.js";
+import { initSavedSimulationsWorkspace } from "./modules/saved-simulations.js";
 import { renderCasasChart as renderCasasChartChartJS } from "./chart-casas-iniciadas.js";
 import { renderChartCasasTerminadasChartJS } from "./chart-casas-terminadas.js";
 import { renderChartCasasEjecucionChartJS } from "./chart-casas-ejecucion.js";
@@ -59,6 +60,7 @@ let configuracionesUsuario = [];
 let isReadOnlyMode = false;
 let adherentesItems = [];
 let pagosItems = [];
+let simulationsWorkspace = null;
 
 const DEFAULT_PORCENTAJE_CUOTA_COMPLETA = 0.8333333333;
 const DEFAULT_PORCENTAJE_MEDIA_CUOTA = 0.4166666667;
@@ -203,6 +205,9 @@ function withUiFeedback(fn) {
       }
 
       setSummary(dom.simSummary, `Error: ${message}`);
+      if (dom.configSaveStatus) {
+        dom.configSaveStatus.textContent = `Estado: error al guardar (${message}).`;
+      }
 
       if (/no autenticado|token|401/i.test(message)) {
         clearTokens();
@@ -262,6 +267,8 @@ function initSectionNav() {
   };
 
   ensureNavLink("grafico-casas", "Gráfico de casas", "simulacion");
+  ensureNavLink("simulaciones-guardadas", "Simulaciones guardadas", "admin-panel");
+  ensureNavLink("plan-simulado", "Plan simulado", "simulaciones-guardadas");
 
   const links = Array.from(nav.querySelectorAll("a[href^='#']"));
   const sections = links
@@ -277,6 +284,8 @@ function initSectionNav() {
   }
 
   const sectionLoaders = {
+    "simulaciones-guardadas": () => simulationsWorkspace?.refreshList({ silent: true }),
+    "plan-simulado": () => simulationsWorkspace?.refreshList({ silent: true }),
     "estado-financiero": cargarResumenServidor,
     configuracion: cargarConfiguracionServidor,
     simulacion: () => ejecutarSimulacionServidor({ skipNavigation: true }),
@@ -442,6 +451,34 @@ function clearBusinessUiState() {
   configuracionesUsuario = [];
   dom.configModalList && (dom.configModalList.innerHTML = "");
   dom.configModal?.classList.add("hidden");
+
+  if (dom.simulationsList) {
+    dom.simulationsList.innerHTML = "";
+  }
+  if (dom.simulationsSummary) {
+    dom.simulationsSummary.textContent = "Sin simulaciones cargadas.";
+  }
+  if (dom.simulationDetailTitle) {
+    dom.simulationDetailTitle.textContent = "Sin simulación seleccionada";
+  }
+  if (dom.simulationDetailMeta) {
+    dom.simulationDetailMeta.textContent = "Seleccioná una simulación para ver y editar detalle.";
+  }
+  if (dom.simulationParametrosPanel) {
+    dom.simulationParametrosPanel.textContent = "Sin datos.";
+  }
+  if (dom.simulationGlobalSummary) {
+    dom.simulationGlobalSummary.innerHTML = "";
+  }
+  if (dom.simulationGlobalMaterials) {
+    dom.simulationGlobalMaterials.innerHTML = "<tr><td colspan=\"6\">Sin materiales cargados.</td></tr>";
+  }
+  if (dom.simulationTimelinePreview) {
+    dom.simulationTimelinePreview.innerHTML = "<tr><td colspan=\"4\">Sin proyección.</td></tr>";
+  }
+  if (dom.simulationHousesContainer) {
+    dom.simulationHousesContainer.innerHTML = "<p>Seleccioná una simulación para editar casas, items y materiales.</p>";
+  }
 }
 
 function matchesSearch(item, query, fields) {
@@ -723,11 +760,16 @@ function pedirConfirmacion({ title, message, acceptLabel = "Confirmar", focusBac
 
 async function ejecutarSimulacionServidor(options = {}) {
   if (navController && !options.skipNavigation) {
+    // La navegación ya dispara el loader de la sección simulación.
     await navController.showSection("simulacion");
+    return;
   }
 
-  // Usar la cantidad de cuotas de la configuración como horizonte
-  const config = getConfig(dom.form);
+  // Intentamos persistir, pero sin bloquear por validaciones locales estrictas.
+  const config = await persistirConfiguracionActual({
+    silent: true,
+    strictValidation: false
+  });
   const horizonte = Number(config.cantidad_cuotas) || 36;
   const payload = await simularServidor(horizonte, []);
   const rows = normalizeTimeline(payload);
@@ -853,23 +895,42 @@ async function cargarResumenServidor() {
 }
 
 async function guardarConfiguracionServidor() {
-  const payload = getConfig(dom.form);
-  if (payload.metodologia_plan !== "legacy") {
-    payload.cronograma_adjudicaciones_anual = null;
-  }
-  validateConfigBusinessRules(payload);
-
+  const payload = await persistirConfiguracionActual({
+    silent: true,
+    strictValidation: true
+  });
+  await cargarConfiguracionServidor({ showPicker: false });
   const mediaMayorQueCompleta = payload.porcentaje_media_cuota > payload.porcentaje_cuota_completa;
-  const response = await guardarConfiguracion(payload);
-  syncSimulationHorizonFromConfig(payload);
-  updateConfigPreview();
-  writeLog(dom.systemLog, "Configuración guardada", response);
 
   if (mediaMayorQueCompleta) {
     setSummary(dom.simSummary, "Configuración guardada. Advertencia: se recomienda que % media cuota sea menor o igual que % cuota completa.");
   } else {
     setSummary(dom.simSummary, "Configuración guardada correctamente.");
   }
+}
+
+async function persistirConfiguracionActual(options = {}) {
+  const { silent = false, strictValidation = true } = options;
+  const payload = getConfig(dom.form);
+  if (payload.metodologia_plan !== "legacy") {
+    payload.cronograma_adjudicaciones_anual = null;
+  }
+  if (strictValidation) {
+    validateConfigBusinessRules(payload);
+  }
+
+  const response = await guardarConfiguracion(payload);
+  syncSimulationHorizonFromConfig(payload);
+  updateConfigPreview();
+  if (dom.configSaveStatus) {
+    const ahora = new Date().toLocaleTimeString("es-AR");
+    dom.configSaveStatus.textContent = `Estado: guardado correctamente (${ahora}).`;
+  }
+  if (!silent) {
+    writeLog(dom.systemLog, "Configuración guardada", response);
+  }
+
+  return payload;
 }
 
 
@@ -1074,7 +1135,36 @@ async function guardarPagoDesdeFila(button) {
   await actualizarPagos();
 }
 
-// eliminarPagoPorId eliminado
+async function eliminarPagoPorId(pagoId, focusBackElement = null) {
+  const confirmacion = await pedirConfirmacion({
+    title: "Eliminar pago",
+    message: `Se eliminará el pago ID ${pagoId}. Esta acción no se puede deshacer desde esta pantalla.`,
+    acceptLabel: "Eliminar",
+    focusBackElement
+  });
+
+  if (!confirmacion) {
+    return;
+  }
+
+  let payload;
+  try {
+    payload = await eliminarPago(pagoId);
+  } catch (error) {
+    if (Number(error?.status || 0) === 404) {
+      writeLog(dom.systemLog, "Eliminar pago", {
+        pagoId,
+        message: "No encontrado o fuera de tu alcance"
+      });
+      await actualizarPagos();
+      return;
+    }
+    throw error;
+  }
+
+  writeLog(dom.systemLog, "Eliminar pago", { pagoId, payload });
+  await actualizarPagos();
+}
 
 async function logoutFlow() {
   try {
@@ -1188,6 +1278,9 @@ dom.pagosSearch?.addEventListener("input", () => {
 dom.form?.addEventListener("input", () => {
   updateMetodologiaUI();
   updateConfigPreview();
+  if (dom.configSaveStatus) {
+    dom.configSaveStatus.textContent = "Estado: cambios sin guardar.";
+  }
 });
 
 dom.adherentesBody.addEventListener("click", withUiFeedback(async (event) => {
@@ -1252,12 +1345,29 @@ dom.pagosBody.addEventListener("click", withUiFeedback(async (event) => {
 
 dom.adminCreateUserForm.addEventListener("submit", withUiFeedback(crearUsuarioAdminFlow));
 
+simulationsWorkspace = initSavedSimulationsWorkspace({
+  dom,
+  withUiFeedback,
+  getConfig,
+  setConfigToForm,
+  updateConfigPreview,
+  updateMetodologiaUI,
+  writeLog,
+  setSummary,
+  pedirConfirmacion,
+  onSimulationLoaded: () => {
+    // No sincronizamos automáticamente para no pisar edición manual de configuración.
+  }
+});
+
 navController = initSectionNav();
 clearBusinessUiState();
 updateMetodologiaUI();
 updateConfigPreview();
 const sessionOk = await bootstrapSession();
 if (sessionOk) {
+  await withUiFeedback(() => cargarConfiguracionServidor({ showPicker: false }))();
+  await withUiFeedback(() => simulationsWorkspace.refreshList({ silent: true }))();
   if (navController) {
     await navController.showSection("estado-financiero");
   }

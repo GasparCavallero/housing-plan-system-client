@@ -49,6 +49,7 @@
 
   <nav class="section-nav" aria-label="Navegación de secciones">
     <a id="nav-link-admin" href="#admin-panel">Admin</a>
+    <a href="#simulaciones-guardadas">Simulaciones guardadas</a>
     <a href="#configuracion">Configuración + Estado</a>
     <a href="#simulacion">Simulación</a>
     <a href="#grafico-casas">Gráfico de casas</a>
@@ -74,6 +75,129 @@
         </select>
         <button id="btn-admin-create-user" class="btn btn-primary" type="submit">Crear usuario</button>
       </form>
+    </section>
+
+    <section id="simulaciones-guardadas" class="panel panel-simulations">
+      <div class="panel-head">
+        <h2>Simulaciones guardadas</h2>
+        <p id="simulations-summary">Cargando simulaciones...</p>
+      </div>
+
+      <form id="simulation-create-form" class="inline-form simulation-create-form">
+        <input type="text" name="titulo" placeholder="Título de la simulación" required />
+        <input type="text" name="descripcion" placeholder="Descripción breve" required />
+        <button class="btn btn-primary" type="submit">Crear simulación</button>
+        <button id="btn-refresh-simulations" class="btn btn-ghost" type="button">Actualizar listado</button>
+      </form>
+
+      <div class="simulation-workspace">
+        <aside>
+          <div id="simulations-list" class="simulation-list"></div>
+        </aside>
+        <article class="simulation-detail">
+          <div class="panel-head">
+            <h3 id="simulation-detail-title">Sin simulación seleccionada</h3>
+            <p id="simulation-detail-meta">Seleccioná una simulación para ver y editar detalle.</p>
+          </div>
+
+          <div class="simulation-edit-grid">
+            <label>
+              Título
+              <input id="simulation-title" type="text" placeholder="Título" />
+            </label>
+            <label>
+              Descripción
+              <input id="simulation-description" type="text" placeholder="Descripción" />
+            </label>
+          </div>
+
+          <div>
+            <h4>Ofertas de licitación</h4>
+            <p class="config-help">Cargá ofertas una por una. No hace falta escribir formatos técnicos.</p>
+            <form id="simulation-offer-form" class="inline-form">
+              <input id="simulation-offer-adherente" type="number" min="1" step="1" placeholder="ID adherente" />
+              <input id="simulation-offer-monto" type="number" min="0" step="0.01" placeholder="Monto ARS" />
+              <button id="btn-offer-add" class="btn btn-ghost" type="submit">Agregar oferta</button>
+              <button id="btn-offer-clear" class="btn btn-ghost" type="button">Limpiar ofertas</button>
+            </form>
+            <div id="simulation-offers-list" class="offers-list"></div>
+          </div>
+
+          <div class="actions multi-actions">
+            <button id="btn-save-simulation" class="btn btn-secondary" type="button">Guardar simulación</button>
+            <button id="btn-save-snapshot" class="btn btn-ghost" type="button">Guardar snapshot</button>
+            <button id="btn-recalculate-simulation" class="btn btn-primary" type="button">Recalcular</button>
+            <button id="btn-clone-simulation" class="btn btn-ghost" type="button">Clonar versión</button>
+          </div>
+
+          <div>
+            <h4>Parámetros activos</h4>
+            <div id="simulation-parametros-activos" class="active-params">Sin datos.</div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="plan-simulado" class="panel panel-plan-overview">
+      <div class="panel-head">
+        <h2>Vista general del plan simulado</h2>
+        <p>Resumen global, inventario por casa y gestión de items/materiales/gastos.</p>
+      </div>
+
+      <div id="simulation-global-summary" class="plan-summary-grid"></div>
+
+      <div class="plan-overview-cols">
+        <article>
+          <h3>Materiales globales agrupados</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Unidad</th>
+                  <th>Total</th>
+                  <th>Retirado</th>
+                  <th>En construcción</th>
+                  <th>Total ARS</th>
+                </tr>
+              </thead>
+              <tbody id="simulation-global-materials"></tbody>
+            </table>
+          </div>
+        </article>
+        <article>
+          <h3>Timeline / proyección</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mes</th>
+                  <th>Evento</th>
+                  <th>Ingreso</th>
+                  <th>Fondo</th>
+                </tr>
+              </thead>
+              <tbody id="simulation-timeline-preview"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+
+      <div class="panel-head mt-1">
+        <h3>Inventario por casa</h3>
+        <button id="btn-add-house" class="btn btn-primary" type="button">Agregar casa</button>
+      </div>
+      <form id="house-create-form" class="inline-form house-create-form hidden">
+        <input id="house-create-adherente-id" type="number" min="1" step="1"
+          placeholder="ID del adherente (opcional)" />
+        <input id="house-create-adherente" type="text" placeholder="Nombre del adherente" required />
+        <input id="house-create-precio" type="number" min="0" step="0.01" placeholder="Precio ARS" required />
+        <input id="house-create-descripcion" type="text" placeholder="Descripción de la casa" />
+        <button id="btn-house-create-submit" class="btn btn-secondary" type="submit">Guardar casa</button>
+        <button id="btn-house-create-cancel" class="btn btn-ghost" type="button">Cancelar</button>
+      </form>
+      <p id="house-create-status" class="config-help hidden"></p>
+      <div id="simulation-houses" class="house-cards"></div>
     </section>
 
     <section id="configuracion" class="panel panel-config">
@@ -152,6 +276,7 @@
         <button id="btn-guardar-config" class="btn btn-secondary">Guardar configuración</button>
         <button id="btn-cargar-resumen" class="btn btn-ghost">Actualizar estado financiero</button>
       </div>
+      <p id="config-save-status" class="config-help">Estado: cambios sin guardar.</p>
     </section>
 
     <section id="estado-financiero" class="panel panel-kpi">
