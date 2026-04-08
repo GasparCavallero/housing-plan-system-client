@@ -80,7 +80,7 @@
     <section id="simulaciones-guardadas" class="panel panel-simulations">
       <div class="panel-head">
         <h2>Simulaciones guardadas</h2>
-        <p id="simulations-summary">Cargando simulaciones...</p>
+        <p id="simulations-summary">Elegí una simulación para editar su inventario y sus entregas.</p>
       </div>
 
       <form id="simulation-create-form" class="inline-form simulation-create-form">
@@ -96,17 +96,22 @@
         </aside>
         <article class="simulation-detail">
           <div class="panel-head">
-            <h3 id="simulation-detail-title">Sin simulación seleccionada</h3>
-            <p id="simulation-detail-meta">Seleccioná una simulación para ver y editar detalle.</p>
+            <h3 id="simulation-detail-title">Ninguna simulación seleccionada</h3>
+            <p id="simulation-detail-meta">Seleccioná una simulación de la lista para trabajar sobre ella.</p>
           </div>
+
+          <p class="config-help simulation-detail-help">
+            Este bloque cambia el nombre y la descripción de la simulación activa. La jerarquía de casas, planillas,
+            items, materiales y movimientos está más abajo.
+          </p>
 
           <div class="simulation-edit-grid">
             <label>
-              Título
+              Nombre de la simulación
               <input id="simulation-title" type="text" placeholder="Título" />
             </label>
             <label>
-              Descripción
+              Descripción de la simulación
               <input id="simulation-description" type="text" placeholder="Descripción" />
             </label>
           </div>
@@ -131,7 +136,7 @@
           </div>
 
           <div>
-            <h4>Parámetros activos</h4>
+            <h4>Configuración activa de esta simulación</h4>
             <div id="simulation-parametros-activos" class="active-params">Sin datos.</div>
           </div>
         </article>
@@ -141,7 +146,8 @@
     <section id="plan-simulado" class="panel panel-plan-overview">
       <div class="panel-head">
         <h2>Vista general del plan simulado</h2>
-        <p>Resumen global, inventario por casa y gestión de items/materiales/gastos.</p>
+        <p>Jerarquía completa de la simulación: casas, planillas de entrega, items, materiales, movimientos y gastos.
+        </p>
       </div>
 
       <div id="simulation-global-summary" class="plan-summary-grid"></div>
@@ -188,11 +194,13 @@
         <button id="btn-add-house" class="btn btn-primary" type="button">Agregar casa</button>
       </div>
       <form id="house-create-form" class="inline-form house-create-form hidden">
-        <input id="house-create-adherente-id" type="number" min="1" step="1"
+        <input id="house-create-adherente-id" name="adherente_id" type="number" min="1" step="1"
           placeholder="ID del adherente (opcional)" />
-        <input id="house-create-adherente" type="text" placeholder="Nombre del adherente" required />
-        <input id="house-create-precio" type="number" min="0" step="0.01" placeholder="Precio ARS" required />
-        <input id="house-create-descripcion" type="text" placeholder="Descripción de la casa" />
+        <input id="house-create-adherente" name="adherente_nombre" type="text" placeholder="Nombre del adherente"
+          required />
+        <input id="house-create-precio" name="precio_ars" type="number" min="0" step="0.01" placeholder="Precio ARS"
+          required />
+        <input id="house-create-descripcion" name="descripcion" type="text" placeholder="Descripción de la casa" />
         <button id="btn-house-create-submit" class="btn btn-secondary" type="submit">Guardar casa</button>
         <button id="btn-house-create-cancel" class="btn btn-ghost" type="button">Cancelar</button>
       </form>

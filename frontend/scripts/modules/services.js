@@ -117,6 +117,147 @@ export async function simularServidor({ horizonteMeses = null, ofertas = [], con
   });
 }
 
+export async function listarCasasSimulacion(simulacionId) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones-entregas/${simulacionId}/casas`,
+    `/planes/simulaciones/${simulacionId}/casas`,
+    `/simulaciones/${simulacionId}/casas`
+  ], { method: "GET" });
+}
+
+export async function crearCasaSimulacion(simulacionId, payload) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas`,
+    `/simulaciones/${simulacionId}/casas`
+  ], {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listarPlanillasCasa(simulacionId, casaId) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/planillas`
+  ], { method: "GET" });
+}
+
+export async function crearPlanillaCasa(simulacionId, casaId, payload) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/planillas`
+  ], {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function actualizarPlanillaCasa(simulacionId, casaId, planillaId, payload) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}`
+  ], {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listarItemsPlanilla(simulacionId, casaId, planillaId) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`
+  ], { method: "GET" });
+}
+
+export async function crearItemPlanilla(simulacionId, casaId, planillaId, payload) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`
+  ], {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function actualizarItemPlanilla(simulacionId, casaId, planillaId, itemId, payload) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}`
+  ], {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listarMaterialesItem(simulacionId, casaId, planillaId, itemId) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`
+  ], { method: "GET" });
+}
+
+export async function crearMaterialPlanilla(simulacionId, casaId, planillaId, itemId, payload) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`
+  ], {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function actualizarMaterialPlanilla(simulacionId, casaId, planillaId, itemId, materialId, payload) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales/${materialId}`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales/${materialId}`
+  ], {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listarMovimientosMaterial(filters = {}) {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      query.set(key, value);
+    }
+  });
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequestWithFallback([
+    `/movimientos${suffix}`,
+    `/planes/movimientos${suffix}`
+  ], { method: "GET" });
+}
+
+export async function registrarMovimientoEntrega(payload) {
+  return apiRequestWithFallback([
+    "/movimientos",
+    "/planes/movimientos"
+  ], {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listarGastosCasa(simulacionId, casaId) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/gastos`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/gastos`
+  ], { method: "GET" });
+}
+
+export async function crearGastoCasa(simulacionId, casaId, payload) {
+  return apiRequestWithFallback([
+    `/planes/simulaciones/${simulacionId}/casas/${casaId}/gastos`,
+    `/simulaciones/${simulacionId}/casas/${casaId}/gastos`
+  ], {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 async function apiRequestWithFallback(paths, options = {}) {
   const candidates = Array.isArray(paths) ? paths : [paths];
   let lastError = null;

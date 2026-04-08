@@ -46,7 +46,7 @@ import {
   hasTimelineMetrics,
   normalizeTimeline
 } from "./modules/renderers.js";
-import { initSavedSimulationsWorkspace } from "./modules/saved-simulations.js";
+import { initSavedSimulationsWorkspace } from "./modules/simulation-inventory.js";
 import { renderCasasChart as renderCasasChartChartJS } from "./chart-casas-iniciadas.js";
 import { renderChartCasasTerminadasChartJS } from "./chart-casas-terminadas.js";
 import { renderChartCasasEjecucionChartJS } from "./chart-casas-ejecucion.js";
