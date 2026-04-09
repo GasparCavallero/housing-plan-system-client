@@ -1,4 +1,5 @@
 import { formatterArs } from "./formatters.js";
+import { DEBUG_UI } from "./settings.js";
 import {
   listarSimulacionesGuardadas,
   obtenerDetalleSimulacion,
@@ -22,7 +23,12 @@ import {
   registrarMovimientoEntrega,
   listarGastosCasa,
   crearGastoCasa,
-  actualizarGastoCasa
+  actualizarGastoCasa,
+  eliminarSimulacion,
+  eliminarPlanillaCasa,
+  eliminarItemPlanilla,
+  eliminarMaterialPlanilla,
+  eliminarGastoCasa
 } from "./services.js";
 
 function money(value) {
@@ -57,6 +63,21 @@ function normalizeId(value) {
   return String(value);
 }
 
+function formatDateForInput(value) {
+  if (!value) return "";
+  const str = String(value).trim();
+  // Si ya está en formato yyyy-MM-dd, devolver tal cual
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+  // Si es ISO o timestamp, extraer la fecha
+  const date = new Date(str);
+  if (!Number.isFinite(date.getTime())) {
+    return "";
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 function safeArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -66,16 +87,56 @@ function asList(payload, keys = []) {
     return payload;
   }
 
-  if (payload && typeof payload === "object") {
-    for (const key of keys) {
-      if (Array.isArray(payload[key])) {
-        return payload[key];
-      }
+  function collectArraysDeep(node, preferredKeys, visited = new WeakSet(), out = []) {
+    if (!node || typeof node !== "object") {
+      return out;
     }
 
-    const firstArray = Object.values(payload).find((entry) => Array.isArray(entry));
-    if (Array.isArray(firstArray)) {
-      return firstArray;
+    if (visited.has(node)) {
+      return out;
+    }
+    visited.add(node);
+
+    Object.entries(node).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        out.push({
+          value,
+          key,
+          keyMatched: preferredKeys.includes(key)
+        });
+      } else if (value && typeof value === "object") {
+        collectArraysDeep(value, preferredKeys, visited, out);
+      }
+    });
+
+    return out;
+  }
+
+  if (payload && typeof payload === "object") {
+    const candidates = collectArraysDeep(payload, keys);
+    if (candidates.length) {
+      const byPreferredKeyWithData = candidates.find((entry) => entry.keyMatched && entry.value.length > 0);
+      if (byPreferredKeyWithData) {
+        return byPreferredKeyWithData.value;
+      }
+
+      const byPreferredKey = candidates.find((entry) => entry.keyMatched);
+      if (byPreferredKey) {
+        return byPreferredKey.value;
+      }
+
+      // Si hay claves esperadas, no debemos tomar arrays arbitrarios
+      // (ej: timeline/ofertas) porque rompe el armado del árbol de entregas.
+      if (keys.length > 0) {
+        return [];
+      }
+
+      const anyWithData = candidates.find((entry) => entry.value.length > 0);
+      if (anyWithData) {
+        return anyWithData.value;
+      }
+
+      return candidates[0].value;
     }
   }
 
@@ -84,7 +145,7 @@ function asList(payload, keys = []) {
 
 function normalizeMovimiento(raw) {
   return {
-    id: raw?.id ?? `mov-${Math.random().toString(16).slice(2)}`,
+    id: raw?.id ?? raw?.movimiento_id ?? raw?.entrega_id ?? `mov-${Math.random().toString(16).slice(2)}`,
     fecha: raw?.fecha ?? raw?.created_at ?? raw?.createdAt ?? null,
     tipo: String(raw?.tipo ?? raw?.tipo_movimiento ?? raw?.kind ?? "entrega").trim(),
     cantidad: numberOrZero(raw?.cantidad ?? raw?.cantidad_ars ?? raw?.monto ?? 0),
@@ -112,7 +173,7 @@ function normalizeMaterial(raw) {
   const cantidadEnConstruccion = Number(Math.max(0, cantidadTotal - cantidadRetirada).toFixed(2));
 
   return {
-    id: raw?.id ?? `mat-${Math.random().toString(16).slice(2)}`,
+    id: raw?.id ?? raw?.material_id ?? `mat-${Math.random().toString(16).slice(2)}`,
     nombre: String(raw?.nombre ?? "Material").trim(),
     unidad: String(raw?.unidad ?? "u").trim(),
     proveedor: String(raw?.proveedor ?? "").trim(),
@@ -132,7 +193,7 @@ function normalizeItem(raw) {
   const totalMaterialesArs = materiales.reduce((acc, material) => acc + numberOrZero(material.total_ars), 0);
 
   return {
-    id: raw?.id ?? `item-${Math.random().toString(16).slice(2)}`,
+    id: raw?.id ?? raw?.item_id ?? `item-${Math.random().toString(16).slice(2)}`,
     nombre: String(raw?.nombre ?? "Item").trim(),
     proveedor: String(raw?.proveedor ?? "").trim(),
     descripcion: String(raw?.descripcion ?? "").trim(),
@@ -147,8 +208,8 @@ function normalizePlanilla(raw) {
   const totalMaterialesArs = items.reduce((acc, item) => acc + numberOrZero(item.total_materiales_ars), 0);
 
   return {
-    id: raw?.id ?? `planilla-${Math.random().toString(16).slice(2)}`,
-    numero: String(raw?.numero ?? raw?.nro ?? "").trim(),
+    id: raw?.id ?? raw?.planilla_id ?? `planilla-${Math.random().toString(16).slice(2)}`,
+    numero: String(raw?.numero ?? raw?.nro ?? raw?.numero_planilla ?? raw?.nro_planilla ?? "").trim(),
     fecha: raw?.fecha ?? null,
     vencimiento: raw?.vencimiento ?? raw?.fecha_vencimiento ?? null,
     proveedor: String(raw?.proveedor ?? "").trim(),
@@ -171,7 +232,7 @@ function normalizeGasto(raw) {
 }
 
 function normalizeCasa(raw) {
-  const planillas = safeArray(raw?.planillas ?? raw?.entregas ?? raw?.ordenes).map(normalizePlanilla);
+  const planillas = safeArray(raw?.planillas ?? raw?.entregas ?? raw?.ordenes ?? raw?.planillas_entrega ?? raw?.planillas_casa).map(normalizePlanilla);
   const gastos = safeArray(raw?.gastos).map(normalizeGasto);
   const materiales = planillas.flatMap((planilla) => safeArray(planilla.items).flatMap((item) => safeArray(item.materiales)));
   const totalMateriales = planillas.reduce((acc, planilla) => acc + numberOrZero(planilla.total_materiales_ars), 0);
@@ -186,7 +247,7 @@ function normalizeCasa(raw) {
   const avance = fondoDisponibleArs > 0 ? Number(Math.min(100, Math.max(0, (comprometidoArs / fondoDisponibleArs) * 100)).toFixed(2)) : 0;
 
   return {
-    id: raw?.id ?? `casa-${Math.random().toString(16).slice(2)}`,
+    id: raw?.id ?? raw?.casa_id ?? raw?.house_id ?? `casa-${Math.random().toString(16).slice(2)}`,
     adherente_id: raw?.adherente_id ?? raw?.adherenteId ?? null,
     adherente_nombre: String(raw?.adherente_nombre ?? raw?.adherenteNombre ?? raw?.adherente ?? "").trim(),
     precio_ars: Number(precioArs.toFixed(2)),
@@ -386,6 +447,7 @@ function renderMaterial(material, context) {
       <div class="inventory-card-tools">
         <button class="btn btn-ghost" type="button" data-action="toggle-card-edit">Editar material</button>
         <button class="btn btn-ghost" type="button" data-action="toggle-create-movement">Agregar movimiento</button>
+        <button class="btn btn-ghost" type="button" data-action="delete-material" data-material-id="${escapeHtml(material.id)}" style="color:#d32f2f;">Borrar</button>
       </div>
 
       <form class="inventory-form inventory-editable-form inventory-form-tight inventory-grid-3" data-action="update-material" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(casaId)}" data-planilla-id="${escapeHtml(planillaId)}" data-item-id="${escapeHtml(itemId)}" data-material-id="${escapeHtml(material.id)}">
@@ -447,6 +509,7 @@ function renderItem(item, context) {
       <div class="inventory-card-tools">
         <button class="btn btn-ghost" type="button" data-action="toggle-card-edit">Editar item</button>
         <button class="btn btn-ghost" type="button" data-action="toggle-create-material">Agregar material</button>
+        <button class="btn btn-ghost" type="button" data-action="delete-item" data-item-id="${escapeHtml(item.id)}" style="color:#d32f2f;">Borrar</button>
       </div>
 
       <div class="inventory-inline-metrics">
@@ -509,12 +572,13 @@ function renderPlanilla(planilla, context) {
       <div class="inventory-card-tools">
         <button class="btn btn-ghost" type="button" data-action="toggle-card-edit">Editar planilla</button>
         <button class="btn btn-ghost" type="button" data-action="toggle-create-item">Agregar item</button>
+        <button class="btn btn-ghost" type="button" data-action="delete-planilla" data-planilla-id="${escapeHtml(planilla.id)}" style="color:#d32f2f;">Borrar</button>
       </div>
 
       <form class="inventory-form inventory-editable-form inventory-form-tight inventory-grid-3" data-action="update-planilla" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(casaId)}" data-planilla-id="${escapeHtml(planilla.id)}">
         ${inputField("Número", "numero", planilla.numero)}
-        ${inputField("Fecha", "fecha", planilla.fecha || "", "date")}
-        ${inputField("Vencimiento", "vencimiento", planilla.vencimiento || "", "date")}
+        ${inputField("Fecha", "fecha", formatDateForInput(planilla.fecha), "date")}
+        ${inputField("Vencimiento", "vencimiento", formatDateForInput(planilla.vencimiento), "date")}
         ${inputField("Proveedor", "proveedor", planilla.proveedor)}
         ${inputField("Contratista", "contratista", planilla.contratista)}
         ${inputField("Adherente", "adherente", planilla.adherente)}
@@ -548,6 +612,7 @@ function renderGasto(gasto, context) {
     <article class="inventory-mini-card inventory-mini-card-gasto" data-gasto-id="${escapeHtml(gasto.id)}">
       <div class="inventory-card-tools">
         <button class="btn btn-ghost" type="button" data-action="toggle-card-edit">Editar gasto</button>
+        <button class="btn btn-ghost" type="button" data-action="delete-gasto" data-gasto-id="${escapeHtml(gasto.id)}" style="color:#d32f2f;">Borrar</button>
       </div>
       <form class="inventory-form inventory-editable-form inventory-form-tight inventory-grid-2" data-action="update-gasto" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(casaId)}" data-gasto-id="${escapeHtml(gasto.id)}">
         ${inputField("Nombre", "nombre", gasto.nombre)}
@@ -627,87 +692,27 @@ function renderHouse(house, context) {
       </form>
 
       <section class="inventory-section">
-        <div class="inventory-section-head">
-          <h5>Items de la casa</h5>
-          <div class="inventory-section-actions">
-            <span>${escapeHtml(houseItems.length)} items</span>
-            <button class="btn btn-ghost" type="button" data-action="toggle-create-item-direct">Agregar item</button>
-          </div>
-        </div>
-
-        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-3" data-action="create-item-direct" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(house.id)}">
-          <label>
-            Planilla destino
-            <select name="planilla_id" required>
-              <option value="">Seleccionar...</option>
-              ${house.planillas.map((planilla) => `<option value="${escapeHtml(planilla.id)}">${escapeHtml(`Planilla ${planilla.numero || planilla.id}`)}</option>`).join("")}
-            </select>
-          </label>
-          ${inputField("Nombre", "nombre", "")}
-          ${inputField("Proveedor", "proveedor", "")}
-          ${inputField("Descripción", "descripcion", "")}
-          ${inputField("Orden", "orden", 1, "number", "step=1")}
-          <div class="inventory-actions inventory-actions-full">
-            <button class="btn btn-primary" type="submit">Guardar item</button>
-          </div>
-        </form>
-
-        <div class="inventory-children">
-          ${houseItems.length === 0 ? '<p class="inventory-empty">Sin items cargados en esta casa.</p>' : houseItems.map(({ planilla, item }) => `
-            <article class="inventory-mini-card">
-              <p class="inventory-kicker">Planilla ${escapeHtml(planilla.numero || planilla.id)}</p>
-              ${renderItem(item, { simulacionId, casaId: house.id, planillaId: planilla.id })}
-            </article>
-          `).join("")}
-        </div>
-      </section>
-
-      <section class="inventory-section">
-        <div class="inventory-section-head">
-          <h5>Planillas de entrega</h5>
-          <div class="inventory-section-actions">
-            <span>${escapeHtml(house.planillas.length)} registros</span>
-            <button class="btn btn-ghost" type="button" data-action="toggle-create-planilla">Agregar planilla</button>
-          </div>
-        </div>
-
-        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-3" data-action="create-planilla" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(house.id)}">
-          ${inputField("Número", "numero", "")}
-          ${inputField("Fecha", "fecha", new Date().toISOString().slice(0, 10), "date")}
-          ${inputField("Vencimiento", "vencimiento", "", "date")}
-          ${inputField("Proveedor", "proveedor", "")}
-          ${inputField("Contratista", "contratista", "")}
-          ${inputField("Adherente", "adherente", house.adherente_nombre)}
-          ${inputField("Dirección", "direccion", "")}
-          ${textAreaField("Observaciones", "observaciones", "", 2)}
-          <div class="inventory-actions inventory-actions-full">
-            <button class="btn btn-primary" type="submit">Crear planilla</button>
-          </div>
-        </form>
-
-        ${renderHouseMaterials(house)}
-      </section>
-
-      <section class="inventory-section">
-        <div class="inventory-section-head">
-          <h5>Gastos por casa</h5>
-          <div class="inventory-section-actions">
-            <span>${escapeHtml(house.gastos.length)} gastos</span>
-            <button class="btn btn-ghost" type="button" data-action="toggle-create-gasto">Agregar gasto</button>
-          </div>
-        </div>
-
-        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-2" data-action="create-gasto" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(house.id)}">
-          ${inputField("Nombre", "nombre", "")}
-          ${inputField("Monto ARS", "monto_ars", 0, "number", "min=0 step=0.01")}
-          ${textAreaField("Descripción", "descripcion", "", 2)}
-          <div class="inventory-actions inventory-actions-full">
-            <button class="btn btn-ghost" type="submit">Agregar gasto</button>
-          </div>
-        </form>
-
-        <div class="inventory-children">
-          ${house.gastos.length === 0 ? '<p class="inventory-empty">Sin gastos cargados.</p>' : house.gastos.map((gasto) => renderGasto(gasto, { simulacionId, casaId: house.id })).join("")}
+        <div class="house-selector-grid">
+          <button type="button" class="house-selector-card is-page-link" data-action="nav-planillas">
+            <p class="inventory-kicker">Sección</p>
+            <h4>Planillas</h4>
+            <p class="inventory-subtitle">${escapeHtml(house.planillas.length)} planillas registradas</p>
+          </button>
+          <button type="button" class="house-selector-card is-page-link" data-action="nav-items">
+            <p class="inventory-kicker">Sección</p>
+            <h4>Items</h4>
+            <p class="inventory-subtitle">${escapeHtml(houseItems.length)} items registrados</p>
+          </button>
+          <button type="button" class="house-selector-card is-page-link" data-action="nav-materiales">
+            <p class="inventory-kicker">Sección</p>
+            <h4>Materiales</h4>
+            <p class="inventory-subtitle">Vista consolidada de todos los materiales</p>
+          </button>
+          <button type="button" class="house-selector-card is-page-link" data-action="nav-gastos">
+            <p class="inventory-kicker">Sección</p>
+            <h4>Gastos</h4>
+            <p class="inventory-subtitle">${escapeHtml(house.gastos.length)} gastos registrados</p>
+          </button>
         </div>
       </section>
     </article>
@@ -715,14 +720,35 @@ function renderHouse(house, context) {
 }
 
 async function loadSimulationTree(simulacionId) {
-  const simulationDetail = await obtenerDetalleSimulacion(simulacionId);
-  const detailHouses = asList(simulationDetail, ["casas", "houses", "items"]);
+  let simulationDetail = {
+    id: simulacionId,
+    titulo: `Simulacion #${simulacionId}`,
+    descripcion: "",
+    configuracion: {},
+    ofertas: [],
+    timeline: [],
+    casas: []
+  };
 
-  let housesBase = detailHouses;
-  if (!housesBase.length) {
-    const housesRaw = await listarCasasSimulacion(simulacionId).catch(() => []);
-    housesBase = asList(housesRaw, ["casas", "items", "houses"]);
+  try {
+    const detailPayload = await obtenerDetalleSimulacion(simulacionId);
+    simulationDetail = { ...simulationDetail, ...(detailPayload || {}) };
+  } catch {
+    // Continuamos con endpoints de entregas para no vaciar la UI
+    // cuando falla el detalle de simulación.
   }
+  const detailHouses = asList(simulationDetail, ["casas", "houses"]);
+
+  const housesRaw = await listarCasasSimulacion(simulacionId).catch((error) => {
+    console.warn("[inventory] Error listando casas", {
+      simulacionId,
+      error: String(error?.message || error)
+    });
+    return [];
+  });
+  const listedHouses = asList(housesRaw, ["casas", "houses"]);
+
+  let housesBase = listedHouses.length ? listedHouses : detailHouses;
 
   if (!housesBase.length) {
     const normalizedOnlyDetail = normalizeSimulation(simulationDetail, simulacionId);
@@ -733,29 +759,61 @@ async function loadSimulationTree(simulacionId) {
   }
 
   const houses = await Promise.all(housesBase.map(async (houseRaw) => {
-    const [planillasRaw, gastosRaw] = await Promise.all([
-      listarPlanillasCasa(simulacionId, houseRaw.id).catch(() => []),
-      listarGastosCasa(simulacionId, houseRaw.id).catch(() => [])
-    ]);
+    const houseId = houseRaw?.id ?? houseRaw?.casa_id ?? houseRaw?.house_id;
+    let planillasRaw = null;
+    let planillasError = "";
+    try {
+      planillasRaw = await listarPlanillasCasa(simulacionId, houseId);
+    } catch (error) {
+      planillasError = String(error?.message || error);
+      console.warn("[inventory] Error listando planillas", {
+        simulacionId,
+        houseId,
+        error: planillasError
+      });
+      planillasRaw = null;
+    }
 
-    const planillasSource = asList(planillasRaw, ["planillas", "entregas", "items"]);
+    const gastosRaw = await listarGastosCasa(simulacionId, houseId).catch((error) => {
+      console.warn("[inventory] Error listando gastos", {
+        simulacionId,
+        houseId,
+        error: String(error?.message || error)
+      });
+      return [];
+    });
+
+    let planillasSource = asList(planillasRaw, ["planillas", "entregas", "items"]);
+    if (!planillasSource.length) {
+      planillasSource = asList(houseRaw, ["planillas", "entregas", "ordenes", "items"]);
+    }
+    const planillasRawCount = Array.isArray(planillasSource) ? planillasSource.length : 0;
     const gastos = asList(gastosRaw, ["gastos"]).map(normalizeGasto);
 
     const planillas = await Promise.all(planillasSource.map(async (planillaRaw) => {
-      const itemsRaw = await listarItemsPlanilla(simulacionId, houseRaw.id, planillaRaw.id).catch(() => []);
-      const itemsSource = asList(itemsRaw, ["items", "detalles"]);
+      const planillaId = planillaRaw?.id ?? planillaRaw?.planilla_id;
+      const itemsRaw = await listarItemsPlanilla(simulacionId, houseId, planillaId).catch(() => null);
+      let itemsSource = asList(itemsRaw, ["items", "detalles"]);
+      if (!itemsSource.length) {
+        itemsSource = asList(planillaRaw, ["items", "detalles"]);
+      }
 
       const items = await Promise.all(itemsSource.map(async (itemRaw) => {
-        const materialsRaw = await listarMaterialesItem(simulacionId, houseRaw.id, planillaRaw.id, itemRaw.id).catch(() => []);
-        const materialsSource = asList(materialsRaw, ["materiales", "items"]);
+        const itemId = itemRaw?.id ?? itemRaw?.item_id;
+        const materialsRaw = await listarMaterialesItem(simulacionId, houseId, planillaId, itemId).catch(() => null);
+        let materialsSource = asList(materialsRaw, ["materiales", "items"]);
+        if (!materialsSource.length) {
+          materialsSource = asList(itemRaw, ["materiales", "items"]);
+        }
 
         const materiales = await Promise.all(materialsSource.map(async (materialRaw) => {
+          const materialId = materialRaw?.id ?? materialRaw?.material_id;
           const movimientosRaw = await listarMovimientosMaterial({
             simulacion_id: simulacionId,
-            casa_id: houseRaw.id,
-            planilla_id: planillaRaw.id,
-            item_id: itemRaw.id,
-            material_id: materialRaw.id
+            casa_id: houseId,
+            planilla_id: planillaId,
+            item_id: itemId,
+            material_id: materialId
           }).catch(() => []);
 
           return normalizeMaterial({
@@ -770,10 +828,14 @@ async function loadSimulationTree(simulacionId) {
       return normalizePlanilla({ ...planillaRaw, items });
     }));
 
-    return normalizeCasa({ ...houseRaw, planillas, gastos });
+    return normalizeCasa({
+      ...houseRaw,
+      planillas,
+      gastos
+    });
   }));
 
-  const normalized = normalizeSimulation({ ...simulationDetail, casas }, simulacionId);
+  const normalized = normalizeSimulation({ ...simulationDetail, casas: houses }, simulacionId);
 
   if (!normalized.titulo) {
     normalized.titulo = `Simulacion #${simulacionId}`;
@@ -812,7 +874,11 @@ export function initSavedSimulationsWorkspace(options) {
     activeId: null,
     activeDetail: null,
     selectedHouseId: null,
-    planView: "root",
+    selectedPlanillaId: null,
+    selectedItemId: null,
+    selectedMaterialId: null,
+    planView: "root",  // "root" | "houses" | "house" | "planillas" | "planilla" | "items" | "item" | "materiales" | "material"
+    searchHousesText: "",
     loading: false
   };
 
@@ -853,6 +919,67 @@ export function initSavedSimulationsWorkspace(options) {
     `;
   }
 
+  function filterHouses(houses, searchText) {
+    if (!searchText.trim()) {
+      return houses;
+    }
+    const query = searchText.toLowerCase().trim();
+    return houses.filter((house) => {
+      const houseId = (house.id || "").toString().toLowerCase();
+      const adherenteName = (house.adherente_nombre || "").toLowerCase();
+      return houseId.includes(query) || adherenteName.includes(query);
+    });
+  }
+
+  function updateHousesGrid(casas, searchText) {
+    const filteredHouses = filterHouses(casas, searchText);
+    const gridContainer = document.querySelector(".house-selector-grid");
+    const infoEl = document.querySelector(".inventory-search-info");
+    const emptyEl = document.querySelector(".inventory-page-list .inventory-empty");
+
+    if (filteredHouses.length === 0) {
+      if (gridContainer) gridContainer.remove();
+      if (infoEl) infoEl.remove();
+      if (!emptyEl) {
+        const newEmptyEl = document.createElement("p");
+        newEmptyEl.className = "inventory-empty";
+        newEmptyEl.textContent = "No se encontraron casas que coincidan con tu búsqueda.";
+        const searchContainer = document.querySelector(".house-search-container");
+        if (searchContainer && searchContainer.nextElementSibling) {
+          searchContainer.parentNode.insertBefore(newEmptyEl, searchContainer.nextElementSibling);
+        }
+      }
+    } else {
+      if (emptyEl) emptyEl.remove();
+      
+      if (!gridContainer) {
+        const newGrid = document.createElement("div");
+        newGrid.className = "house-selector-grid";
+        const searchContainer = document.querySelector(".house-search-container");
+        if (searchContainer) {
+          searchContainer.parentNode.insertBefore(newGrid, searchContainer.nextElementSibling);
+        }
+      }
+
+      const grid = document.querySelector(".house-selector-grid");
+      if (grid) {
+        grid.innerHTML = filteredHouses.map((house) => renderHouseSelectorCard(house)).join("");
+      }
+
+      if (infoEl && filteredHouses.length < casas.length) {
+        infoEl.textContent = `${filteredHouses.length} de ${casas.length} casas`;
+      } else if (!infoEl && filteredHouses.length < casas.length) {
+        const newInfoEl = document.createElement("p");
+        newInfoEl.className = "inventory-search-info";
+        newInfoEl.textContent = `${filteredHouses.length} de ${casas.length} casas`;
+        const searchContainer = document.querySelector(".house-search-container");
+        if (searchContainer) {
+          searchContainer.appendChild(newInfoEl);
+        }
+      }
+    }
+  }
+
   function getActiveSimulationId() {
     const id = state.activeDetail?.id || state.activeId;
     if (!id) {
@@ -880,10 +1007,13 @@ export function initSavedSimulationsWorkspace(options) {
     }
 
     dom.simulationsList.innerHTML = state.list.map((sim) => `
-      <button class="simulation-list-item ${normalizeId(sim.id) === normalizeId(state.activeId) ? "is-active" : ""}" type="button" data-simulation-id="${escapeHtml(sim.id)}">
-        <h4>${escapeHtml(sim.titulo || sim.title || `Simulacion #${sim.id}`)}</h4>
-        <p>${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
-      </button>
+      <div style="display:flex;gap:0.5rem;align-items:stretch;">
+        <button class="simulation-list-item ${normalizeId(sim.id) === normalizeId(state.activeId) ? "is-active" : ""}" type="button" data-simulation-id="${escapeHtml(sim.id)}" style="flex:1;">
+          <h4>${escapeHtml(sim.titulo || sim.title || `Simulacion #${sim.id}`)}</h4>
+          <p>${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
+        </button>
+        <button class="btn btn-ghost" type="button" data-action="delete-simulation" data-simulation-id="${escapeHtml(sim.id)}" title="Borrar simulación" style="padding:0.4rem 0.6rem;min-width:auto;">🗑️</button>
+      </div>
     `).join("");
   }
 
@@ -990,9 +1120,261 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
+    // Vista jerárquica: Planillas
+    if (state.planView === "planillas" && selectedHouse) {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      const planillas = safeArray(selectedHouse.planillas);
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Plan simulado", action: "nav-root" },
+          { label: "Casas", action: "nav-houses" },
+          { label: selectedHouse.adherente_nombre || `Casa #${selectedHouse.id}`, action: "open-house" },
+          { label: "Planillas", current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Planillas de la casa</h4>
+          <div>
+            <button class="btn btn-ghost" type="button" data-action="toggle-create-planilla">Agregar planilla</button>
+            <button class="btn btn-ghost" type="button" data-action="back-to-house">Volver a casa</button>
+          </div>
+        </div>
+        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-3 hidden" data-action="create-planilla" data-simulacion-id="${escapeHtml(state.activeDetail.id)}" data-casa-id="${escapeHtml(selectedHouse.id)}">
+          ${inputField("Número", "numero", "")}
+          ${inputField("Fecha", "fecha", new Date().toISOString().slice(0, 10), "date")}
+          ${inputField("Vencimiento", "vencimiento", "", "date")}
+          ${inputField("Proveedor", "proveedor", "")}
+          ${inputField("Contratista", "contratista", "")}
+          ${inputField("Adherente", "adherente", selectedHouse.adherente_nombre)}
+          ${inputField("Dirección", "direccion", "")}
+          ${textAreaField("Observaciones", "observaciones", "", 2)}
+          <div class="inventory-actions inventory-actions-full">
+            <button class="btn btn-primary" type="submit">Crear planilla</button>
+          </div>
+        </form>
+        <p class="inventory-page-subtitle">${escapeHtml(selectedHouse.adherente_nombre || `Casa #${selectedHouse.id}`)}</p>
+        ${planillas.length === 0 ? '<p class="inventory-empty">Sin planillas cargadas.</p>' : `
+          <div class="house-selector-grid">
+            ${planillas.map((p) => `
+              <button type="button" class="house-selector-card" data-action="open-planilla" data-planilla-id="${escapeHtml(p.id)}">
+                <p class="inventory-kicker">Planilla #${escapeHtml(p.numero || p.id)}</p>
+                <h4>${escapeHtml(p.proveedor || p.contratista || "Sin proveedor")}</h4>
+                <p class="inventory-subtitle">Items: ${escapeHtml(safeArray(p.items).length)} | Monto: ${money(p.total_materiales_ars)}</p>
+              </button>
+            `).join('')}
+          </div>
+        `}
+        </section>
+      `;
+      return;
+    }
+
+    // Vista jerárquica: Items
+    if (state.planView === "items" && selectedHouse) {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      const houseItems = selectedHouse.planillas.flatMap((planilla) =>
+        safeArray(planilla.items).map((item) => ({
+          planilla,
+          item
+        }))
+      );
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Plan simulado", action: "nav-root" },
+          { label: "Casas", action: "nav-houses" },
+          { label: selectedHouse.adherente_nombre || `Casa #${selectedHouse.id}`, action: "open-house" },
+          { label: "Items", current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Items de la casa</h4>
+          <div>
+            <button class="btn btn-ghost" type="button" data-action="toggle-create-item">Agregar item</button>
+            <button class="btn btn-ghost" type="button" data-action="back-to-house">Volver a casa</button>
+          </div>
+        </div>
+        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-3 hidden" data-action="create-item" data-simulacion-id="${escapeHtml(state.activeDetail.id)}" data-casa-id="${escapeHtml(selectedHouse.id)}">
+          <label>
+            Planilla destino
+            <select name="planilla_id" required>
+              <option value="">Seleccionar...</option>
+              ${selectedHouse.planillas.map((planilla) => `<option value="${escapeHtml(planilla.id)}">${escapeHtml(`Planilla ${planilla.numero || planilla.id}`)}</option>`).join("")}
+            </select>
+          </label>
+          ${inputField("Nombre", "nombre", "")}
+          ${inputField("Proveedor", "proveedor", "")}
+          ${inputField("Descripción", "descripcion", "")}
+          ${inputField("Orden", "orden", 1, "number", "step=1")}
+          <div class="inventory-actions inventory-actions-full">
+            <button class="btn btn-primary" type="submit">Agregar item</button>
+          </div>
+        </form>
+        <p class="inventory-page-subtitle">Todos los items de todas las planillas</p>
+        ${houseItems.length === 0 ? '<p class="inventory-empty">Sin items cargados.</p>' : `
+          <div class="house-selector-grid">
+            ${houseItems.map(({ planilla, item }) => `
+              <button type="button" class="house-selector-card" data-action="open-item" data-item-id="${escapeHtml(item.id)}">
+                <p class="inventory-kicker">Planilla ${escapeHtml(planilla.numero || planilla.id)}</p>
+                <h4>${escapeHtml(item.nombre)}</h4>
+                <p class="inventory-subtitle">Materiales: ${escapeHtml(safeArray(item.materiales).length)} | Monto: ${money(item.total_materiales_ars)}</p>
+              </button>
+            `).join('')}
+          </div>
+        `}
+        </section>
+      `;
+      return;
+    }
+
+    // Vista jerárquica: Materiales consolidados
+    if (state.planView === "materiales" && selectedHouse) {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      const allMateriales = selectedHouse.planillas.flatMap((planilla) =>
+        safeArray(planilla.items).flatMap((item) =>
+          safeArray(item.materiales).map((material) => ({
+            planilla,
+            item,
+            material
+          }))
+        )
+      );
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Plan simulado", action: "nav-root" },
+          { label: "Casas", action: "nav-houses" },
+          { label: selectedHouse.adherente_nombre || `Casa #${selectedHouse.id}`, action: "open-house" },
+          { label: "Materiales", current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Materiales de la casa</h4>
+          <div>
+            <button class="btn btn-ghost" type="button" data-action="toggle-create-material-direct">Agregar material</button>
+            <button class="btn btn-ghost" type="button" data-action="back-to-house">Volver a casa</button>
+          </div>
+        </div>
+        <p class="inventory-page-subtitle">Vista consolidada de todos los materiales</p>
+        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-3 hidden" data-action="create-material-direct" data-simulacion-id="${escapeHtml(state.activeDetail.id)}" data-casa-id="${escapeHtml(selectedHouse.id)}">
+          <label>
+            Planilla e Item destino
+            <select name="target" required>
+              <option value="">Seleccionar...</option>
+              ${selectedHouse.planillas.flatMap((planilla) => 
+                safeArray(planilla.items).map((item) => 
+                  `<option value="${escapeHtml(planilla.id)}::${escapeHtml(item.id)}">Planilla ${escapeHtml(planilla.numero || planilla.id)} - Item ${escapeHtml(item.nombre)}</option>`
+                )
+              ).join("")}
+            </select>
+          </label>
+          ${inputField("Nombre", "nombre", "")}
+          ${inputField("Unidad", "unidad", "u")}
+          ${inputField("Proveedor", "proveedor", "")}
+          ${inputField("Descripción", "descripcion", "")}
+          ${inputField("Cantidad total", "cantidad_total", 0, "number", "min=0 step=0.01")}
+          ${inputField("Cantidad retirada", "cantidad_retirada", 0, "number", "min=0 step=0.01")}
+          ${inputField("Cantidad en construcción", "cantidad_en_construccion", 0, "number", "min=0 step=0.01")}
+          ${inputField("Precio unitario ARS", "precio_unitario_ars", 0, "number", "min=0 step=0.01")}
+          ${textAreaField("Nota", "nota", "", 2)}
+          <div class="inventory-actions inventory-actions-full">
+            <button class="btn btn-primary" type="submit">Agregar material</button>
+          </div>
+        </form>
+        ${allMateriales.length === 0 ? '<p class="inventory-empty">Sin materiales cargados.</p>' : `
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+              <thead>
+                <tr style="background:#f0f0f0;border-bottom:2px solid #ccc;">
+                  <th style="padding:8px;text-align:left;">Planilla</th>
+                  <th style="padding:8px;text-align:left;">Item</th>
+                  <th style="padding:8px;text-align:left;">Material</th>
+                  <th style="padding:8px;text-align:right;">Cantidad</th>
+                  <th style="padding:8px;text-align:right;">Precio Unit.</th>
+                  <th style="padding:8px;text-align:right;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${allMateriales.map(({ planilla, item, material }) => `
+                  <tr style="border-bottom:1px solid #e0e0e0;">
+                    <td style="padding:8px;">${escapeHtml(planilla.numero || planilla.id)}</td>
+                    <td style="padding:8px;">${escapeHtml(item.nombre)}</td>
+                    <td style="padding:8px;"><strong>${escapeHtml(material.nombre)}</strong>${material.proveedor ? ` (${escapeHtml(material.proveedor)})` : ''}</td>
+                    <td style="padding:8px;text-align:right;">${escapeHtml(material.cantidad_total)} ${escapeHtml(material.unidad)}</td>
+                    <td style="padding:8px;text-align:right;">${money(material.precio_unitario_ars)}</td>
+                    <td style="padding:8px;text-align:right;"><strong>${money(material.total_ars)}</strong></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+        </section>
+      `;
+      return;
+    }
+
+    // Vista jerárquica: Gastos
+    if (state.planView === "gastos" && selectedHouse) {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      const gastos = safeArray(selectedHouse.gastos);
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Plan simulado", action: "nav-root" },
+          { label: "Casas", action: "nav-houses" },
+          { label: selectedHouse.adherente_nombre || `Casa #${selectedHouse.id}`, action: "open-house" },
+          { label: "Gastos", current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Gastos de la casa</h4>
+          <div>
+            <button class="btn btn-ghost" type="button" data-action="toggle-create-gasto">Agregar gasto</button>
+            <button class="btn btn-ghost" type="button" data-action="back-to-house">Volver a casa</button>
+          </div>
+        </div>
+        <p class="inventory-page-subtitle">Total de gastos: ${money(selectedHouse.total_gastos_ars)}</p>
+        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-2 hidden" data-action="create-gasto" data-simulacion-id="${escapeHtml(state.activeDetail.id)}" data-casa-id="${escapeHtml(selectedHouse.id)}">
+          ${inputField("Nombre", "nombre", "")}
+          ${inputField("Monto ARS", "monto_ars", 0, "number", "min=0 step=0.01")}
+          ${textAreaField("Descripción", "descripcion", "", 2)}
+          <div class="inventory-actions inventory-actions-full">
+            <button class="btn btn-primary" type="submit">Agregar gasto</button>
+          </div>
+        </form>
+        ${gastos.length === 0 ? '<p class="inventory-empty">Sin gastos cargados.</p>' : `
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+              <thead>
+                <tr style="background:#f0f0f0;border-bottom:2px solid #ccc;">
+                  <th style="padding:8px;text-align:left;">Nombre</th>
+                  <th style="padding:8px;text-align:left;">Descripción</th>
+                  <th style="padding:8px;text-align:right;">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${gastos.map((gasto) => `
+                  <tr style="border-bottom:1px solid #e0e0e0;">
+                    <td style="padding:8px;"><strong>${escapeHtml(gasto.nombre)}</strong></td>
+                    <td style="padding:8px;">${escapeHtml(gasto.descripcion)}</td>
+                    <td style="padding:8px;text-align:right;">${money(gasto.monto_ars)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+        </section>
+      `;
+      return;
+    }
+
     if (state.planView === "houses") {
       syncPlanFocusMode();
       dom.buttonAddHouse?.classList.remove("hidden");
+      const filteredHouses = filterHouses(detail.casas, state.searchHousesText);
       dom.simulationHousesContainer.innerHTML = `
         <section class="inventory-page inventory-page-list">
         ${renderPlanBreadcrumb([
@@ -1001,11 +1383,116 @@ export function initSavedSimulationsWorkspace(options) {
         ])}
         <div class="inventory-drilldown-head">
           <h4 class="inventory-page-title">Casas de la simulación</h4>
+          <button class="btn btn-primary" type="button" data-action="toggle-create-house">Agregar casa</button>
         </div>
         <p class="inventory-page-subtitle">Elegí una casa para abrir su detalle completo.</p>
-        <div class="house-selector-grid">
-          ${detail.casas.map((house) => renderHouseSelectorCard(house)).join("")}
+        
+        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-4 hidden" data-action="create-house" data-simulacion-id="${escapeHtml(state.activeDetail.id)}">
+          <input type="number" name="adherente_id" min="1" step="1" placeholder="ID del adherente (opcional)" />
+          <input type="text" name="adherente_nombre" placeholder="Nombre del adherente" required />
+          <input type="number" name="precio_ars" min="0" step="0.01" placeholder="Precio ARS" required />
+          <input type="text" name="descripcion" placeholder="Descripción de la casa" />
+          <button class="btn btn-secondary" type="submit">Guardar casa</button>
+          <button class="btn btn-ghost" type="button" data-action="toggle-create-house">Cancelar</button>
+        </form>
+        
+        <div class="house-search-container">
+          <input 
+            type="text" 
+            class="house-search-input" 
+            id="house-search-input"
+            placeholder="Buscar por número de casa o adherente..."
+            value="${escapeHtml(state.searchHousesText)}"
+          />
+          ${filteredHouses.length < detail.casas.length ? `<p class="inventory-search-info">${filteredHouses.length} de ${detail.casas.length} casas</p>` : ""}
         </div>
+        ${filteredHouses.length === 0 
+          ? '<p class="inventory-empty">No se encontraron casas que coincidan con tu búsqueda.</p>'
+          : `<div class="house-selector-grid">
+              ${filteredHouses.map((house) => renderHouseSelectorCard(house)).join("")}
+            </div>`
+        }
+        </section>
+      `;
+      
+      // Agregar event listener al input de búsqueda
+      const searchInput = document.getElementById("house-search-input");
+      if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+          state.searchHousesText = e.target.value;
+          updateHousesGrid(detail.casas, state.searchHousesText);
+        });
+        searchInput.focus();
+      }
+      return;
+    }
+
+    // Vista detalle: Planilla específica
+    if (state.planView === "planilla" && selectedHouse) {
+      const planillaId = normalizeId(state.selectedPlanillaId);
+      const planilla = safeArray(selectedHouse.planillas).find((p) => normalizeId(p.id) === planillaId);
+      if (!planilla) {
+        state.planView = "planillas";
+        renderHouses(state.activeDetail);
+        return;
+      }
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-detail">
+        ${renderPlanBreadcrumb([
+          { label: "Plan simulado", action: "nav-root" },
+          { label: "Casas", action: "nav-houses" },
+          { label: selectedHouse.adherente_nombre || `Casa #${selectedHouse.id}`, action: "open-house" },
+          { label: "Planillas", action: "nav-planillas" },
+          { label: `Planilla #${escapeHtml(planilla.numero || planilla.id)}`, current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Planilla #${escapeHtml(planilla.numero || planilla.id)}</h4>
+          <button class="btn btn-ghost" type="button" data-action="back-to-planillas">Volver a planillas</button>
+        </div>
+        <p class="inventory-page-subtitle">${escapeHtml(planilla.proveedor || planilla.contratista || "Sin proveedor")}</p>
+        ${renderPlanilla(planilla, { simulacionId: state.activeDetail.id, casaId: selectedHouse.id })}
+        </section>
+      `;
+      return;
+    }
+
+    // Vista detalle: Item específico
+    if (state.planView === "item" && selectedHouse) {
+      const itemId = normalizeId(state.selectedItemId);
+      let itemData = null;
+      let planillaData = null;
+      for (const planilla of safeArray(selectedHouse.planillas)) {
+        const found = safeArray(planilla.items).find((i) => normalizeId(i.id) === itemId);
+        if (found) {
+          itemData = found;
+          planillaData = planilla;
+          break;
+        }
+      }
+      if (!itemData) {
+        state.planView = "items";
+        renderHouses(state.activeDetail);
+        return;
+      }
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-detail">
+        ${renderPlanBreadcrumb([
+          { label: "Plan simulado", action: "nav-root" },
+          { label: "Casas", action: "nav-houses" },
+          { label: selectedHouse.adherente_nombre || `Casa #${selectedHouse.id}`, action: "open-house" },
+          { label: "Items", action: "nav-items" },
+          { label: escapeHtml(itemData.nombre), current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">${escapeHtml(itemData.nombre)}</h4>
+          <button class="btn btn-ghost" type="button" data-action="back-to-items">Volver a items</button>
+        </div>
+        <p class="inventory-page-subtitle">Planilla #${escapeHtml(planillaData.numero || planillaData.id)} | Proveedor: ${escapeHtml(itemData.proveedor)}</p>
+        ${renderItem(itemData, { simulacionId: state.activeDetail.id, casaId: selectedHouse.id, planillaId: planillaData.id })}
         </section>
       `;
       return;
@@ -1088,8 +1575,15 @@ export function initSavedSimulationsWorkspace(options) {
 
     try {
       graph = await loadSimulationTree(normalizedSimulationId);
-    } catch {
+    } catch (error) {
       graph = buildFallbackSimulation(normalizedSimulationId, state.list);
+      writeLog(dom.systemLog, "Error cargar detalle simulación", {
+        simulacion_id: normalizedSimulationId,
+        error: String(error?.message || error)
+      });
+      if (!silent) {
+        setSummary(dom.simSummary, "No se pudo cargar el detalle completo. Mostrando datos parciales.");
+      }
     }
 
     state.activeId = normalizeId(graph.id || normalizedSimulationId);
@@ -1118,8 +1612,11 @@ export function initSavedSimulationsWorkspace(options) {
       id: normalizeId(item.id ?? item.simulacion_id ?? item.snapshot_id)
     })).filter((item) => item.id != null);
 
-    if (!state.activeId && state.list.length > 0) {
+    const activeExists = state.list.some((item) => normalizeId(item.id) === normalizeId(state.activeId));
+    if ((!state.activeId || !activeExists) && state.list.length > 0) {
       state.activeId = normalizeId(state.list[0].id);
+      state.selectedHouseId = null;
+      state.planView = "root";
     }
 
     renderSimulationList();
@@ -1217,48 +1714,6 @@ export function initSavedSimulationsWorkspace(options) {
     writeLog(dom.systemLog, "Recalcular simulación", payload);
   }
 
-  async function createHouseFromForm(event) {
-    event.preventDefault();
-    const simulationId = getActiveSimulationId();
-    const form = dom.houseCreateForm;
-    const data = new FormData(form);
-    const adherenteId = numberOrZero(data.get("adherente_id") || data.get("house-create-adherente-id") || 0);
-    const adherenteNombre = String(data.get("adherente_nombre") || data.get("house-create-adherente") || "").trim();
-    const precioArs = numberOrZero(data.get("precio_ars") || data.get("house-create-precio") || 0);
-    const descripcion = String(data.get("descripcion") || data.get("house-create-descripcion") || "").trim();
-
-    if (!adherenteNombre && adherenteId < 1) {
-      throw new Error("Ingresa nombre o ID del adherente.");
-    }
-
-    if (precioArs <= 0) {
-      throw new Error("Ingresa un precio de casa válido.");
-    }
-
-    const payload = {
-      adherente_id: adherenteId > 0 ? adherenteId : null,
-      adherente_nombre: adherenteNombre,
-      precio_ars: Number(precioArs.toFixed(2)),
-      descripcion,
-      completada: false
-    };
-
-    const response = await crearCasaSimulacion(simulationId, payload);
-    form.reset();
-    const updatedSnapshot = normalizeSimulation(response, simulationId);
-    if (updatedSnapshot?.casas?.length) {
-      state.activeId = normalizeId(updatedSnapshot.id ?? simulationId);
-      state.activeDetail = updatedSnapshot;
-      renderSimulationList();
-      updateSummaryLine();
-      renderDetail();
-    } else {
-      await loadDetail(simulationId, true);
-    }
-    setSummary(dom.simSummary, "Casa creada correctamente.");
-    writeLog(dom.systemLog, "Crear casa", response);
-  }
-
   function readActionContext(form) {
     return {
       simulacionId: form.dataset.simulacionId || getActiveSimulationId(),
@@ -1290,6 +1745,46 @@ export function initSavedSimulationsWorkspace(options) {
     return payload;
   }
 
+  function upsertPlanillaInState(casaId, rawPlanilla) {
+    if (!state.activeDetail || !rawPlanilla) {
+      return false;
+    }
+
+    const targetHouseId = normalizeId(casaId);
+    const nextPlanilla = normalizePlanilla(rawPlanilla);
+    const houseIndex = safeArray(state.activeDetail.casas).findIndex(
+      (house) => normalizeId(house.id) === targetHouseId
+    );
+
+    if (houseIndex < 0) {
+      return false;
+    }
+
+    const house = state.activeDetail.casas[houseIndex];
+    const planillas = [...safeArray(house.planillas)];
+    const planillaIndex = planillas.findIndex(
+      (planilla) => normalizeId(planilla.id) === normalizeId(nextPlanilla.id)
+    );
+
+    if (planillaIndex >= 0) {
+      planillas[planillaIndex] = nextPlanilla;
+    } else {
+      planillas.unshift(nextPlanilla);
+    }
+
+    const rebuiltHouse = normalizeCasa({
+      ...house,
+      planillas,
+      gastos: safeArray(house.gastos)
+    });
+
+    state.activeDetail.casas = state.activeDetail.casas.map((entry, index) =>
+      index === houseIndex ? rebuiltHouse : entry
+    );
+
+    return true;
+  }
+
   async function handleTreeSubmit(event) {
     const form = event.target.closest("form[data-action]");
     if (!form) {
@@ -1315,6 +1810,9 @@ export function initSavedSimulationsWorkspace(options) {
     } else if (action === "create-planilla") {
       response = await crearPlanillaCasa(simulationId, context.casaId, {
         numero: payload.numero,
+        nro: payload.numero,
+        numero_planilla: payload.numero,
+        nro_planilla: payload.numero,
         fecha: payload.fecha,
         vencimiento: payload.vencimiento,
         proveedor: payload.proveedor,
@@ -1326,6 +1824,9 @@ export function initSavedSimulationsWorkspace(options) {
     } else if (action === "update-planilla") {
       response = await actualizarPlanillaCasa(simulationId, context.casaId, context.planillaId, {
         numero: payload.numero,
+        nro: payload.numero,
+        numero_planilla: payload.numero,
+        nro_planilla: payload.numero,
         fecha: payload.fecha,
         vencimiento: payload.vencimiento,
         proveedor: payload.proveedor,
@@ -1472,9 +1973,31 @@ export function initSavedSimulationsWorkspace(options) {
         descripcion: payload.descripcion,
         monto_ars: numberOrZero(payload.monto_ars)
       });
+    } else if (action === "create-house") {
+      response = await crearCasaSimulacion(simulationId, {
+        adherente_id: payload.adherente_id || null,
+        adherente_nombre: payload.adherente_nombre,
+        precio_ars: numberOrZero(payload.precio_ars),
+        descripcion: payload.descripcion
+      });
+    }
+
+    let shouldRenderAfterFallback = false;
+    if (action === "create-planilla" || action === "update-planilla") {
+      shouldRenderAfterFallback = upsertPlanillaInState(context.casaId, response);
     }
 
     await loadDetail(simulationId, true);
+
+    // Si el backend respondió OK al POST/PATCH pero el reload no trae la planilla,
+    // mantenemos visible la entidad desde la respuesta para no perderla en UI.
+    if ((action === "create-planilla" || action === "update-planilla") && response) {
+      const synced = upsertPlanillaInState(context.casaId, response);
+      if (synced || shouldRenderAfterFallback) {
+        renderDetail();
+      }
+    }
+
     setSummary(dom.simSummary, "Cambios guardados en la estructura de entregas.");
     writeLog(dom.systemLog, `Acción ${action}`, response);
   }
@@ -1511,6 +2034,93 @@ export function initSavedSimulationsWorkspace(options) {
       return "Cargar material";
     }
     return "Agregar";
+  }
+
+  function showConfirmDialog(title, message) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement("div");
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      `;
+
+      const dialog = document.createElement("div");
+      dialog.style.cssText = `
+        background: white;
+        border-radius: 14px;
+        padding: 2rem;
+        max-width: 400px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        font-family: inherit;
+      `;
+
+      const titleEl = document.createElement("h3");
+      titleEl.textContent = title;
+      titleEl.style.cssText = "margin: 0 0 1rem 0; font-size: 1.1rem;";
+
+      const messageEl = document.createElement("p");
+      messageEl.textContent = message;
+      messageEl.style.cssText = "margin: 0 0 1.5rem 0; color: #666; line-height: 1.5;";
+
+      const buttonsContainer = document.createElement("div");
+      buttonsContainer.style.cssText = "display: flex; gap: 0.8rem; justify-content: flex-end;";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "Cancelar";
+      cancelBtn.style.cssText = `
+        padding: 0.6rem 1.2rem;
+        border: 1px solid #ddd;
+        background: #f5f5f5;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+      `;
+      cancelBtn.onmouseover = () => (cancelBtn.style.background = "#e8e8e8");
+      cancelBtn.onmouseout = () => (cancelBtn.style.background = "#f5f5f5");
+      cancelBtn.onclick = () => {
+        overlay.remove();
+        resolve(false);
+      };
+
+      const confirmBtn = document.createElement("button");
+      confirmBtn.textContent = "Borrar";
+      confirmBtn.style.cssText = `
+        padding: 0.6rem 1.2rem;
+        border: none;
+        background: #d32f2f;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+      `;
+      confirmBtn.onmouseover = () => (confirmBtn.style.background = "#b71c1c");
+      confirmBtn.onmouseout = () => (confirmBtn.style.background = "#d32f2f");
+      confirmBtn.onclick = () => {
+        overlay.remove();
+        resolve(true);
+      };
+
+      buttonsContainer.appendChild(cancelBtn);
+      buttonsContainer.appendChild(confirmBtn);
+
+      dialog.appendChild(titleEl);
+      dialog.appendChild(messageEl);
+      dialog.appendChild(buttonsContainer);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      confirmBtn.focus();
+    });
   }
 
   function closeCreateForms(container) {
@@ -1579,20 +2189,103 @@ export function initSavedSimulationsWorkspace(options) {
   dom.buttonSaveSnapshot?.addEventListener("click", withUiFeedback(saveSnapshot));
   dom.buttonCloneSimulation?.addEventListener("click", withUiFeedback(cloneSimulation));
   dom.buttonRecalculateSimulation?.addEventListener("click", withUiFeedback(recalculateSimulation));
-  dom.buttonAddHouse?.addEventListener("click", () => {
-    if (!state.activeDetail?.id && !state.activeId) {
+
+  async function deleteSimulationHandler(simulationId) {
+    const confirmed = await showConfirmDialog(
+      "Borrar simulación",
+      "Se eliminará la simulación y TODOS los datos: casas, planillas, items, materiales y gastos. Esta acción no se puede deshacer."
+    );
+    if (!confirmed) {
       return;
     }
-    dom.houseCreateForm?.classList.remove("hidden");
-    dom.houseCreateAdherenteInput?.focus();
-  });
-  dom.houseCreateForm?.addEventListener("submit", withUiFeedback(createHouseFromForm));
-  dom.buttonHouseCreateCancel?.addEventListener("click", () => {
-    dom.houseCreateForm?.reset();
-    dom.houseCreateForm?.classList.add("hidden");
-  });
+    try {
+      await eliminarSimulacion(simulationId);
+      state.activeId = null;
+      state.activeDetail = null;
+      await refreshList({ silent: true });
+      renderDetail();
+      setSummary(dom.simSummary, "Simulación eliminada correctamente.");
+    } catch (error) {
+      setSummary(dom.simSummary, `Error al eliminar: ${error.message}`);
+    }
+  }
+
+  async function deletePlanillaHandler(simulationId, casaId, planillaId) {
+    const confirmed = await showConfirmDialog(
+      "Borrar planilla",
+      "Se eliminará la planilla y todos sus items y materiales."
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await eliminarPlanillaCasa(simulationId, casaId, planillaId);
+      await loadDetail(simulationId, true);
+      setSummary(dom.simSummary, "Planilla eliminada correctamente.");
+    } catch (error) {
+      setSummary(dom.simSummary, `Error: ${error.message}`);
+    }
+  }
+
+  async function deleteItemHandler(simulationId, casaId, planillaId, itemId) {
+    const confirmed = await showConfirmDialog(
+      "Borrar item",
+      "Se eliminará el item y todos sus materiales."
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await eliminarItemPlanilla(simulationId, casaId, planillaId, itemId);
+      await loadDetail(simulationId, true);
+      setSummary(dom.simSummary, "Item eliminado correctamente.");
+    } catch (error) {
+      setSummary(dom.simSummary, `Error: ${error.message}`);
+    }
+  }
+
+  async function deleteMaterialHandler(simulationId, casaId, planillaId, itemId, materialId) {
+    const confirmed = await showConfirmDialog(
+      "Borrar material",
+      "Se eliminará el material y sus movimientos."
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await eliminarMaterialPlanilla(simulationId, casaId, planillaId, itemId, materialId);
+      await loadDetail(simulationId, true);
+      setSummary(dom.simSummary, "Material eliminado correctamente.");
+    } catch (error) {
+      setSummary(dom.simSummary, `Error: ${error.message}`);
+    }
+  }
+
+  async function deleteGastoHandler(simulationId, casaId, gastoId) {
+    const confirmed = await showConfirmDialog(
+      "Borrar gasto",
+      "¿Estás seguro de que deseas eliminar este gasto?"
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await eliminarGastoCasa(simulationId, casaId, gastoId);
+      await loadDetail(simulationId, true);
+      setSummary(dom.simSummary, "Gasto eliminado correctamente.");
+    } catch (error) {
+      setSummary(dom.simSummary, `Error: ${error.message}`);
+    }
+  }
 
   dom.simulationsList?.addEventListener("click", withUiFeedback(async (event) => {
+    const deleteButton = event.target.closest('[data-action="delete-simulation"]');
+    if (deleteButton) {
+      const simId = normalizeId(deleteButton.getAttribute("data-simulation-id"));
+      await deleteSimulationHandler(simId);
+      return;
+    }
+
     const button = event.target.closest("[data-simulation-id]");
     if (!button) {
       return;
@@ -1608,50 +2301,57 @@ export function initSavedSimulationsWorkspace(options) {
   dom.simulationHousesContainer?.addEventListener("click", (event) => {
     const toggleCreateItemButton = event.target.closest('[data-action="toggle-create-item"]');
     if (toggleCreateItemButton) {
-      const card = toggleCreateItemButton.closest(".inventory-card");
-      toggleCreateForm(card, 'form[data-action="create-item"]', "toggle-create-item");
+      const container = toggleCreateItemButton.closest(".inventory-card") || toggleCreateItemButton.closest(".inventory-page");
+      toggleCreateForm(container, 'form[data-action="create-item"]', "toggle-create-item");
       return;
     }
 
     const toggleCreateItemDirectButton = event.target.closest('[data-action="toggle-create-item-direct"]');
     if (toggleCreateItemDirectButton) {
-      const section = toggleCreateItemDirectButton.closest(".inventory-section");
-      toggleCreateForm(section, 'form[data-action="create-item-direct"]', "toggle-create-item-direct");
+      const container = toggleCreateItemDirectButton.closest(".inventory-section") || toggleCreateItemDirectButton.closest(".inventory-page");
+      toggleCreateForm(container, 'form[data-action="create-item-direct"]', "toggle-create-item-direct");
       return;
     }
 
     const toggleCreateMaterialButton = event.target.closest('[data-action="toggle-create-material"]');
     if (toggleCreateMaterialButton) {
-      const card = toggleCreateMaterialButton.closest(".inventory-card");
-      toggleCreateForm(card, 'form[data-action="create-material"]', "toggle-create-material");
+      const container = toggleCreateMaterialButton.closest(".inventory-card") || toggleCreateMaterialButton.closest(".inventory-page");
+      toggleCreateForm(container, 'form[data-action="create-material"]', "toggle-create-material");
       return;
     }
 
     const toggleCreateMovementButton = event.target.closest('[data-action="toggle-create-movement"]');
     if (toggleCreateMovementButton) {
-      const card = toggleCreateMovementButton.closest(".inventory-card");
-      toggleCreateForm(card, 'form[data-action="create-movement"]', "toggle-create-movement");
+      const container = toggleCreateMovementButton.closest(".inventory-card");
+      toggleCreateForm(container, 'form[data-action="create-movement"]', "toggle-create-movement");
       return;
     }
 
     const toggleCreatePlanillaButton = event.target.closest('[data-action="toggle-create-planilla"]');
     if (toggleCreatePlanillaButton) {
-      const section = toggleCreatePlanillaButton.closest(".inventory-section");
-      toggleCreateForm(section, 'form[data-action="create-planilla"]', "toggle-create-planilla");
+      const container = toggleCreatePlanillaButton.closest(".inventory-page") || toggleCreatePlanillaButton.closest(".inventory-section");
+      toggleCreateForm(container, 'form[data-action="create-planilla"]', "toggle-create-planilla");
       return;
     }
 
     const toggleCreateGastoButton = event.target.closest('[data-action="toggle-create-gasto"]');
     if (toggleCreateGastoButton) {
-      const section = toggleCreateGastoButton.closest(".inventory-section");
-      toggleCreateForm(section, 'form[data-action="create-gasto"]', "toggle-create-gasto");
+      const container = toggleCreateGastoButton.closest(".inventory-page") || toggleCreateGastoButton.closest(".inventory-section");
+      toggleCreateForm(container, 'form[data-action="create-gasto"]', "toggle-create-gasto");
       return;
     }
 
     const toggleCreateMaterialDirectButton = event.target.closest('[data-action="toggle-create-material-direct"]');
     if (toggleCreateMaterialDirectButton) {
-      const section = toggleCreateMaterialDirectButton.closest(".inventory-section");
-      toggleCreateForm(section, 'form[data-action="create-material-direct"]', "toggle-create-material-direct");
+      const container = toggleCreateMaterialDirectButton.closest(".inventory-page") || toggleCreateMaterialDirectButton.closest(".inventory-section");
+      toggleCreateForm(container, 'form[data-action="create-material-direct"]', "toggle-create-material-direct");
+      return;
+    }
+
+    const toggleCreateHouseButton = event.target.closest('[data-action="toggle-create-house"]');
+    if (toggleCreateHouseButton) {
+      const container = toggleCreateHouseButton.closest(".inventory-page");
+      toggleCreateForm(container, 'form[data-action="create-house"]', "toggle-create-house");
       return;
     }
 
@@ -1686,6 +2386,22 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
+    const backToHouseButton = event.target.closest('[data-action="back-to-house"]');
+    if (backToHouseButton) {
+      state.planView = "house";
+      state.selectedPlanillaId = null;
+      state.selectedItemId = null;
+      renderHouses(state.activeDetail);
+      return;
+    }
+
+    const openHouseButton = event.target.closest('[data-action="open-house"]');
+    if (openHouseButton) {
+      state.planView = "house";
+      renderHouses(state.activeDetail);
+      return;
+    }
+
     const navRootButton = event.target.closest('[data-action="nav-root"]');
     if (navRootButton) {
       state.planView = "root";
@@ -1699,6 +2415,112 @@ export function initSavedSimulationsWorkspace(options) {
       state.planView = "houses";
       state.selectedHouseId = null;
       renderHouses(state.activeDetail);
+    }
+
+    const navPlanillasButton = event.target.closest('[data-action="nav-planillas"]');
+    if (navPlanillasButton) {
+      state.planView = "planillas";
+      renderHouses(state.activeDetail);
+    }
+
+    const navItemsButton = event.target.closest('[data-action="nav-items"]');
+    if (navItemsButton) {
+      state.planView = "items";
+      renderHouses(state.activeDetail);
+    }
+
+    const navMaterialesButton = event.target.closest('[data-action="nav-materiales"]');
+    if (navMaterialesButton) {
+      state.planView = "materiales";
+      renderHouses(state.activeDetail);
+    }
+
+    const navGastosButton = event.target.closest('[data-action="nav-gastos"]');
+    if (navGastosButton) {
+      state.planView = "gastos";
+      renderHouses(state.activeDetail);
+    }
+
+    const backToPlanillasButton = event.target.closest('[data-action="back-to-planillas"]');
+    if (backToPlanillasButton) {
+      state.planView = "planillas";
+      state.selectedPlanillaId = null;
+      renderHouses(state.activeDetail);
+    }
+
+    const backToItemsButton = event.target.closest('[data-action="back-to-items"]');
+    if (backToItemsButton) {
+      state.planView = "items";
+      state.selectedItemId = null;
+      renderHouses(state.activeDetail);
+    }
+
+    const openPlanillaButton = event.target.closest('[data-action="open-planilla"]');
+    if (openPlanillaButton) {
+      state.selectedPlanillaId = normalizeId(openPlanillaButton.getAttribute("data-planilla-id"));
+      state.planView = "planilla";
+      renderHouses(state.activeDetail);
+    }
+
+    const openItemButton = event.target.closest('[data-action="open-item"]');
+    if (openItemButton) {
+      state.selectedItemId = normalizeId(openItemButton.getAttribute("data-item-id"));
+      state.planView = "item";
+      renderHouses(state.activeDetail);
+    }
+
+    const toggleEditButton2 = event.target.closest('[data-action="toggle-card-edit"]');
+    if (toggleEditButton2) {
+      const card = toggleEditButton2.closest(".inventory-card, .inventory-mini-card");
+      setCardEditMode(card, !card?.classList.contains("is-editing"));
+      return;
+    }
+
+    const deletePlanillaButton = event.target.closest('[data-action="delete-planilla"]');
+    if (deletePlanillaButton) {
+      const planillaId = normalizeId(deletePlanillaButton.getAttribute("data-planilla-id"));
+      const simId = getActiveSimulationId();
+      const selectedHouseId = normalizeId(state.selectedHouseId);
+      withUiFeedback(async () => {
+        await deletePlanillaHandler(simId, selectedHouseId, planillaId);
+      })();
+      return;
+    }
+
+    const deleteItemButton = event.target.closest('[data-action="delete-item"]');
+    if (deleteItemButton) {
+      const itemId = normalizeId(deleteItemButton.getAttribute("data-item-id"));
+      const simId = getActiveSimulationId();
+      const selectedHouseId = normalizeId(state.selectedHouseId);
+      const selectedPlanillaId = normalizeId(state.selectedPlanillaId);
+      withUiFeedback(async () => {
+        await deleteItemHandler(simId, selectedHouseId, selectedPlanillaId, itemId);
+      })();
+      return;
+    }
+
+    const deleteMaterialButton = event.target.closest('[data-action="delete-material"]');
+    if (deleteMaterialButton) {
+      const materialId = normalizeId(deleteMaterialButton.getAttribute("data-material-id"));
+      const simId = getActiveSimulationId();
+      const selectedHouseId = normalizeId(state.selectedHouseId);
+      const selectedPlanillaId = normalizeId(state.selectedPlanillaId);
+      const selectedItemId = normalizeId(state.selectedItemId);
+      withUiFeedback(async () => {
+        await deleteMaterialHandler(simId, selectedHouseId, selectedPlanillaId, selectedItemId, materialId);
+      })();
+      return;
+    }
+
+    const deleteGastoButton = event.target.closest('[data-action="delete-gasto"]');
+    if (deleteGastoButton) {
+      const gastoId = normalizeId(deleteGastoButton.getAttribute("data-gasto-id"));
+      const simId = getActiveSimulationId();
+      const selectedHouseId = normalizeId(state.selectedHouseId);
+      withUiFeedback(async () => {
+        await deleteGastoHandler(simId, selectedHouseId, gastoId);
+      })();
+      return;
     }
   });
   dom.simulationHousesContainer?.addEventListener("input", (event) => {

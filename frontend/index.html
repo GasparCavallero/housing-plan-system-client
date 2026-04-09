@@ -189,22 +189,6 @@
         </article>
       </div>
 
-      <div class="panel-head mt-1">
-        <h3>Inventario por casa</h3>
-        <button id="btn-add-house" class="btn btn-primary" type="button">Agregar casa</button>
-      </div>
-      <form id="house-create-form" class="inline-form house-create-form hidden">
-        <input id="house-create-adherente-id" name="adherente_id" type="number" min="1" step="1"
-          placeholder="ID del adherente (opcional)" />
-        <input id="house-create-adherente" name="adherente_nombre" type="text" placeholder="Nombre del adherente"
-          required />
-        <input id="house-create-precio" name="precio_ars" type="number" min="0" step="0.01" placeholder="Precio ARS"
-          required />
-        <input id="house-create-descripcion" name="descripcion" type="text" placeholder="Descripción de la casa" />
-        <button id="btn-house-create-submit" class="btn btn-secondary" type="submit">Guardar casa</button>
-        <button id="btn-house-create-cancel" class="btn btn-ghost" type="button">Cancelar</button>
-      </form>
-      <p id="house-create-status" class="config-help hidden"></p>
       <div id="simulation-houses" class="house-cards"></div>
     </section>
 

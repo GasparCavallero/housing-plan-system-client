@@ -118,99 +118,69 @@ export async function simularServidor({ horizonteMeses = null, ofertas = [], con
 }
 
 export async function listarCasasSimulacion(simulacionId) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones-entregas/${simulacionId}/casas`,
-    `/planes/simulaciones/${simulacionId}/casas`,
-    `/simulaciones/${simulacionId}/casas`
-  ], { method: "GET" });
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas`, { method: "GET" });
 }
 
 export async function crearCasaSimulacion(simulacionId, payload) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas`,
-    `/simulaciones/${simulacionId}/casas`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas`, {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
 export async function listarPlanillasCasa(simulacionId, casaId) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/planillas`
-  ], { method: "GET" });
+  const payload = await apiRequest(
+    `/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas`,
+    { method: "GET" }
+  );
+  return extractArrayPayload(payload, ["planillas", "entregas", "items"]);
 }
 
 export async function crearPlanillaCasa(simulacionId, casaId, payload) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/planillas`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas`, {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
 export async function actualizarPlanillaCasa(simulacionId, casaId, planillaId, payload) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}`, {
     method: "PATCH",
     body: JSON.stringify(payload)
   });
 }
 
 export async function listarItemsPlanilla(simulacionId, casaId, planillaId) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`
-  ], { method: "GET" });
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`, { method: "GET" });
 }
 
 export async function crearItemPlanilla(simulacionId, casaId, planillaId, payload) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items`, {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
 export async function actualizarItemPlanilla(simulacionId, casaId, planillaId, itemId, payload) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}`, {
     method: "PATCH",
     body: JSON.stringify(payload)
   });
 }
 
 export async function listarMaterialesItem(simulacionId, casaId, planillaId, itemId) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`
-  ], { method: "GET" });
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`, { method: "GET" });
 }
 
 export async function crearMaterialPlanilla(simulacionId, casaId, planillaId, itemId, payload) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales`, {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
 export async function actualizarMaterialPlanilla(simulacionId, casaId, planillaId, itemId, materialId, payload) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales/${materialId}`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales/${materialId}`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales/${materialId}`, {
     method: "PATCH",
     body: JSON.stringify(payload)
   });
@@ -242,17 +212,11 @@ export async function registrarMovimientoEntrega(payload) {
 }
 
 export async function listarGastosCasa(simulacionId, casaId) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/gastos`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/gastos`
-  ], { method: "GET" });
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/gastos`, { method: "GET" });
 }
 
 export async function crearGastoCasa(simulacionId, casaId, payload) {
-  return apiRequestWithFallback([
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/gastos`,
-    `/simulaciones/${simulacionId}/casas/${casaId}/gastos`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/gastos`, {
     method: "POST",
     body: JSON.stringify(payload)
   });
@@ -282,12 +246,31 @@ async function apiRequestWithFallback(paths, options = {}) {
   throw new Error("No se encontró un endpoint válido para esta operación.");
 }
 
+function extractArrayPayload(payload, preferredKeys = []) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  for (const key of preferredKeys) {
+    if (Array.isArray(payload[key])) {
+      return payload[key];
+    }
+  }
+
+  const firstArray = Object.values(payload).find((value) => Array.isArray(value));
+  if (Array.isArray(firstArray)) {
+    return firstArray;
+  }
+
+  return [];
+}
+
 export async function listarSimulacionesGuardadas() {
-  const payload = await apiRequestWithFallback([
-    "/simulaciones",
-    "/planes/simulaciones",
-    "/planes/snapshots"
-  ], { method: "GET" });
+  const payload = await apiRequest("/planes/simulaciones", { method: "GET" });
 
   if (Array.isArray(payload)) {
     return payload;
@@ -305,19 +288,11 @@ export async function listarSimulacionesGuardadas() {
 }
 
 export async function obtenerDetalleSimulacion(simulacionId) {
-  return apiRequestWithFallback([
-    `/simulaciones/${simulacionId}`,
-    `/planes/simulaciones/${simulacionId}`,
-    `/planes/snapshots/${simulacionId}`
-  ], { method: "GET" });
+  return apiRequest(`/planes/simulaciones/${simulacionId}`, { method: "GET" });
 }
 
 export async function crearSimulacionGuardada(payload) {
-  return apiRequestWithFallback([
-    "/simulaciones",
-    "/planes/simulaciones",
-    "/planes/snapshots"
-  ], {
+  return apiRequest("/planes/simulaciones", {
     method: "POST",
     body: JSON.stringify(payload)
   });
@@ -326,43 +301,28 @@ export async function crearSimulacionGuardada(payload) {
 export async function actualizarSimulacionGuardada(simulacionId, payload) {
   const body = JSON.stringify(payload);
 
-  return apiRequestWithFallback([
-    `/simulaciones/${simulacionId}`,
-    `/planes/simulaciones/${simulacionId}`,
-    `/planes/snapshots/${simulacionId}`
-  ], {
-    method: "PATCH",
+  return apiRequest(`/planes/simulaciones/${simulacionId}`, {
+    method: "PUT",
     body
   });
 }
 
 export async function clonarSimulacionGuardada(simulacionId, payload = {}) {
-  return apiRequestWithFallback([
-    `/simulaciones/${simulacionId}/clonar`,
-    `/planes/simulaciones/${simulacionId}/clonar`,
-    `/planes/snapshots/${simulacionId}/clonar`
-  ], {
+  return apiRequest(`/planes/simulaciones/${simulacionId}/clonar`, {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
 export async function recalcularSimulacionGuardada(simulacionId, payload = {}) {
-  return apiRequestWithFallback([
-    `/simulaciones/${simulacionId}/recalcular`,
-    `/planes/simulaciones/${simulacionId}/recalcular`,
-    `/planes/snapshots/${simulacionId}/recalcular`
-  ], {
+  return apiRequest(`/planes/simulaciones/${simulacionId}/recalcular`, {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
 export async function actualizarCasaSimulacion(simulacionId, casaId, payload) {
-  return apiRequestWithFallback([
-    `/simulaciones/${simulacionId}/casas/${casaId}`,
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}`, {
     method: "PATCH",
     body: JSON.stringify(payload)
   });
@@ -488,20 +448,38 @@ export async function agregarGastoCasa(simulacionId, casaId, payload) {
 }
 
 export async function actualizarGastoCasa(simulacionId, casaId, gastoId, payload) {
-  return apiRequestWithFallback([
-    `/simulaciones/${simulacionId}/casas/${casaId}/gastos/${gastoId}`,
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/gastos/${gastoId}`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/gastos/${gastoId}`, {
     method: "PATCH",
     body: JSON.stringify(payload)
   });
 }
 
 export async function eliminarGastoCasa(simulacionId, casaId, gastoId) {
-  return apiRequestWithFallback([
-    `/simulaciones/${simulacionId}/casas/${casaId}/gastos/${gastoId}`,
-    `/planes/simulaciones/${simulacionId}/casas/${casaId}/gastos/${gastoId}`
-  ], {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/gastos/${gastoId}`, {
+    method: "DELETE"
+  });
+}
+
+export async function eliminarPlanillaCasa(simulacionId, casaId, planillaId) {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}`, {
+    method: "DELETE"
+  });
+}
+
+export async function eliminarItemPlanilla(simulacionId, casaId, planillaId, itemId) {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}`, {
+    method: "DELETE"
+  });
+}
+
+export async function eliminarMaterialPlanilla(simulacionId, casaId, planillaId, itemId, materialId) {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}/items/${itemId}/materiales/${materialId}`, {
+    method: "DELETE"
+  });
+}
+
+export async function eliminarSimulacion(simulacionId) {
+  return apiRequest(`/planes/simulaciones/${simulacionId}`, {
     method: "DELETE"
   });
 }

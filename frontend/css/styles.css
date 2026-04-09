@@ -566,6 +566,43 @@ textarea {
   margin: 0.15rem 0 0;
 }
 
+.house-search-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.house-search-input {
+  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.95rem;
+  color: var(--text);
+  transition: all 0.2s ease;
+  direction: ltr;
+  unicode-bidi: bidi-override;
+}
+
+.house-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 109, 91, 0.1);
+}
+
+.house-search-input::placeholder {
+  color: var(--muted);
+}
+
+.inventory-search-info {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding-left: 0.2rem;
+}
+
 .inventory-drilldown-head {
   display: flex;
   justify-content: space-between;
@@ -905,6 +942,10 @@ textarea {
 
 .inventory-grid-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.inventory-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .inventory-grid-2 > label,
