@@ -519,6 +519,23 @@ textarea {
   margin-top: 1rem;
 }
 
+.simulation-detail-overview {
+  width: 100%;
+}
+
+.simulation-detail-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.simulation-detail-meta-inline {
+  font-size: 0.9rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .house-cards {
   display: grid;
   gap: 0.8rem;
@@ -617,10 +634,8 @@ textarea {
 }
 
 .inventory-page {
-  border: 1px solid var(--border);
-  border-radius: 14px;
   background: rgba(255, 255, 255, 0.9);
-  padding: 0.85rem;
+  padding: 0.85rem 0;
 }
 
 .inventory-page-title {

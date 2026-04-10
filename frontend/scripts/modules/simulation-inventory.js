@@ -368,7 +368,8 @@ function buildSummary(detail) {
     totalGastos: Number(totalGastos.toFixed(2)),
     totalManoObra: Number(totalManoObra.toFixed(2)),
     totalSaldo: Number(totalSaldo.toFixed(2)),
-    materialesAgrupados: materiales
+    materialesAgrupados: materiales,
+    timeline: detail?.timeline || []
   };
 }
 
@@ -952,9 +953,8 @@ export function initSavedSimulationsWorkspace(options) {
   // Redirigir referencias de DOM a los contenedores de simulaciones guardadas
   const originalDom = { ...dom };
   dom.simulationGlobalSummary = dom.simulationDetailSummary;
-  // No mapear materiales y timeline - queremos que nunca se muestren en Simulaciones Guardadas
-  dom.simulationGlobalMaterials = null;
-  dom.simulationTimelinePreview = null;
+  dom.simulationGlobalMaterials = dom.simulationDetailMaterials;
+  dom.simulationTimelinePreview = dom.simulationDetailTimeline;
   dom.simulationHousesContainer = dom.simulationDetailHousesContainer;
 
   const planSection = document.getElementById("plan-simulado");
@@ -1082,8 +1082,12 @@ export function initSavedSimulationsWorkspace(options) {
     if (!dom.simulationsSummary) {
       return;
     }
-    const active = state.activeDetail ? ` | Actual: ${state.activeDetail.titulo}` : "";
-    dom.simulationsSummary.textContent = `Total simulaciones: ${state.list.length}${active}`;
+    // Solo mostrar "Total simulaciones" cuando no hay detalle activo
+    if (state.activeDetail) {
+      dom.simulationsSummary.textContent = "";
+    } else {
+      dom.simulationsSummary.textContent = `Total simulaciones: ${state.list.length}`;
+    }
   }
 
   function renderSimulationCard(sim) {
@@ -1227,6 +1231,7 @@ export function initSavedSimulationsWorkspace(options) {
     if (state.planView === "root") {
       const summary = buildSummary(detail);
       renderSummaryCards(summary);
+      renderGlobalMaterials(summary);
     } else {
       // Limpiar summary cards si no estamos en root
       if (dom.simulationGlobalSummary) {
@@ -1682,11 +1687,10 @@ export function initSavedSimulationsWorkspace(options) {
 
     dom.simulationHousesContainer.innerHTML = `
       <section class="inventory-page inventory-page-root">
-      ${renderPlanBreadcrumb([{ label: "Plan simulado", current: true }])}
+      ${renderPlanBreadcrumb([{ label: "Simulacion actual", current: true }])}
       <div class="inventory-drilldown-head">
         <h4 class="inventory-page-title">Secciones del plan</h4>
       </div>
-      <p class="inventory-page-subtitle">Entrá a Casas para navegar la información por vivienda.</p>
       <div class="inventory-section-grid">
         <button type="button" class="house-selector-card is-page-link" data-action="open-houses-section">
           <p class="inventory-kicker">Sección</p>
@@ -1724,18 +1728,20 @@ export function initSavedSimulationsWorkspace(options) {
     }
 
     if (dom.simulationDetailTitle) {
-      dom.simulationDetailTitle.textContent = `Simulación: ${state.activeDetail.titulo || `#${state.activeDetail.id}`}`;
+      const updated = state.activeDetail.updated_at ? new Date(state.activeDetail.updated_at).toLocaleString("es-AR") : "sin fecha";
+      dom.simulationDetailTitle.innerHTML = `
+        <div class="simulation-detail-title-row">
+          <span>Simulación: ${state.activeDetail.titulo || `#${state.activeDetail.id}`}</span>
+          <span class="simulation-detail-meta-inline">ID ${state.activeDetail.id} | Última actualización: ${updated}</span>
+        </div>
+      `;
     }
 
     if (dom.simulationDetailMeta) {
-      const updated = state.activeDetail.updated_at ? new Date(state.activeDetail.updated_at).toLocaleString("es-AR") : "sin fecha";
       const breadcrumb = `
-        <nav class="inventory-breadcrumb" style="margin-bottom: 0.5rem;">
-          <button type="button" class="inventory-breadcrumb-item" data-action="back-to-simulations">
-            ← Volver a simulaciones
-          </button>
-        </nav>
-        <div style="font-size: 0.9rem; color: var(--color-text-secondary);">ID ${state.activeDetail.id} | Última actualización: ${updated}</div>
+        <button type="button" class="btn btn-ghost" data-action="back-to-simulations">
+          ← Volver a simulaciones
+        </button>
       `;
       dom.simulationDetailMeta.innerHTML = breadcrumb;
     }
@@ -1788,22 +1794,19 @@ export function initSavedSimulationsWorkspace(options) {
       id: normalizeId(item.id ?? item.simulacion_id ?? item.snapshot_id)
     })).filter((item) => item.id != null);
 
+    // No cargar automáticamente la primera simulación
+    // Dejar que el usuario elija cuál simulación ver haciendo click en una tarjeta
     const activeExists = state.list.some((item) => normalizeId(item.id) === normalizeId(state.activeId));
-    if ((!state.activeId || !activeExists) && state.list.length > 0) {
-      state.activeId = normalizeId(state.list[0].id);
+    if (!activeExists) {
+      state.activeId = null;
+      state.activeDetail = null;
       state.selectedHouseId = null;
       state.planView = "root";
     }
 
     renderSimulationList();
     updateSummaryLine();
-
-    if (state.activeId) {
-      await loadDetail(state.activeId, true);
-    } else {
-      state.activeDetail = null;
-      renderDetail();
-    }
+    renderDetail();
 
     if (!silent) {
       setSummary(dom.simSummary, `Listado de simulaciones actualizado (${state.list.length}).`);
@@ -2013,7 +2016,12 @@ export function initSavedSimulationsWorkspace(options) {
         observaciones: payload.observaciones
       });
     } else if (action === "create-item") {
-      response = await crearItemPlanilla(simulationId, context.casaId, context.planillaId, {
+      // Usar planilla_id del select si está disponible, sino usar context.planillaId del data-attribute
+      const planillaId = payload.planilla_id || context.planillaId;
+      if (!planillaId) {
+        throw new Error("Selecciona la planilla destino para crear el item.");
+      }
+      response = await crearItemPlanilla(simulationId, context.casaId, planillaId, {
         nombre: payload.nombre,
         proveedor: payload.proveedor,
         descripcion: payload.descripcion,
