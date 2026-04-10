@@ -1236,6 +1236,11 @@ dom.buttonSimularServidor.addEventListener("click", withUiFeedback(ejecutarSimul
 dom.buttonGuardarConfig.addEventListener("click", withUiFeedback(guardarConfiguracionServidor));
 dom.buttonCargarResumen.addEventListener("click", withUiFeedback(cargarResumenServidor));
 dom.buttonReiniciarPlan.addEventListener("click", withUiFeedback(reiniciarPlanServidor));
+dom.buttonGuardarSimulacion?.addEventListener("click", withUiFeedback(async () => {
+  if (simulationsWorkspace) {
+    await simulationsWorkspace.saveSimulationAsSnapshot();
+  }
+}));
 
 dom.buttonLogout.addEventListener("click", withUiFeedback(logoutFlow));
 

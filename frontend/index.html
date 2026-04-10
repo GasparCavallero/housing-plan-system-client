@@ -100,45 +100,46 @@
             <p id="simulation-detail-meta">Seleccioná una simulación de la lista para trabajar sobre ella.</p>
           </div>
 
-          <p class="config-help simulation-detail-help">
-            Este bloque cambia el nombre y la descripción de la simulación activa. La jerarquía de casas, planillas,
-            items, materiales y movimientos está más abajo.
-          </p>
+          <div id="simulation-detail-summary" class="plan-summary-grid"></div>
 
-          <div class="simulation-edit-grid">
-            <label>
-              Nombre de la simulación
-              <input id="simulation-title" type="text" placeholder="Título" />
-            </label>
-            <label>
-              Descripción de la simulación
-              <input id="simulation-description" type="text" placeholder="Descripción" />
-            </label>
+          <div id="simulation-detail-overview" class="plan-overview-cols">
+            <article>
+              <h3>Materiales globales agrupados</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Material</th>
+                      <th>Unidad</th>
+                      <th>Total</th>
+                      <th>Retirado</th>
+                      <th>En construcción</th>
+                      <th>Total ARS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="simulation-detail-materials"></tbody>
+                </table>
+              </div>
+            </article>
+            <article>
+              <h3>Timeline / proyección</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Mes</th>
+                      <th>Evento</th>
+                      <th>Ingreso</th>
+                      <th>Fondo</th>
+                    </tr>
+                  </thead>
+                  <tbody id="simulation-detail-timeline"></tbody>
+                </table>
+              </div>
+            </article>
           </div>
 
-          <div>
-            <h4>Ofertas de licitación</h4>
-            <p class="config-help">Cargá ofertas una por una. No hace falta escribir formatos técnicos.</p>
-            <form id="simulation-offer-form" class="inline-form">
-              <input id="simulation-offer-adherente" type="number" min="1" step="1" placeholder="ID adherente" />
-              <input id="simulation-offer-monto" type="number" min="0" step="0.01" placeholder="Monto ARS" />
-              <button id="btn-offer-add" class="btn btn-ghost" type="submit">Agregar oferta</button>
-              <button id="btn-offer-clear" class="btn btn-ghost" type="button">Limpiar ofertas</button>
-            </form>
-            <div id="simulation-offers-list" class="offers-list"></div>
-          </div>
-
-          <div class="actions multi-actions">
-            <button id="btn-save-simulation" class="btn btn-secondary" type="button">Guardar simulación</button>
-            <button id="btn-save-snapshot" class="btn btn-ghost" type="button">Guardar snapshot</button>
-            <button id="btn-recalculate-simulation" class="btn btn-primary" type="button">Recalcular</button>
-            <button id="btn-clone-simulation" class="btn btn-ghost" type="button">Clonar versión</button>
-          </div>
-
-          <div>
-            <h4>Configuración activa de esta simulación</h4>
-            <div id="simulation-parametros-activos" class="active-params">Sin datos.</div>
-          </div>
+          <div id="simulation-detail-houses" class="house-cards"></div>
         </article>
       </div>
     </section>
@@ -315,6 +316,7 @@
       <form id="operacion-form" class="inline-form">
         <button id="btn-simular-servidor" class="btn btn-primary" type="button">Simular</button>
         <button id="btn-reiniciar-plan" class="btn btn-ghost" type="button">Reiniciar plan</button>
+        <button id="btn-guardar-simulacion" class="btn btn-secondary" type="button">Guardar simulación</button>
       </form>
       <div class="table-wrap sim-table-wrap">
         <table>

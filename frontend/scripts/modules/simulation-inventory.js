@@ -7,6 +7,7 @@ import {
   actualizarSimulacionGuardada,
   clonarSimulacionGuardada,
   recalcularSimulacionGuardada,
+  guardarSimulacionComoCopia,
   listarCasasSimulacion,
   crearCasaSimulacion,
   actualizarCasaSimulacion,
@@ -287,6 +288,7 @@ function normalizeCasa(raw) {
 function normalizeSimulation(detail, fallbackId = null) {
   return {
     id: detail?.id ?? fallbackId,
+    snapshot_id: detail?.snapshot_id ?? null,
     titulo: String(detail?.titulo ?? detail?.title ?? "Simulacion").trim(),
     descripcion: String(detail?.descripcion ?? detail?.description ?? "").trim(),
     configuracion: detail?.configuracion ?? detail?.parametros ?? {},
@@ -297,6 +299,7 @@ function normalizeSimulation(detail, fallbackId = null) {
     resumen: detail?.resumen ?? null,
     timeline: safeArray(detail?.timeline),
     casas: safeArray(detail?.casas).map(normalizeCasa),
+    horizonte_meses: detail?.horizonte_meses ?? 120,
     created_at: detail?.created_at ?? detail?.fecha_creacion ?? null,
     updated_at: detail?.updated_at ?? detail?.fecha_actualizacion ?? null
   };
@@ -946,15 +949,38 @@ export function initSavedSimulationsWorkspace(options) {
     loading: false
   };
 
+  // Redirigir referencias de DOM a los contenedores de simulaciones guardadas
+  const originalDom = { ...dom };
+  dom.simulationGlobalSummary = dom.simulationDetailSummary;
+  // No mapear materiales y timeline - queremos que nunca se muestren en Simulaciones Guardadas
+  dom.simulationGlobalMaterials = null;
+  dom.simulationTimelinePreview = null;
+  dom.simulationHousesContainer = dom.simulationDetailHousesContainer;
+
   const planSection = document.getElementById("plan-simulado");
+  let simulationDetailOverview = document.getElementById("simulation-detail-overview");
 
   function syncPlanFocusMode() {
     if (!planSection) {
       return;
     }
 
+    // Obtener el elemento si aún no lo tenemos
+    if (!simulationDetailOverview) {
+      simulationDetailOverview = document.getElementById("simulation-detail-overview");
+    }
+
     const isSectionFocused = state.planView !== "root";
     planSection.classList.toggle("plan-section-focused", isSectionFocused);
+    
+    // Ocultar el div de materiales/timeline en Simulaciones Guardadas cuando no estamos en root
+    if (simulationDetailOverview) {
+      if (isSectionFocused) {
+        simulationDetailOverview.style.display = "none";
+      } else {
+        simulationDetailOverview.style.display = "";
+      }
+    }
   }
 
   function renderPlanBreadcrumb(items) {
@@ -1060,9 +1086,48 @@ export function initSavedSimulationsWorkspace(options) {
     dom.simulationsSummary.textContent = `Total simulaciones: ${state.list.length}${active}`;
   }
 
+  function renderSimulationCard(sim) {
+    return `
+      <button class="house-selector-card is-page-link" type="button" data-action="open-simulation" data-simulation-id="${escapeHtml(sim.id)}">
+        <p class="inventory-kicker">Simulación #${escapeHtml(sim.id)}</p>
+        <h4>${escapeHtml(sim.titulo || sim.title || `Simulación ${sim.id}`)}</h4>
+        <p class="inventory-subtitle">${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
+      </button>
+    `;
+  }
+
   function renderSimulationList() {
     if (!dom.simulationsList) {
       return;
+    }
+
+    // Si hay un detalle activo, ocultar el listado
+    const workspace = document.querySelector(".simulation-workspace");
+    const aside = workspace?.querySelector("aside");
+    const article = workspace?.querySelector("article");
+
+    if (state.activeDetail) {
+      if (aside) {
+        aside.style.display = "none";
+      }
+      if (article) {
+        article.style.display = "block";
+      }
+      if (workspace) {
+        workspace.style.gridTemplateColumns = "1fr";
+      }
+      return;
+    }
+
+    // Mostrar grid de simulaciones
+    if (aside) {
+      aside.style.display = "block";
+    }
+    if (article) {
+      article.style.display = "none";
+    }
+    if (workspace) {
+      workspace.style.gridTemplateColumns = "minmax(250px, 340px) 1fr";
     }
 
     if (state.list.length === 0) {
@@ -1070,15 +1135,11 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
-    dom.simulationsList.innerHTML = state.list.map((sim) => `
-      <div style="display:flex;gap:0.5rem;align-items:stretch;">
-        <button class="simulation-list-item ${normalizeId(sim.id) === normalizeId(state.activeId) ? "is-active" : ""}" type="button" data-simulation-id="${escapeHtml(sim.id)}" style="flex:1;">
-          <h4>${escapeHtml(sim.titulo || sim.title || `Simulacion #${sim.id}`)}</h4>
-          <p>${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
-        </button>
-        <button class="btn btn-ghost" type="button" data-action="delete-simulation" data-simulation-id="${escapeHtml(sim.id)}" title="Borrar simulación" style="padding:0.4rem 0.6rem;min-width:auto;">🗑️</button>
+    dom.simulationsList.innerHTML = `
+      <div class="house-selector-grid">
+        ${state.list.map((sim) => renderSimulationCard(sim)).join("")}
       </div>
-    `).join("");
+    `;
   }
 
   function renderSummaryCards(summary) {
@@ -1160,6 +1221,17 @@ export function initSavedSimulationsWorkspace(options) {
     if (state.planView === "house" && !selectedHouse) {
       state.planView = "houses";
       state.selectedHouseId = null;
+    }
+
+    // Renderizar summary cards solo si estamos en root
+    if (state.planView === "root") {
+      const summary = buildSummary(detail);
+      renderSummaryCards(summary);
+    } else {
+      // Limpiar summary cards si no estamos en root
+      if (dom.simulationGlobalSummary) {
+        dom.simulationGlobalSummary.innerHTML = '';
+      }
     }
 
     if (state.planView === "house" && selectedHouse) {
@@ -1634,42 +1706,42 @@ export function initSavedSimulationsWorkspace(options) {
         dom.simulationDetailTitle.textContent = "Ninguna simulación seleccionada";
       }
       if (dom.simulationDetailMeta) {
-        dom.simulationDetailMeta.textContent = "Seleccioná una simulación de la lista para cargar su inventario.";
+        dom.simulationDetailMeta.innerHTML = "";
+      }
+      if (dom.simulationGlobalSummary) {
+        dom.simulationGlobalSummary.innerHTML = '';
+      }
+      if (dom.simulationGlobalMaterials) {
+        dom.simulationGlobalMaterials.innerHTML = '';
+      }
+      if (dom.simulationTimelinePreview) {
+        dom.simulationTimelinePreview.innerHTML = '';
       }
       if (dom.simulationHousesContainer) {
-        dom.simulationHousesContainer.innerHTML = '<p class="inventory-empty">Seleccioná una simulación para cargar casas y entregas.</p>';
+        dom.simulationHousesContainer.innerHTML = '';
       }
       return;
     }
 
-    const summary = buildSummary(state.activeDetail);
-
     if (dom.simulationDetailTitle) {
-      dom.simulationDetailTitle.textContent = `Simulación activa: ${state.activeDetail.titulo || `#${state.activeDetail.id}`}`;
+      dom.simulationDetailTitle.textContent = `Simulación: ${state.activeDetail.titulo || `#${state.activeDetail.id}`}`;
     }
 
     if (dom.simulationDetailMeta) {
       const updated = state.activeDetail.updated_at ? new Date(state.activeDetail.updated_at).toLocaleString("es-AR") : "sin fecha";
-      dom.simulationDetailMeta.textContent = `ID ${state.activeDetail.id} | Última actualización: ${updated}`;
+      const breadcrumb = `
+        <nav class="inventory-breadcrumb" style="margin-bottom: 0.5rem;">
+          <button type="button" class="inventory-breadcrumb-item" data-action="back-to-simulations">
+            ← Volver a simulaciones
+          </button>
+        </nav>
+        <div style="font-size: 0.9rem; color: var(--color-text-secondary);">ID ${state.activeDetail.id} | Última actualización: ${updated}</div>
+      `;
+      dom.simulationDetailMeta.innerHTML = breadcrumb;
     }
 
-    if (dom.simulationTitleInput) {
-      dom.simulationTitleInput.value = state.activeDetail.titulo || "";
-    }
-
-    if (dom.simulationDescriptionInput) {
-      dom.simulationDescriptionInput.value = state.activeDetail.descripcion || "";
-    }
-
-    renderSummaryCards(summary);
-    renderGlobalMaterials(summary);
-    renderTimelinePreview(state.activeDetail.timeline || []);
+    // renderHouses() maneja todo el contenido según state.planView
     renderHouses(state.activeDetail);
-    if (typeof setConfigToForm === "function" && state.activeDetail.configuracion) {
-      setConfigToForm(dom.form, state.activeDetail.configuracion);
-      updateMetodologiaUI();
-      updateConfigPreview();
-    }
   }
 
   async function loadDetail(simulationId, silent = false) {
@@ -2242,6 +2314,271 @@ export function initSavedSimulationsWorkspace(options) {
     });
   }
 
+  function showSaveSimulationModal() {
+    return new Promise((resolve) => {
+      const overlay = document.createElement("div");
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      `;
+
+      const dialog = document.createElement("div");
+      dialog.style.cssText = `
+        background: white;
+        border-radius: 14px;
+        padding: 2rem;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        font-family: inherit;
+      `;
+
+      const titleEl = document.createElement("h3");
+      titleEl.textContent = "Guardar simulación";
+      titleEl.style.cssText = "margin: 0 0 1.5rem 0; font-size: 1.1rem;";
+
+      // Form campos
+      const formContainer = document.createElement("div");
+      formContainer.style.cssText = "display: flex; flex-direction: column; gap: 1rem;";
+
+      const tituloLabel = document.createElement("label");
+      tituloLabel.textContent = "Título *";
+      tituloLabel.style.cssText = "font-weight: 600; font-size: 0.9rem;";
+      const tituloInput = document.createElement("input");
+      tituloInput.type = "text";
+      tituloInput.placeholder = "Nombre de la simulación";
+      tituloInput.required = true;
+      tituloInput.style.cssText = `
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-family: inherit;
+      `;
+      formContainer.appendChild(tituloLabel);
+      formContainer.appendChild(tituloInput);
+
+      const descripcionLabel = document.createElement("label");
+      descripcionLabel.textContent = "Descripción";
+      descripcionLabel.style.cssText = "font-weight: 600; font-size: 0.9rem; margin-top: 0.5rem;";
+      const descripcionInput = document.createElement("textarea");
+      descripcionInput.placeholder = "Descripción de la simulación (opcional)";
+      descripcionInput.rows = 3;
+      descripcionInput.style.cssText = `
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        resize: vertical;
+      `;
+      formContainer.appendChild(descripcionLabel);
+      formContainer.appendChild(descripcionInput);
+
+      const buttonsContainer = document.createElement("div");
+      buttonsContainer.style.cssText = "display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1.5rem;";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "Cancelar";
+      cancelBtn.style.cssText = `
+        padding: 0.6rem 1.2rem;
+        border: 1px solid #ddd;
+        background: #f5f5f5;
+        color: #333;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+      `;
+      cancelBtn.onmouseover = () => (cancelBtn.style.background = "#e8e8e8");
+      cancelBtn.onmouseout = () => (cancelBtn.style.background = "#f5f5f5");
+      cancelBtn.onclick = () => {
+        overlay.remove();
+        resolve(null);
+      };
+
+      const saveBtn = document.createElement("button");
+      saveBtn.textContent = "Guardar";
+      saveBtn.style.cssText = `
+        padding: 0.6rem 1.2rem;
+        border: none;
+        background: var(--primary);
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+      `;
+      saveBtn.onmouseover = () => (saveBtn.style.background = "var(--primary-strong)");
+      saveBtn.onmouseout = () => (saveBtn.style.background = "var(--primary)");
+      saveBtn.onclick = async () => {
+        if (!tituloInput.value.trim()) {
+          alert("El título es obligatorio");
+          return;
+        }
+        overlay.remove();
+        resolve({
+          titulo_snapshot: tituloInput.value.trim(),
+          descripcion_snapshot: descripcionInput.value.trim()
+        });
+      };
+
+      buttonsContainer.appendChild(cancelBtn);
+      buttonsContainer.appendChild(saveBtn);
+
+      dialog.appendChild(titleEl);
+      dialog.appendChild(formContainer);
+      dialog.appendChild(buttonsContainer);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      tituloInput.focus();
+    });
+  }
+
+  function showEditSimulationModal() {
+    return new Promise((resolve) => {
+      const detail = state.activeDetail;
+      if (!detail) return;
+
+      const overlay = document.createElement("div");
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      `;
+
+      const dialog = document.createElement("div");
+      dialog.style.cssText = `
+        background: white;
+        border-radius: 14px;
+        padding: 2rem;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        font-family: inherit;
+      `;
+
+      const titleEl = document.createElement("h3");
+      titleEl.textContent = "Editar simulación";
+      titleEl.style.cssText = "margin: 0 0 1.5rem 0; font-size: 1.1rem;";
+
+      // Form campos
+      const formContainer = document.createElement("div");
+      formContainer.style.cssText = "display: flex; flex-direction: column; gap: 1rem;";
+
+      const tituloLabel = document.createElement("label");
+      tituloLabel.textContent = "Título *";
+      tituloLabel.style.cssText = "font-weight: 600; font-size: 0.9rem;";
+      const tituloInput = document.createElement("input");
+      tituloInput.type = "text";
+      tituloInput.value = detail.titulo || "";
+      tituloInput.required = true;
+      tituloInput.style.cssText = `
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-family: inherit;
+      `;
+      formContainer.appendChild(tituloLabel);
+      formContainer.appendChild(tituloInput);
+
+      const descripcionLabel = document.createElement("label");
+      descripcionLabel.textContent = "Descripción";
+      descripcionLabel.style.cssText = "font-weight: 600; font-size: 0.9rem; margin-top: 0.5rem;";
+      const descripcionInput = document.createElement("textarea");
+      descripcionInput.value = detail.descripcion || "";
+      descripcionInput.rows = 3;
+      descripcionInput.style.cssText = `
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        resize: vertical;
+      `;
+      formContainer.appendChild(descripcionLabel);
+      formContainer.appendChild(descripcionInput);
+
+      const buttonsContainer = document.createElement("div");
+      buttonsContainer.style.cssText = "display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1.5rem;";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "Cancelar";
+      cancelBtn.style.cssText = `
+        padding: 0.6rem 1.2rem;
+        border: 1px solid #ddd;
+        background: #f5f5f5;
+        color: #333;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+      `;
+      cancelBtn.onmouseover = () => (cancelBtn.style.background = "#e8e8e8");
+      cancelBtn.onmouseout = () => (cancelBtn.style.background = "#f5f5f5");
+      cancelBtn.onclick = () => {
+        overlay.remove();
+        resolve(null);
+      };
+
+      const saveBtn = document.createElement("button");
+      saveBtn.textContent = "Guardar cambios";
+      saveBtn.style.cssText = `
+        padding: 0.6rem 1.2rem;
+        border: none;
+        background: var(--primary);
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+      `;
+      saveBtn.onmouseover = () => (saveBtn.style.background = "var(--primary-strong)");
+      saveBtn.onmouseout = () => (saveBtn.style.background = "var(--primary)");
+      saveBtn.onclick = async () => {
+        if (!tituloInput.value.trim()) {
+          alert("El título es obligatorio");
+          return;
+        }
+        overlay.remove();
+        resolve({
+          titulo: tituloInput.value.trim(),
+          descripcion: descripcionInput.value.trim()
+        });
+      };
+
+      buttonsContainer.appendChild(cancelBtn);
+      buttonsContainer.appendChild(saveBtn);
+
+      dialog.appendChild(titleEl);
+      dialog.appendChild(formContainer);
+      dialog.appendChild(buttonsContainer);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      tituloInput.focus();
+    });
+  }
+
   function closeCreateForms(container) {
     if (!container) {
       return;
@@ -2326,6 +2663,53 @@ export function initSavedSimulationsWorkspace(options) {
       setSummary(dom.simSummary, "Simulación eliminada correctamente.");
     } catch (error) {
       setSummary(dom.simSummary, `Error al eliminar: ${error.message}`);
+    }
+  }
+
+  async function saveSimulationAsSnapshot() {
+    const data = await showSaveSimulationModal();
+    if (!data) return;
+
+    try {
+      const response = await guardarSimulacionComoCopia({
+        titulo_snapshot: data.titulo_snapshot,
+        descripcion_snapshot: data.descripcion_snapshot,
+        horizonte_meses: state.activeDetail.horizonte_meses || 120,
+        ofertas: state.activeDetail.ofertas || []
+      });
+
+      if (response.snapshot_id) {
+        // Cargar la simulación guardada en Plan simulado
+        await loadDetail(response.snapshot_id, false);
+        setSummary(dom.simSummary, `Simulación "${data.titulo_snapshot}" guardada correctamente.`);
+      }
+    } catch (error) {
+      setSummary(dom.simSummary, `Error al guardar: ${error.message}`);
+    }
+  }
+
+  async function editSimulationSnapshot() {
+    const detail = state.activeDetail;
+    if (!detail?.snapshot_id) {
+      setSummary(dom.simSummary, "Esta simulación no puede ser editada.");
+      return;
+    }
+
+    const data = await showEditSimulationModal();
+    if (!data) return;
+
+    try {
+      await actualizarSimulacionGuardada(detail.snapshot_id, {
+        titulo: data.titulo,
+        descripcion: data.descripcion
+      });
+
+      detail.titulo = data.titulo;
+      detail.descripcion = data.descripcion;
+      renderHouses(detail);
+      setSummary(dom.simSummary, "Simulación actualizada correctamente.");
+    } catch (error) {
+      setSummary(dom.simSummary, `Error al actualizar: ${error.message}`);
     }
   }
 
@@ -2422,15 +2806,15 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
-    const button = event.target.closest("[data-simulation-id]");
-    if (!button) {
+    const openButton = event.target.closest('[data-action="open-simulation"]');
+    if (!openButton) {
       return;
     }
-    const selectedId = normalizeId(button.getAttribute("data-simulation-id"));
+    const selectedId = normalizeId(openButton.getAttribute("data-simulation-id"));
     state.activeId = selectedId;
+    await loadDetail(selectedId);
     renderSimulationList();
     updateSummaryLine();
-    await loadDetail(selectedId);
   }));
 
   dom.simulationHousesContainer?.addEventListener("submit", withUiFeedback(handleTreeSubmit));
@@ -2510,6 +2894,18 @@ export function initSavedSimulationsWorkspace(options) {
       state.planView = "houses";
       state.selectedHouseId = null;
       renderHouses(state.activeDetail);
+      return;
+    }
+
+    const saveSImulationButton = event.target.closest('[data-action="open-save-simulation-modal"]');
+    if (saveSImulationButton) {
+      withUiFeedback(saveSimulationAsSnapshot)();
+      return;
+    }
+
+    const editSimulationButton = event.target.closest('[data-action="open-edit-simulation-modal"]');
+    if (editSimulationButton) {
+      withUiFeedback(editSimulationSnapshot)();
       return;
     }
 
@@ -2692,14 +3088,30 @@ export function initSavedSimulationsWorkspace(options) {
     }
   });
 
+
   dom.simulationTitleInput?.addEventListener("input", () => {
     if (dom.configSaveStatus) {
       dom.configSaveStatus.textContent = "La simulación se modificó localmente.";
     }
   });
 
+  dom.simulationDetailMeta?.addEventListener("click", withUiFeedback(async (event) => {
+    const backButton = event.target.closest('[data-action="back-to-simulations"]');
+    if (backButton) {
+      state.activeDetail = null;
+      state.selectedHouseId = null;
+      state.planView = "root";
+      renderSimulationList();
+      renderDetail();
+      updateSummaryLine();
+      setSummary(dom.simSummary, "");
+    }
+  }));
+
   return {
     refreshList,
-    loadDetail
+    loadDetail,
+    saveSimulationAsSnapshot,
+    editSimulationSnapshot
   };
 }

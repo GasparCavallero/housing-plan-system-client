@@ -117,6 +117,18 @@ export async function simularServidor({ horizonteMeses = null, ofertas = [], con
   });
 }
 
+export async function guardarSimulacionComoCopia(payload) {
+  const body = {
+    guardar_snapshot: true,
+    ...payload
+  };
+  
+  return apiRequest("/planes/simular", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
 export async function listarCasasSimulacion(simulacionId) {
   return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas`, { method: "GET" });
 }
