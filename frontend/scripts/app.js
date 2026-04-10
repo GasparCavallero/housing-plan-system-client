@@ -268,7 +268,7 @@ function initSectionNav() {
 
   ensureNavLink("grafico-casas", "Gráfico de casas", "simulacion");
   ensureNavLink("simulaciones-guardadas", "Simulaciones guardadas", "admin-panel");
-  ensureNavLink("plan-simulado", "Plan simulado", "simulaciones-guardadas");
+  // ensureNavLink("plan-simulado", "Plan simulado", "simulaciones-guardadas");
 
   const links = Array.from(nav.querySelectorAll("a[href^='#']"));
   const sections = links
