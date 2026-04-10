@@ -24,11 +24,15 @@ import {
   listarGastosCasa,
   crearGastoCasa,
   actualizarGastoCasa,
+  listarManoObraCasa,
+  crearManoObraCasa,
+  actualizarManoObraCasa,
   eliminarSimulacion,
   eliminarPlanillaCasa,
   eliminarItemPlanilla,
   eliminarMaterialPlanilla,
-  eliminarGastoCasa
+  eliminarGastoCasa,
+  eliminarManoObraCasa
 } from "./services.js";
 
 function money(value) {
@@ -231,18 +235,30 @@ function normalizeGasto(raw) {
   };
 }
 
+function normalizeManoObra(raw) {
+  return {
+    id: raw?.id ?? `mano-obra-${Math.random().toString(16).slice(2)}`,
+    rubro: String(raw?.rubro ?? "Mano de obra").trim(),
+    descripcion: String(raw?.descripcion ?? "").trim(),
+    monto_ars: Number(numberOrZero(raw?.monto_ars ?? raw?.monto ?? 0).toFixed(2)),
+    fecha: raw?.fecha ?? new Date().toISOString()
+  };
+}
+
 function normalizeCasa(raw) {
   const planillas = safeArray(raw?.planillas ?? raw?.entregas ?? raw?.ordenes ?? raw?.planillas_entrega ?? raw?.planillas_casa).map(normalizePlanilla);
   const gastos = safeArray(raw?.gastos).map(normalizeGasto);
+  const mano_obra = safeArray(raw?.["mano-obra"] ?? raw?.mano_obra).map(normalizeManoObra);
   const materiales = planillas.flatMap((planilla) => safeArray(planilla.items).flatMap((item) => safeArray(item.materiales)));
   const totalMateriales = planillas.reduce((acc, planilla) => acc + numberOrZero(planilla.total_materiales_ars), 0);
   const totalGastos = gastos.reduce((acc, gasto) => acc + numberOrZero(gasto.monto_ars), 0);
+  const totalManoObra = mano_obra.reduce((acc, mo) => acc + numberOrZero(mo.monto_ars), 0);
   const totalCantidadMaterial = materiales.reduce((acc, material) => acc + numberOrZero(material.cantidad_total), 0);
   const totalRetiradoCantidad = materiales.reduce((acc, material) => acc + numberOrZero(material.cantidad_retirada), 0);
   const totalEnConstruccionCantidad = materiales.reduce((acc, material) => acc + numberOrZero(material.cantidad_en_construccion), 0);
   const precioArs = numberOrZero(raw?.precio_ars ?? raw?.precio ?? 0);
   const fondoDisponibleArs = numberOrZero(raw?.fondo_disponible_ars ?? raw?.fondo_ars ?? raw?.plata_disponible_ars ?? precioArs);
-  const comprometidoArs = Number((totalMateriales + totalGastos).toFixed(2));
+  const comprometidoArs = Number((totalMateriales + totalGastos + totalManoObra).toFixed(2));
   const saldoDisponibleArs = Number((fondoDisponibleArs - comprometidoArs).toFixed(2));
   const avance = fondoDisponibleArs > 0 ? Number(Math.min(100, Math.max(0, (comprometidoArs / fondoDisponibleArs) * 100)).toFixed(2)) : 0;
 
@@ -255,12 +271,14 @@ function normalizeCasa(raw) {
     completada: Boolean(raw?.completada ?? raw?.is_completed ?? false),
     planillas,
     gastos,
+    mano_obra,
     fondo_disponible_ars: Number(fondoDisponibleArs.toFixed(2)),
     total_material_cantidad: Number(totalCantidadMaterial.toFixed(2)),
     total_retirado_cantidad: Number(totalRetiradoCantidad.toFixed(2)),
     total_en_construccion_cantidad: Number(totalEnConstruccionCantidad.toFixed(2)),
     total_materiales_ars: Number(totalMateriales.toFixed(2)),
     total_gastos_ars: Number(totalGastos.toFixed(2)),
+    total_mano_obra_ars: Number(totalManoObra.toFixed(2)),
     saldo_ars: saldoDisponibleArs,
     avance_financiero_pct: avance
   };
@@ -324,6 +342,7 @@ function buildSummary(detail) {
   const planillas = casas.flatMap((casa) => casa.planillas || []);
   const items = planillas.flatMap((planilla) => planilla.items || []);
   const gastos = casas.flatMap((casa) => casa.gastos || []);
+  const mano_obra = casas.flatMap((casa) => casa.mano_obra || []);
   const movimientos = casas
     .flatMap((casa) => casa.planillas || [])
     .flatMap((planilla) => planilla.items || [])
@@ -331,6 +350,7 @@ function buildSummary(detail) {
     .flatMap((material) => material.movimientos || []);
   const totalMateriales = materiales.reduce((acc, material) => acc + numberOrZero(material.total_ars), 0);
   const totalGastos = gastos.reduce((acc, gasto) => acc + numberOrZero(gasto.monto_ars), 0);
+  const totalManoObra = mano_obra.reduce((acc, mo) => acc + numberOrZero(mo.monto_ars), 0);
   const totalSaldo = casas.reduce((acc, casa) => acc + numberOrZero(casa.saldo_ars), 0);
 
   return {
@@ -340,8 +360,10 @@ function buildSummary(detail) {
     materiales: materiales.length,
     movimientos: movimientos.length,
     gastos: gastos.length,
+    mano_obra: mano_obra.length,
     totalMateriales: Number(totalMateriales.toFixed(2)),
     totalGastos: Number(totalGastos.toFixed(2)),
+    totalManoObra: Number(totalManoObra.toFixed(2)),
     totalSaldo: Number(totalSaldo.toFixed(2)),
     materialesAgrupados: materiales
   };
@@ -626,12 +648,38 @@ function renderGasto(gasto, context) {
   `;
 }
 
+function renderManoObra(manoObra, context) {
+  const { simulacionId, casaId } = context;
+  const fechaFormato = manoObra.fecha ? new Date(manoObra.fecha).toLocaleDateString('es-AR') : 'Sin fecha';
+  return `
+    <article class="inventory-mini-card inventory-mini-card-mano-obra" data-mano-obra-id="${escapeHtml(manoObra.id)}">
+      <div class="inventory-card-tools">
+        <button class="btn btn-ghost" type="button" data-action="toggle-card-edit">Editar</button>
+        <button class="btn btn-ghost" type="button" data-action="delete-mano-obra" data-mano-obra-id="${escapeHtml(manoObra.id)}" style="color:#d32f2f;">Borrar</button>
+      </div>
+      <div class="inventory-card-read" style="display:flex;flex-direction:column;gap:0.3rem;">
+        <p><strong>${escapeHtml(manoObra.rubro)}</strong></p>
+        <p style="font-size:0.9rem;color:#666;">${escapeHtml(manoObra.descripcion || '(sin descripción)')}</p>
+        <p style="font-size:0.9rem;color:#666;">${fechaFormato}</p>
+        <p style="font-weight:600;color:#d9534f;">${money(manoObra.monto_ars)}</p>
+      </div>
+      <form class="inventory-form inventory-editable-form inventory-form-tight inventory-grid-2" data-action="update-mano-obra" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(casaId)}" data-mano-obra-id="${escapeHtml(manoObra.id)}">
+        ${inputField("Rubro", "rubro", manoObra.rubro)}
+        ${inputField("Monto ARS", "monto_ars", manoObra.monto_ars, "number", "min=0 step=0.01")}
+        ${inputField("Fecha", "fecha", manoObra.fecha ? manoObra.fecha.split('T')[0] : new Date().toISOString().split('T')[0], "date")}
+        ${textAreaField("Descripción", "descripcion", manoObra.descripcion, 2)}
+        <div class="inventory-actions inventory-actions-full">
+          <button class="btn btn-ghost" type="submit">Guardar mano de obra</button>
+        </div>
+      </form>
+    </article>
+  `;
+}
+
 function renderHouse(house, context) {
   const { simulacionId } = context;
   const comprometidoArs = Number((numberOrZero(house.total_materiales_ars) + numberOrZero(house.total_gastos_ars)).toFixed(2));
-  const usoFondoPct = house.fondo_disponible_ars > 0
-    ? Number(Math.min(100, Math.max(0, (comprometidoArs / house.fondo_disponible_ars) * 100)).toFixed(2))
-    : 0;
+  const progressPct = numberOrZero(house.avance_financiero_pct);
   const materialTargets = house.planillas.flatMap((planilla) =>
     safeArray(planilla.items).map((item) => ({
       value: `${planilla.id}::${item.id}`,
@@ -651,7 +699,7 @@ function renderHouse(house, context) {
         <div>
           <p class="inventory-kicker">Casa #${escapeHtml(house.id)}</p>
           <h4>${escapeHtml(house.adherente_nombre || `Casa ${house.id}`)}</h4>
-          <p class="inventory-subtitle">Saldo ${money(house.saldo_ars)} | Materiales ${money(house.total_materiales_ars)} | Gastos ${money(house.total_gastos_ars)}</p>
+          <p class="inventory-subtitle">Saldo ${money(house.saldo_ars)} | Materiales ${money(house.total_materiales_ars)} | Gastos ${money(house.total_gastos_ars)} | Mano de obra ${money(house.total_mano_obra_ars)}</p>
         </div>
         <div class="inventory-badges">
           <span>${escapeHtml(house.planillas.length)} planillas</span>
@@ -674,9 +722,9 @@ function renderHouse(house, context) {
           <article><p>Saldo disponible</p><strong>${money(house.saldo_ars)}</strong></article>
         </div>
         <div class="progress-track" aria-label="Uso del fondo de la casa">
-          <div class="progress-fill" style="width:${escapeHtml(usoFondoPct)}%"></div>
+          <div class="progress-fill" style="width:${escapeHtml(progressPct)}%"></div>
         </div>
-        <p class="inventory-subtitle">Uso de fondo: ${escapeHtml(usoFondoPct)}%</p>
+        <p class="inventory-subtitle">Uso de fondo: ${escapeHtml(progressPct)}%</p>
       </section>
 
       <form class="inventory-form inventory-editable-form inventory-form-tight inventory-grid-3" data-action="update-house" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(house.id)}">
@@ -712,6 +760,11 @@ function renderHouse(house, context) {
             <p class="inventory-kicker">Sección</p>
             <h4>Gastos</h4>
             <p class="inventory-subtitle">${escapeHtml(house.gastos.length)} gastos registrados</p>
+          </button>
+          <button type="button" class="house-selector-card is-page-link" data-action="nav-mano-obra">
+            <p class="inventory-kicker">Sección</p>
+            <h4>Mano de obra</h4>
+            <p class="inventory-subtitle">${escapeHtml(house.mano_obra.length)} registros</p>
           </button>
         </div>
       </section>
@@ -783,12 +836,22 @@ async function loadSimulationTree(simulacionId) {
       return [];
     });
 
+    const manoObraRaw = await listarManoObraCasa(simulacionId, houseId).catch((error) => {
+      console.warn("[inventory] Error listando mano de obra", {
+        simulacionId,
+        houseId,
+        error: String(error?.message || error)
+      });
+      return [];
+    });
+
     let planillasSource = asList(planillasRaw, ["planillas", "entregas", "items"]);
     if (!planillasSource.length) {
       planillasSource = asList(houseRaw, ["planillas", "entregas", "ordenes", "items"]);
     }
     const planillasRawCount = Array.isArray(planillasSource) ? planillasSource.length : 0;
     const gastos = asList(gastosRaw, ["gastos"]).map(normalizeGasto);
+    const mano_obra = asList(manoObraRaw, ["mano-obra", "mano_obra"]).map(normalizeManoObra);
 
     const planillas = await Promise.all(planillasSource.map(async (planillaRaw) => {
       const planillaId = planillaRaw?.id ?? planillaRaw?.planilla_id;
@@ -831,7 +894,8 @@ async function loadSimulationTree(simulacionId) {
     return normalizeCasa({
       ...houseRaw,
       planillas,
-      gastos
+      gastos,
+      "mano-obra": mano_obra
     });
   }));
 
@@ -1371,6 +1435,46 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
+    // Vista de mano de obra
+    if (state.planView === "mano-obra" && selectedHouse) {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      const mano_obra = safeArray(selectedHouse.mano_obra);
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Plan simulado", action: "nav-root" },
+          { label: "Casas", action: "nav-houses" },
+          { label: selectedHouse.adherente_nombre || `Casa #${selectedHouse.id}`, action: "open-house" },
+          { label: "Mano de obra", current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Mano de obra de la casa</h4>
+          <div>
+            <button class="btn btn-ghost" type="button" data-action="toggle-create-mano-obra">Agregar</button>
+            <button class="btn btn-ghost" type="button" data-action="back-to-house">Volver a casa</button>
+          </div>
+        </div>
+        <p class="inventory-page-subtitle">Total: ${money(selectedHouse.total_mano_obra_ars)}</p>
+        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-3 hidden" data-action="create-mano-obra" data-simulacion-id="${escapeHtml(state.activeDetail.id)}" data-casa-id="${escapeHtml(selectedHouse.id)}">
+          ${inputField("Rubro", "rubro", "")}
+          ${inputField("Monto ARS", "monto_ars", 0, "number", "min=0 step=0.01")}
+          ${inputField("Fecha", "fecha", new Date().toISOString().split('T')[0], "date")}
+          ${textAreaField("Descripción", "descripcion", "", 2)}
+          <div class="inventory-actions inventory-actions-full">
+            <button class="btn btn-primary" type="submit">Agregar</button>
+          </div>
+        </form>
+        ${mano_obra.length === 0 ? '<p class="inventory-empty">Sin registros de mano de obra.</p>' : `
+          <div style="display:flex;flex-direction:column;gap:0.7rem;">
+            ${mano_obra.map((mo) => renderManoObra(mo, { simulacionId: state.activeDetail.id, casaId: selectedHouse.id })).join('')}
+          </div>
+        `}
+        </section>
+      `;
+      return;
+    }
+
     if (state.planView === "houses") {
       syncPlanFocusMode();
       dom.buttonAddHouse?.classList.remove("hidden");
@@ -1721,7 +1825,8 @@ export function initSavedSimulationsWorkspace(options) {
       planillaId: form.dataset.planillaId || null,
       itemId: form.dataset.itemId || null,
       materialId: form.dataset.materialId || null,
-      gastoId: form.dataset.gastoId || null
+      gastoId: form.dataset.gastoId || null,
+      manoObraId: form.dataset.manoObraId || null
     };
   }
 
@@ -1972,6 +2077,20 @@ export function initSavedSimulationsWorkspace(options) {
         nombre: payload.nombre,
         descripcion: payload.descripcion,
         monto_ars: numberOrZero(payload.monto_ars)
+      });
+    } else if (action === "create-mano-obra") {
+      response = await crearManoObraCasa(simulationId, context.casaId, {
+        rubro: payload.rubro,
+        descripcion: payload.descripcion,
+        monto_ars: numberOrZero(payload.monto_ars),
+        fecha: payload.fecha || new Date().toISOString()
+      });
+    } else if (action === "update-mano-obra") {
+      response = await actualizarManoObraCasa(simulationId, context.casaId, context.manoObraId, {
+        rubro: payload.rubro,
+        descripcion: payload.descripcion,
+        monto_ars: numberOrZero(payload.monto_ars),
+        fecha: payload.fecha || new Date().toISOString()
       });
     } else if (action === "create-house") {
       response = await crearCasaSimulacion(simulationId, {
@@ -2278,6 +2397,23 @@ export function initSavedSimulationsWorkspace(options) {
     }
   }
 
+  async function deleteManoObraHandler(simulationId, casaId, manoObraId) {
+    const confirmed = await showConfirmDialog(
+      "Borrar mano de obra",
+      "¿Estás seguro de que deseas eliminar este registro?"
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await eliminarManoObraCasa(simulationId, casaId, manoObraId);
+      await loadDetail(simulationId, true);
+      setSummary(dom.simSummary, "Mano de obra eliminada correctamente.");
+    } catch (error) {
+      setSummary(dom.simSummary, `Error: ${error.message}`);
+    }
+  }
+
   dom.simulationsList?.addEventListener("click", withUiFeedback(async (event) => {
     const deleteButton = event.target.closest('[data-action="delete-simulation"]');
     if (deleteButton) {
@@ -2338,6 +2474,13 @@ export function initSavedSimulationsWorkspace(options) {
     if (toggleCreateGastoButton) {
       const container = toggleCreateGastoButton.closest(".inventory-page") || toggleCreateGastoButton.closest(".inventory-section");
       toggleCreateForm(container, 'form[data-action="create-gasto"]', "toggle-create-gasto");
+      return;
+    }
+
+    const toggleCreateManoObraButton = event.target.closest('[data-action="toggle-create-mano-obra"]');
+    if (toggleCreateManoObraButton) {
+      const container = toggleCreateManoObraButton.closest(".inventory-page") || toggleCreateManoObraButton.closest(".inventory-section");
+      toggleCreateForm(container, 'form[data-action="create-mano-obra"]', "toggle-create-mano-obra");
       return;
     }
 
@@ -2439,6 +2582,14 @@ export function initSavedSimulationsWorkspace(options) {
     if (navGastosButton) {
       state.planView = "gastos";
       renderHouses(state.activeDetail);
+      return;
+    }
+
+    const navManoObraButton = event.target.closest('[data-action="nav-mano-obra"]');
+    if (navManoObraButton) {
+      state.planView = "mano-obra";
+      renderHouses(state.activeDetail);
+      return;
     }
 
     const backToPlanillasButton = event.target.closest('[data-action="back-to-planillas"]');
@@ -2519,6 +2670,17 @@ export function initSavedSimulationsWorkspace(options) {
       const selectedHouseId = normalizeId(state.selectedHouseId);
       withUiFeedback(async () => {
         await deleteGastoHandler(simId, selectedHouseId, gastoId);
+      })();
+      return;
+    }
+
+    const deleteManoObraButton = event.target.closest('[data-action="delete-mano-obra"]');
+    if (deleteManoObraButton) {
+      const manoObraId = normalizeId(deleteManoObraButton.getAttribute("data-mano-obra-id"));
+      const simId = getActiveSimulationId();
+      const selectedHouseId = normalizeId(state.selectedHouseId);
+      withUiFeedback(async () => {
+        await deleteManoObraHandler(simId, selectedHouseId, manoObraId);
       })();
       return;
     }

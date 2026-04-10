@@ -460,6 +460,30 @@ export async function eliminarGastoCasa(simulacionId, casaId, gastoId) {
   });
 }
 
+export async function listarManoObraCasa(simulacionId, casaId) {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/mano-obra`, { method: "GET" });
+}
+
+export async function crearManoObraCasa(simulacionId, casaId, payload) {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/mano-obra`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function actualizarManoObraCasa(simulacionId, casaId, manoObraId, payload) {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/mano-obra/${manoObraId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function eliminarManoObraCasa(simulacionId, casaId, manoObraId) {
+  return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/mano-obra/${manoObraId}`, {
+    method: "DELETE"
+  });
+}
+
 export async function eliminarPlanillaCasa(simulacionId, casaId, planillaId) {
   return apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planillaId}`, {
     method: "DELETE"

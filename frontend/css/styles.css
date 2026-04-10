@@ -1119,11 +1119,13 @@ textarea {
   background: #e8f1ef;
   border-radius: 999px;
   overflow: hidden;
+  margin-top: 1rem;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(120deg, var(--primary), var(--accent));
+  background: var(--primary);
+  transition: width 0.3s ease;
 }
 
 .house-items {
@@ -1539,4 +1541,14 @@ td.evento {
   body {
     padding-top: 1.5rem;
   }
+}
+
+/* Card editing mode */
+.inventory-card.is-editing .inventory-card-read,
+.inventory-mini-card.is-editing .inventory-card-read {
+  display: none;
+}
+
+.inventory-card-read {
+  display: block;
 }
