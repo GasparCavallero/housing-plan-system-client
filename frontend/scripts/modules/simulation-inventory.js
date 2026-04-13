@@ -990,9 +990,9 @@ export function initSavedSimulationsWorkspace(options) {
     const isSectionFocused = state.planView !== "root" && state.planView !== "resumen" && state.planView !== "proyeccion";
     planSection.classList.toggle("plan-section-focused", isSectionFocused);
     
-    // Mostrar tabla en resumen y proyección (ocultar en otros views)
+    // Mostrar tabla solo en resumen (proyección lo controla manualmente en renderHouses)
     if (simulationDetailOverview) {
-      simulationDetailOverview.style.display = (state.planView === "resumen" || state.planView === "proyeccion") ? "" : "none";
+      simulationDetailOverview.style.display = state.planView === "resumen" ? "" : "none";
     }
   }
 
@@ -1395,14 +1395,18 @@ export function initSavedSimulationsWorkspace(options) {
         </section>
       `;
       
-      // Limpiar tabla anterior (de materiales agrupados)
-      if (dom.simulationGlobalMaterials) {
-        dom.simulationGlobalMaterials.innerHTML = '';
+      // Ocultar completamente el div de materiales en proyección
+      if (simulationDetailOverview) {
+        simulationDetailOverview.style.display = "none";
       }
       
       // Renderizar tabla de proyección si los datos están disponibles
       if (state.simulationProyeccion) {
         renderTimelineTable(state.simulationProyeccion.timeline || []);
+        // Mostrar tabla cuando hay datos
+        if (simulationDetailOverview) {
+          simulationDetailOverview.style.display = "";
+        }
       }
       return;
     }
