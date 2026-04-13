@@ -1394,6 +1394,11 @@ export function initSavedSimulationsWorkspace(options) {
         </div>
         </section>
       `;
+      
+      // Renderizar tabla de proyección si los datos están disponibles
+      if (state.simulationProyeccion) {
+        renderTimelineTable(state.simulationProyeccion.timeline || []);
+      }
       return;
     }
 
@@ -2056,8 +2061,8 @@ export function initSavedSimulationsWorkspace(options) {
     ]).then(([resumen, proyeccion]) => {
       state.simulationResumen = resumen;
       state.simulationProyeccion = proyeccion;
-      // Re-renderizar si estamos en resumen (proyección se mantiene vacía)
-      if (state.planView === "resumen") {
+      // Re-renderizar si estamos en resumen o proyección
+      if (state.planView === "resumen" || state.planView === "proyeccion") {
         renderHouses(state.activeDetail);
       }
     });
