@@ -1,5 +1,6 @@
 import { formatterArs } from "./formatters.js";
 import { DEBUG_UI } from "./settings.js";
+import { apiRequest } from "./http.js";
 import {
   listarSimulacionesGuardadas,
   obtenerDetalleSimulacion,
@@ -1191,36 +1192,26 @@ export function initSavedSimulationsWorkspace(options) {
       tableHead.innerHTML = `
         <tr>
           <th>Mes</th>
-          <th>Ingreso mes</th>
-          <th>Egreso mes</th>
-          <th>Fondo apertura</th>
-          <th>Fondo cierre</th>
-          <th>Casas iniciadas</th>
-          <th>Casas finalizadas</th>
-          <th>Evento</th>
+          <th>Cuota completa</th>
+          <th>Media cuota</th>
+          <th>Adherentes activos</th>
+          <th>En construcción</th>
         </tr>
       `;
     }
 
     if (!rows.length) {
-      dom.simulationGlobalMaterials.innerHTML = '<tr><td colspan="8">Sin datos de timeline en la proyección.</td></tr>';
+      dom.simulationGlobalMaterials.innerHTML = '<tr><td colspan="5">Sin datos de timeline en la proyección.</td></tr>';
       return;
     }
 
     dom.simulationGlobalMaterials.innerHTML = rows.map((row) => `
       <tr>
         <td>${escapeHtml(row.mes ?? "-")}</td>
-        <td>${money(row.ingreso_mes_ars ?? 0)}</td>
-        <td>${money(row.egreso_mes_ars ?? 0)}</td>
-        <td>${money(row.fondo_apertura_ars ?? 0)}</td>
-        <td>${money(row.fondo_cierre_ars ?? 0)}</td>
-        <td>${escapeHtml(row.casas_iniciadas_mes ?? 0)}</td>
-        <td>${escapeHtml(row.casas_finalizadas_mes ?? 0)}</td>
-        <td>${escapeHtml(row.evento_mes ?? "-")}</td>
-      </tr>
-    `).join("");
-  }
-        <td>${escapeHtml(row.evento_mes ?? "-")}</td>
+        <td>${money(row.cuota_completa_mes_ars ?? 0)}</td>
+        <td>${money(row.media_cuota_mes_ars ?? 0)}</td>
+        <td>${escapeHtml(row.adherentes_activos ?? 0)}</td>
+        <td>${escapeHtml(row.adherentes_en_construccion ?? 0)}</td>
       </tr>
     `).join("");
   }
@@ -1405,20 +1396,14 @@ export function initSavedSimulationsWorkspace(options) {
       // Renderizar tabla de proyección si los datos están disponibles
       if (state.simulationProyeccion) {
         const proyeccion = state.simulationProyeccion;
-        const resumen = proyeccion.resumen || {};
+        const timeline = proyeccion.timeline || [];
         
-        // Renderizar KPIs de proyección
+        // Ocultar KPIs en proyección
         if (dom.simulationGlobalSummary) {
-          dom.simulationGlobalSummary.innerHTML = `
-            <article class="plan-summary-card"><p>Fondo final</p><h4>${money(resumen.fondo_final_ars ?? 0)}</h4></article>
-            <article class="plan-summary-card"><p>Ingreso total</p><h4>${money(resumen.ingreso_total_ars ?? 0)}</h4></article>
-            <article class="plan-summary-card"><p>Egreso total</p><h4>${money(resumen.egreso_total_ars ?? 0)}</h4></article>
-            <article class="plan-summary-card"><p>Casas iniciadas</p><h4>${resumen.casas_iniciadas_total ?? 0}</h4></article>
-            <article class="plan-summary-card"><p>Casas finalizadas</p><h4>${resumen.casas_finalizadas_total ?? 0}</h4></article>
-          `;
+          dom.simulationGlobalSummary.style.display = "none";
         }
         
-        renderTimelineTable(state.simulationProyeccion.timeline || []);
+        renderTimelineTable(timeline);
         // Mostrar tabla cuando hay datos
         if (simulationDetailOverview) {
           simulationDetailOverview.style.display = "";
@@ -2017,14 +2002,10 @@ export function initSavedSimulationsWorkspace(options) {
 
   async function loadSimulationResumen(simulacionId) {
     try {
-      const response = await fetch(`/planes/simulaciones/${simulacionId}/resumen`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
+      const data = await apiRequest(`/planes/simulaciones/${simulacionId}/resumen`, {
+        method: "GET"
       });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return await response.json();
+      return data;
     } catch (error) {
       console.warn("[inventory] Error cargando resumen", { simulacionId, error: String(error?.message || error) });
       return null;
@@ -2033,14 +2014,10 @@ export function initSavedSimulationsWorkspace(options) {
 
   async function loadSimulationProyeccion(simulacionId) {
     try {
-      const response = await fetch(`/planes/simulaciones/${simulacionId}/proyeccion`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
+      const data = await apiRequest(`/planes/simulaciones/${simulacionId}/proyeccion`, {
+        method: "GET"
       });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return await response.json();
+      return data;
     } catch (error) {
       console.warn("[inventory] Error cargando proyección", { simulacionId, error: String(error?.message || error) });
       return null;
