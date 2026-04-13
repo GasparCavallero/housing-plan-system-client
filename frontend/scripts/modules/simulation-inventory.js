@@ -990,9 +990,9 @@ export function initSavedSimulationsWorkspace(options) {
     const isSectionFocused = state.planView !== "root" && state.planView !== "resumen" && state.planView !== "proyeccion";
     planSection.classList.toggle("plan-section-focused", isSectionFocused);
     
-    // Mostrar tabla solo en resumen (ocultar en otros views incluyendo proyeccion)
+    // Mostrar tabla en resumen y proyección (ocultar en otros views)
     if (simulationDetailOverview) {
-      simulationDetailOverview.style.display = state.planView === "resumen" ? "" : "none";
+      simulationDetailOverview.style.display = (state.planView === "resumen" || state.planView === "proyeccion") ? "" : "none";
     }
   }
 
