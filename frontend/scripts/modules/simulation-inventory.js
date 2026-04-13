@@ -987,12 +987,12 @@ export function initSavedSimulationsWorkspace(options) {
       simulationDetailOverview = document.getElementById("simulation-detail-overview");
     }
 
-    const isSectionFocused = state.planView !== "root" && state.planView !== "resumen";
+    const isSectionFocused = state.planView !== "root" && state.planView !== "resumen" && state.planView !== "proyeccion";
     planSection.classList.toggle("plan-section-focused", isSectionFocused);
     
-    // Mostrar tabla de materiales solo en resumen (ocultar en otros views)
+    // Mostrar tabla en resumen y proyección (ocultar en otros views)
     if (simulationDetailOverview) {
-      simulationDetailOverview.style.display = state.planView === "resumen" ? "" : "none";
+      simulationDetailOverview.style.display = (state.planView === "resumen" || state.planView === "proyeccion") ? "" : "none";
     }
   }
 
@@ -2066,22 +2066,14 @@ export function initSavedSimulationsWorkspace(options) {
       setSummary(dom.simSummary, `Simulación ${graph.titulo} cargada.`);
     }
 
-    // Mostrar tabs y cargar resumen/proyección en paralelo
-    const tabsElement = document.getElementById("simulation-tabs");
-    if (tabsElement) {
-      tabsElement.style.display = "block";
-      // Resetear tab activo  a resumen
-      document.querySelectorAll(".simulation-tab-button").forEach(btn => btn.classList.remove("active"));
-      document.querySelector('[data-tab="resumen"]').classList.add("active");
-      
-      Promise.all([
-        loadSimulationResumen(normalizedSimulationId),
-        loadSimulationProyeccion(normalizedSimulationId)
-      ]).then(([resumen, proyeccion]) => {
-        state.simulationResumen = resumen;
-        state.simulationProyeccion = proyeccion;
-      });
-    }
+    // Cargar resumen y proyección en paralelo
+    Promise.all([
+      loadSimulationResumen(normalizedSimulationId),
+      loadSimulationProyeccion(normalizedSimulationId)
+    ]).then(([resumen, proyeccion]) => {
+      state.simulationResumen = resumen;
+      state.simulationProyeccion = proyeccion;
+    });
 
     state.loading = false;
     return graph;
