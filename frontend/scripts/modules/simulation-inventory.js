@@ -990,13 +990,9 @@ export function initSavedSimulationsWorkspace(options) {
     const isSectionFocused = state.planView !== "root" && state.planView !== "resumen";
     planSection.classList.toggle("plan-section-focused", isSectionFocused);
     
-    // Mostrar tabla de materiales en resumen y en root (ocultar en otros views)
+    // Mostrar tabla de materiales solo en resumen (ocultar en otros views)
     if (simulationDetailOverview) {
-      if (isSectionFocused) {
-        simulationDetailOverview.style.display = "none";
-      } else {
-        simulationDetailOverview.style.display = "";
-      }
+      simulationDetailOverview.style.display = state.planView === "resumen" ? "" : "none";
     }
   }
 
@@ -1377,7 +1373,7 @@ export function initSavedSimulationsWorkspace(options) {
         ])}
         <div class="inventory-drilldown-head">
           <h4 class="inventory-page-title">Resumen de la simulación</h4>
-          <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver a simulación</button>
+          <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
         </div>
         </section>
       `;
