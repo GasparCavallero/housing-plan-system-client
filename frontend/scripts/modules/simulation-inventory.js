@@ -990,9 +990,9 @@ export function initSavedSimulationsWorkspace(options) {
     const isSectionFocused = state.planView !== "root" && state.planView !== "resumen" && state.planView !== "proyeccion";
     planSection.classList.toggle("plan-section-focused", isSectionFocused);
     
-    // Mostrar tabla en resumen y proyección (ocultar en otros views)
+    // Mostrar tabla solo en resumen (ocultar en otros views incluyendo proyeccion)
     if (simulationDetailOverview) {
-      simulationDetailOverview.style.display = (state.planView === "resumen" || state.planView === "proyeccion") ? "" : "none";
+      simulationDetailOverview.style.display = state.planView === "resumen" ? "" : "none";
     }
   }
 
@@ -1394,33 +1394,6 @@ export function initSavedSimulationsWorkspace(options) {
         </div>
         </section>
       `;
-
-      // Solo renderizar contenido si están disponibles los datos
-      if (state.simulationProyeccion) {
-        const proyeccion = state.simulationProyeccion;
-        const resumen = proyeccion.resumen || {};
-        
-        // Renderizar KPIs de proyección
-        if (dom.simulationGlobalSummary) {
-          dom.simulationGlobalSummary.innerHTML = `
-            <article class="plan-summary-card"><p>Horizonte</p><h4>${resumen.horizonte_meses ?? "-"} meses</h4></article>
-            <article class="plan-summary-card"><p>Valor vivienda</p><h4>${money(resumen.valor_vivienda_ars ?? 0)}</h4></article>
-            <article class="plan-summary-card"><p>Fondo inicial</p><h4>${money(resumen.fondo_inicial_ars ?? 0)}</h4></article>
-            <article class="plan-summary-card"><p>Fondo final</p><h4>${money(resumen.fondo_final_ars ?? 0)}</h4></article>
-            <article class="plan-summary-card"><p>Casas iniciadas</p><h4>${resumen.casas_iniciadas_total ?? 0}</h4></article>
-            <article class="plan-summary-card"><p>Casas finalizadas</p><h4>${resumen.casas_finalizadas_total ?? 0}</h4></article>
-            <article class="plan-summary-card"><p>Ingreso total</p><h4>${money(resumen.ingreso_total_ars ?? 0)}</h4></article>
-            <article class="plan-summary-card"><p>Egreso total</p><h4>${money(resumen.egreso_total_ars ?? 0)}</h4></article>
-          `;
-        }
-        // Renderizar timeline
-        renderTimelineTable(proyeccion.timeline || []);
-      } else {
-        // Limpiar si aún no hay datos
-        if (dom.simulationGlobalSummary) {
-          dom.simulationGlobalSummary.innerHTML = '';
-        }
-      }
       return;
     }
 
@@ -2083,8 +2056,8 @@ export function initSavedSimulationsWorkspace(options) {
     ]).then(([resumen, proyeccion]) => {
       state.simulationResumen = resumen;
       state.simulationProyeccion = proyeccion;
-      // Re-renderizar si estamos en una vista que depende de estos datos
-      if (state.planView === "resumen" || state.planView === "proyeccion") {
+      // Re-renderizar si estamos en resumen (proyección se mantiene vacía)
+      if (state.planView === "resumen") {
         renderHouses(state.activeDetail);
       }
     });
