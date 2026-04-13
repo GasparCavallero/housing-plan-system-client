@@ -987,10 +987,10 @@ export function initSavedSimulationsWorkspace(options) {
       simulationDetailOverview = document.getElementById("simulation-detail-overview");
     }
 
-    const isSectionFocused = state.planView !== "root";
+    const isSectionFocused = state.planView !== "root" && state.planView !== "resumen";
     planSection.classList.toggle("plan-section-focused", isSectionFocused);
     
-    // Ocultar el div de materiales/timeline en Simulaciones Guardadas cuando no estamos en root
+    // Mostrar tabla de materiales en resumen y en root (ocultar en otros views)
     if (simulationDetailOverview) {
       if (isSectionFocused) {
         simulationDetailOverview.style.display = "none";
