@@ -2073,6 +2073,10 @@ export function initSavedSimulationsWorkspace(options) {
     ]).then(([resumen, proyeccion]) => {
       state.simulationResumen = resumen;
       state.simulationProyeccion = proyeccion;
+      // Re-renderizar si estamos en una vista que depende de estos datos
+      if (state.planView === "resumen" || state.planView === "proyeccion") {
+        renderHouses(state.activeDetail);
+      }
     });
 
     state.loading = false;
