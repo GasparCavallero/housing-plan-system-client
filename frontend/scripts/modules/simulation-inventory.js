@@ -964,7 +964,8 @@ export function initSavedSimulationsWorkspace(options) {
     selectedMaterialId: null,
     planView: "root",  // "root" | "houses" | "house" | "planillas" | "planilla" | "items" | "item" | "materiales" | "material"
     searchHousesText: "",
-    loading: false
+    loading: false,
+    simulationActiveTab: "resumen"  // "resumen" | "proyeccion" para simulaciones guardadas
   };
 
   // Redirigir referencias de DOM a los contenedores de simulaciones guardadas
@@ -1185,6 +1186,25 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
+    // Actualizar título y headers
+    const tableTitle = document.getElementById("simulation-detail-table-title");
+    if (tableTitle) {
+      tableTitle.textContent = "Materiales globales agrupados";
+    }
+    const tableHead = document.getElementById("simulation-detail-table-head");
+    if (tableHead) {
+      tableHead.innerHTML = `
+        <tr>
+          <th>Material</th>
+          <th>Unidad</th>
+          <th>Total</th>
+          <th>Retirado</th>
+          <th>En construcción</th>
+          <th>Total ARS</th>
+        </tr>
+      `;
+    }
+
     if (!summary.materialesAgrupados.length) {
       dom.simulationGlobalMaterials.innerHTML = '<tr><td colspan="6">Sin materiales cargados.</td></tr>';
       return;
@@ -1222,6 +1242,73 @@ export function initSavedSimulationsWorkspace(options) {
     `).join("");
   }
 
+  function renderProjectionTab(proyeccion) {
+    if (!proyeccion) {
+      if (dom.simulationGlobalSummary) {
+        dom.simulationGlobalSummary.innerHTML = '<p class="inventory-empty">No hay proyección disponible para esta simulación.</p>';
+      }
+      return;
+    }
+
+    const resumen = proyeccion.resumen || {};
+    const timeline = proyeccion.timeline || [];
+
+    // Renderizar KPIs de proyección
+    if (dom.simulationGlobalSummary) {
+      dom.simulationGlobalSummary.innerHTML = `
+        <article class="plan-summary-card"><p>Horizonte</p><h4>${resumen.horizonte_meses ?? "-"} meses</h4></article>
+        <article class="plan-summary-card"><p>Valor vivienda</p><h4>${money(resumen.valor_vivienda_ars ?? 0)}</h4></article>
+        <article class="plan-summary-card"><p>Fondo inicial</p><h4>${money(resumen.fondo_inicial_ars ?? 0)}</h4></article>
+        <article class="plan-summary-card"><p>Fondo final</p><h4>${money(resumen.fondo_final_ars ?? 0)}</h4></article>
+        <article class="plan-summary-card"><p>Casas iniciadas</p><h4>${resumen.casas_iniciadas_total ?? 0}</h4></article>
+        <article class="plan-summary-card"><p>Casas finalizadas</p><h4>${resumen.casas_finalizadas_total ?? 0}</h4></article>
+        <article class="plan-summary-card"><p>Ingreso total</p><h4>${money(resumen.ingreso_total_ars ?? 0)}</h4></article>
+        <article class="plan-summary-card"><p>Egreso total</p><h4>${money(resumen.egreso_total_ars ?? 0)}</h4></article>
+      `;
+    }
+
+    // Actualizar título y headers de tabla
+    const tableTitle = document.getElementById("simulation-detail-table-title");
+    if (tableTitle) {
+      tableTitle.textContent = "Timeline de proyección (por mes)";
+    }
+    const tableHead = document.getElementById("simulation-detail-table-head");
+    if (tableHead) {
+      tableHead.innerHTML = `
+        <tr>
+          <th>Mes</th>
+          <th>Cuota completa</th>
+          <th>Media cuota</th>
+          <th>Adherentes activos</th>
+          <th>En construcción</th>
+          <th>Ingreso mes</th>
+          <th>Egreso mes</th>
+          <th>Fondo cierre</th>
+          <th>Evento</th>
+        </tr>
+      `;
+    }
+
+    // Renderizar timeline en tabla
+    if (dom.simulationGlobalMaterials && timeline.length) {
+      dom.simulationGlobalMaterials.innerHTML = timeline.map((row) => `
+        <tr>
+          <td>${escapeHtml(row.mes ?? "-")}</td>
+          <td>${money(row.cuota_completa_mes_ars ?? 0)}</td>
+          <td>${money(row.media_cuota_mes_ars ?? 0)}</td>
+          <td>${escapeHtml(row.adherentes_activos ?? 0)}</td>
+          <td>${escapeHtml(row.adherentes_en_construccion ?? 0)}</td>
+          <td>${money(row.ingreso_mes_ars ?? 0)}</td>
+          <td>${money(row.egreso_mes_ars ?? 0)}</td>
+          <td>${money(row.fondo_cierre_ars ?? 0)}</td>
+          <td>${escapeHtml(row.evento_mes ?? "-")}</td>
+        </tr>
+      `).join("");
+    } else if (dom.simulationGlobalMaterials) {
+      dom.simulationGlobalMaterials.innerHTML = '<tr><td colspan="9">Sin datos de timeline en la proyección.</td></tr>';
+    }
+  }
+
   function renderHouses(detail) {
     if (!dom.simulationHousesContainer) {
       return;
@@ -1246,9 +1333,15 @@ export function initSavedSimulationsWorkspace(options) {
 
     // Renderizar summary cards solo si estamos en root
     if (state.planView === "root") {
-      const summary = buildSummary(detail);
-      renderSummaryCards(summary);
-      renderGlobalMaterials(summary);
+      if (state.simulationActiveTab === "proyeccion") {
+        // Renderizar tab de proyección
+        renderProjectionTab(state.simulationProyeccion);
+      } else {
+        // Renderizar tab de resumen (default)
+        const summary = buildSummary(detail);
+        renderSummaryCards(summary);
+        renderGlobalMaterials(summary);
+      }
     } else {
       // Limpiar summary cards si no estamos en root
       if (dom.simulationGlobalSummary) {
@@ -2936,12 +3029,15 @@ export function initSavedSimulationsWorkspace(options) {
       const tabName = event.target.getAttribute("data-tab");
       if (!tabName) return;
       
-      // Actualizar visual de tabs
+      // Actualizar estado y visual de tabs
+      state.simulationActiveTab = tabName;
       document.querySelectorAll(".simulation-tab-button").forEach(btn => btn.classList.remove("active"));
       event.target.classList.add("active");
       
-      // Por ahora los datos ya se cargan en LoadDetail
-      // Esta es una extensión para futuras integraciones con UI de proyección
+      // Re-renderizar con el nuevo tab activo
+      if (state.activeDetail) {
+        renderHouses(state.activeDetail);
+      }
     });
   });
   
