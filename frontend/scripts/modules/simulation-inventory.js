@@ -1176,6 +1176,53 @@ export function initSavedSimulationsWorkspace(options) {
     `;
   }
 
+  function renderTimelineTable(rows) {
+    if (!dom.simulationGlobalMaterials) {
+      return;
+    }
+
+    // Actualizar título y headers
+    const tableTitle = document.getElementById("simulation-detail-table-title");
+    if (tableTitle) {
+      tableTitle.textContent = "Timeline mensual de proyección";
+    }
+    const tableHead = document.getElementById("simulation-detail-table-head");
+    if (tableHead) {
+      tableHead.innerHTML = `
+        <tr>
+          <th>Mes</th>
+          <th>Cuota completa</th>
+          <th>Media cuota</th>
+          <th>Adherentes activos</th>
+          <th>En construcción</th>
+          <th>Ingreso mes</th>
+          <th>Egreso mes</th>
+          <th>Fondo cierre</th>
+          <th>Evento</th>
+        </tr>
+      `;
+    }
+
+    if (!rows.length) {
+      dom.simulationGlobalMaterials.innerHTML = '<tr><td colspan="9">Sin datos de timeline en la proyección.</td></tr>';
+      return;
+    }
+
+    dom.simulationGlobalMaterials.innerHTML = rows.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.mes ?? "-")}</td>
+        <td>${money(row.cuota_completa_mes_ars ?? 0)}</td>
+        <td>${money(row.media_cuota_mes_ars ?? 0)}</td>
+        <td>${escapeHtml(row.adherentes_activos ?? 0)}</td>
+        <td>${escapeHtml(row.adherentes_en_construccion ?? 0)}</td>
+        <td>${money(row.ingreso_mes_ars ?? 0)}</td>
+        <td>${money(row.egreso_mes_ars ?? 0)}</td>
+        <td>${money(row.fondo_cierre_ars ?? 0)}</td>
+        <td>${escapeHtml(row.evento_mes ?? "-")}</td>
+      </tr>
+    `).join("");
+  }
+
   function renderGlobalMaterials(summary) {
     if (!dom.simulationGlobalMaterials) {
       return;
@@ -1345,6 +1392,11 @@ export function initSavedSimulationsWorkspace(options) {
             <h4>Resumen</h4>
             <p class="inventory-subtitle">KPIs y datos generales de la simulación</p>
           </button>
+          <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="proyeccion">
+            <p class="inventory-kicker">SECCIÓN</p>
+            <h4>Proyección</h4>
+            <p class="inventory-subtitle">Timeline mensual y datos de proyección</p>
+          </button>
           <button type="button" class="house-selector-card" data-action="open-houses-section">
             <p class="inventory-kicker">SECCIÓN</p>
             <h4>Casas</h4>
@@ -1379,6 +1431,42 @@ export function initSavedSimulationsWorkspace(options) {
       `;
       renderSummaryCards(summary);
       renderGlobalMaterials(summary);
+      return;
+    }
+
+    // Vista de proyección: mostrar timeline
+    if (state.planView === "proyeccion" && state.simulationProyeccion) {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      const proyeccion = state.simulationProyeccion;
+      const resumen = proyeccion.resumen || {};
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Simulación actual", action: "nav-root" },
+          { label: "Proyección", current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Proyección de la simulación</h4>
+          <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
+        </div>
+        </section>
+      `;
+      // Renderizar KPIs de proyección
+      if (dom.simulationGlobalSummary) {
+        dom.simulationGlobalSummary.innerHTML = `
+          <article class="plan-summary-card"><p>Horizonte</p><h4>${resumen.horizonte_meses ?? "-"} meses</h4></article>
+          <article class="plan-summary-card"><p>Valor vivienda</p><h4>${money(resumen.valor_vivienda_ars ?? 0)}</h4></article>
+          <article class="plan-summary-card"><p>Fondo inicial</p><h4>${money(resumen.fondo_inicial_ars ?? 0)}</h4></article>
+          <article class="plan-summary-card"><p>Fondo final</p><h4>${money(resumen.fondo_final_ars ?? 0)}</h4></article>
+          <article class="plan-summary-card"><p>Casas iniciadas</p><h4>${resumen.casas_iniciadas_total ?? 0}</h4></article>
+          <article class="plan-summary-card"><p>Casas finalizadas</p><h4>${resumen.casas_finalizadas_total ?? 0}</h4></article>
+          <article class="plan-summary-card"><p>Ingreso total</p><h4>${money(resumen.ingreso_total_ars ?? 0)}</h4></article>
+          <article class="plan-summary-card"><p>Egreso total</p><h4>${money(resumen.egreso_total_ars ?? 0)}</h4></article>
+        `;
+      }
+      // Renderizar timeline
+      renderTimelineTable(proyeccion.timeline || []);
       return;
     }
 
@@ -3147,6 +3235,9 @@ export function initSavedSimulationsWorkspace(options) {
       const section = openSimulationSectionButton.getAttribute("data-section");
       if (section === "resumen") {
         state.planView = "resumen";
+        state.selectedHouseId = null;
+      } else if (section === "proyeccion") {
+        state.planView = "proyeccion";
         state.selectedHouseId = null;
       }
       renderHouses(state.activeDetail);
