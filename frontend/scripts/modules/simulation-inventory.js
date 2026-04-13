@@ -665,11 +665,28 @@ function renderManoObra(manoObra, context) {
         <p><strong>${escapeHtml(manoObra.rubro)}</strong></p>
         <p style="font-size:0.9rem;color:#666;">${escapeHtml(manoObra.descripcion || '(sin descripción)')}</p>
         <p style="font-size:0.9rem;color:#666;">${fechaFormato}</p>
+        ${manoObra.porcentaje ? `<p style="font-size:0.9rem;color:#666;">Porcentaje: ${manoObra.porcentaje}%</p>` : ''}
         <p style="font-weight:600;color:#d9534f;">${money(manoObra.monto_ars)}</p>
       </div>
       <form class="inventory-form inventory-editable-form inventory-form-tight inventory-grid-2" data-action="update-mano-obra" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(casaId)}" data-mano-obra-id="${escapeHtml(manoObra.id)}">
         ${inputField("Rubro", "rubro", manoObra.rubro)}
-        ${inputField("Monto ARS", "monto_ars", manoObra.monto_ars, "number", "min=0 step=0.01")}
+        <fieldset style="border:none;padding:0;margin:0;">
+          <legend style="font-size:0.9rem;margin-bottom:0.5rem;">Tipo de mano de obra</legend>
+          <label style="display:inline-flex;align-items:center;gap:0.5rem;margin-right:1rem;">
+            <input type="radio" name="mano_obra_tipo" value="monto" ${!manoObra.porcentaje ? 'checked' : ''} />
+            Monto fijo
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:0.5rem;">
+            <input type="radio" name="mano_obra_tipo" value="porcentaje" ${manoObra.porcentaje ? 'checked' : ''} />
+            Porcentaje
+          </label>
+        </fieldset>
+        <div id="campo-monto-ars-${escapeHtml(manoObra.id)}" style="grid-column:1/-1;${manoObra.porcentaje ? 'display:none;' : ''}">
+          ${inputField("Monto ARS", "monto_ars", manoObra.monto_ars, "number", "min=0 step=0.01")}
+        </div>
+        <div id="campo-porcentaje-${escapeHtml(manoObra.id)}" style="grid-column:1/-1;${manoObra.porcentaje ? '' : 'display:none;'}">
+          ${inputField("Porcentaje (%)", "porcentaje", manoObra.porcentaje || 0, "number", "min=0 max=100 step=0.01")}
+        </div>
         ${inputField("Fecha", "fecha", manoObra.fecha ? manoObra.fecha.split('T')[0] : new Date().toISOString().split('T')[0], "date")}
         ${textAreaField("Descripción", "descripcion", manoObra.descripcion, 2)}
         <div class="inventory-actions inventory-actions-full">
@@ -1533,9 +1550,25 @@ export function initSavedSimulationsWorkspace(options) {
           </div>
         </div>
         <p class="inventory-page-subtitle">Total: ${money(selectedHouse.total_mano_obra_ars)}</p>
-        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-3 hidden" data-action="create-mano-obra" data-simulacion-id="${escapeHtml(state.activeDetail.id)}" data-casa-id="${escapeHtml(selectedHouse.id)}">
+        <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-2 hidden" data-action="create-mano-obra" data-simulacion-id="${escapeHtml(state.activeDetail.id)}" data-casa-id="${escapeHtml(selectedHouse.id)}">
           ${inputField("Rubro", "rubro", "")}
-          ${inputField("Monto ARS", "monto_ars", 0, "number", "min=0 step=0.01")}
+          <fieldset style="border:none;padding:0;margin:0;">
+            <legend style="font-size:0.9rem;margin-bottom:0.5rem;">Tipo de mano de obra</legend>
+            <label style="display:inline-flex;align-items:center;gap:0.5rem;margin-right:1rem;">
+              <input type="radio" name="mano_obra_tipo" value="monto" checked />
+              Monto fijo
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:0.5rem;">
+              <input type="radio" name="mano_obra_tipo" value="porcentaje" />
+              Porcentaje
+            </label>
+          </fieldset>
+          <div id="campo-monto-ars" style="grid-column:1/-1;">
+            ${inputField("Monto ARS", "monto_ars", 0, "number", "min=0 step=0.01")}
+          </div>
+          <div id="campo-porcentaje" style="grid-column:1/-1;display:none;">
+            ${inputField("Porcentaje (%)", "porcentaje", 0, "number", "min=0 max=100 step=0.01")}
+          </div>
           ${inputField("Fecha", "fecha", new Date().toISOString().split('T')[0], "date")}
           ${textAreaField("Descripción", "descripcion", "", 2)}
           <div class="inventory-actions inventory-actions-full">
@@ -2159,19 +2192,35 @@ export function initSavedSimulationsWorkspace(options) {
         monto_ars: numberOrZero(payload.monto_ars)
       });
     } else if (action === "create-mano-obra") {
-      response = await crearManoObraCasa(simulationId, context.casaId, {
+      const tipo = payload.mano_obra_tipo || "monto";
+      const manoObraPayload = {
         rubro: payload.rubro,
         descripcion: payload.descripcion,
-        monto_ars: numberOrZero(payload.monto_ars),
         fecha: payload.fecha || new Date().toISOString()
-      });
+      };
+      
+      if (tipo === "porcentaje") {
+        manoObraPayload.porcentaje = numberOrZero(payload.porcentaje);
+      } else {
+        manoObraPayload.monto_ars = numberOrZero(payload.monto_ars);
+      }
+      
+      response = await crearManoObraCasa(simulationId, context.casaId, manoObraPayload);
     } else if (action === "update-mano-obra") {
-      response = await actualizarManoObraCasa(simulationId, context.casaId, context.manoObraId, {
+      const tipo = payload.mano_obra_tipo || "monto";
+      const manoObraPayload = {
         rubro: payload.rubro,
         descripcion: payload.descripcion,
-        monto_ars: numberOrZero(payload.monto_ars),
         fecha: payload.fecha || new Date().toISOString()
-      });
+      };
+      
+      if (tipo === "porcentaje") {
+        manoObraPayload.porcentaje = numberOrZero(payload.porcentaje);
+      } else {
+        manoObraPayload.monto_ars = numberOrZero(payload.monto_ars);
+      }
+      
+      response = await actualizarManoObraCasa(simulationId, context.casaId, context.manoObraId, manoObraPayload);
     } else if (action === "create-house") {
       response = await crearCasaSimulacion(simulationId, {
         adherente_id: payload.adherente_id || null,
@@ -2827,6 +2876,21 @@ export function initSavedSimulationsWorkspace(options) {
 
   dom.simulationHousesContainer?.addEventListener("submit", withUiFeedback(handleTreeSubmit));
   dom.simulationHousesContainer?.addEventListener("click", (event) => {
+    // Manejar cambios en los radios de tipo de mano de obra
+    const manoObraRadio = event.target.closest('input[name="mano_obra_tipo"]');
+    if (manoObraRadio) {
+      const form = manoObraRadio.closest('form');
+      if (form) {
+        const isMonto = manoObraRadio.value === "monto";
+        const fieldMonto = form.querySelector('[id^="campo-monto-ars"]');
+        const fieldPorcentaje = form.querySelector('[id^="campo-porcentaje"]');
+        
+        if (fieldMonto) fieldMonto.style.display = isMonto ? '' : 'none';
+        if (fieldPorcentaje) fieldPorcentaje.style.display = isMonto ? 'none' : '';
+      }
+      return;
+    }
+
     const toggleCreateItemButton = event.target.closest('[data-action="toggle-create-item"]');
     if (toggleCreateItemButton) {
       const container = toggleCreateItemButton.closest(".inventory-card") || toggleCreateItemButton.closest(".inventory-page");
