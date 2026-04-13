@@ -1356,63 +1356,7 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
-    if (!detail?.casas?.length) {
-      state.selectedHouseId = null;
-      state.planView = "root";
-      syncPlanFocusMode();
-      dom.buttonAddHouse?.classList.remove("hidden");
-      dom.simulationHousesContainer.innerHTML = '<p class="inventory-empty">Esta simulación todavía no tiene casas cargadas.</p>';
-      return;
-    }
-
-    const selectedHouseId = normalizeId(state.selectedHouseId);
-    const selectedHouse = detail.casas.find((house) => normalizeId(house.id) === selectedHouseId);
-
-    if (state.planView === "house" && !selectedHouse) {
-      state.planView = "houses";
-      state.selectedHouseId = null;
-    }
-
-    // Renderizar summary cards solo si estamos en root
-    // Vista raíz: mostrar secciones del plan
-    if (state.planView === "root") {
-      syncPlanFocusMode();
-      dom.buttonAddHouse?.classList.remove("hidden");
-      dom.simulationHousesContainer.innerHTML = `
-        <section class="inventory-page inventory-page-list">
-        ${renderPlanBreadcrumb([
-          { label: "Simulación actual", action: "nav-root" }
-        ])}
-        <div class="inventory-drilldown-head">
-          <h4 class="inventory-page-title">Secciones del plan</h4>
-        </div>
-        <div class="house-selector-grid">
-          <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="resumen">
-            <p class="inventory-kicker">SECCIÓN</p>
-            <h4>Resumen</h4>
-            <p class="inventory-subtitle">KPIs y datos generales de la simulación</p>
-          </button>
-          <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="proyeccion">
-            <p class="inventory-kicker">SECCIÓN</p>
-            <h4>Proyección</h4>
-            <p class="inventory-subtitle">Timeline mensual y datos de proyección</p>
-          </button>
-          <button type="button" class="house-selector-card" data-action="open-houses-section">
-            <p class="inventory-kicker">SECCIÓN</p>
-            <h4>Casas</h4>
-            <p class="inventory-subtitle">${detail.casas?.length ?? 0} casas registradas</p>
-          </button>
-        </div>
-        </section>
-      `;
-      // Limpiar KPIs en root
-      if (dom.simulationGlobalSummary) {
-        dom.simulationGlobalSummary.innerHTML = '';
-      }
-      return;
-    }
-
-    // Vista de resumen: mostrar KPIs
+    // Si estamos en resumen o proyección, renderizar esas vistas aunque no haya casas
     if (state.planView === "resumen" && detail) {
       syncPlanFocusMode();
       dom.buttonAddHouse?.classList.add("hidden");
@@ -1467,6 +1411,62 @@ export function initSavedSimulationsWorkspace(options) {
       }
       // Renderizar timeline
       renderTimelineTable(proyeccion.timeline || []);
+      return;
+    }
+
+    if (!detail?.casas?.length) {
+      state.selectedHouseId = null;
+      state.planView = "root";
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.remove("hidden");
+      dom.simulationHousesContainer.innerHTML = '<p class="inventory-empty">Esta simulación todavía no tiene casas cargadas.</p>';
+      return;
+    }
+
+    const selectedHouseId = normalizeId(state.selectedHouseId);
+    const selectedHouse = detail.casas.find((house) => normalizeId(house.id) === selectedHouseId);
+
+    if (state.planView === "house" && !selectedHouse) {
+      state.planView = "houses";
+      state.selectedHouseId = null;
+    }
+
+    // Renderizar summary cards solo si estamos en root
+    // Vista raíz: mostrar secciones del plan
+    if (state.planView === "root") {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.remove("hidden");
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Simulación actual", action: "nav-root" }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Secciones del plan</h4>
+        </div>
+        <div class="house-selector-grid">
+          <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="resumen">
+            <p class="inventory-kicker">SECCIÓN</p>
+            <h4>Resumen</h4>
+            <p class="inventory-subtitle">KPIs y datos generales de la simulación</p>
+          </button>
+          <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="proyeccion">
+            <p class="inventory-kicker">SECCIÓN</p>
+            <h4>Proyección</h4>
+            <p class="inventory-subtitle">Timeline mensual y datos de proyección</p>
+          </button>
+          <button type="button" class="house-selector-card" data-action="open-houses-section">
+            <p class="inventory-kicker">SECCIÓN</p>
+            <h4>Casas</h4>
+            <p class="inventory-subtitle">${detail.casas?.length ?? 0} casas registradas</p>
+          </button>
+        </div>
+        </section>
+      `;
+      // Limpiar KPIs en root
+      if (dom.simulationGlobalSummary) {
+        dom.simulationGlobalSummary.innerHTML = '';
+      }
       return;
     }
 
