@@ -1395,6 +1395,11 @@ export function initSavedSimulationsWorkspace(options) {
         </section>
       `;
       
+      // Limpiar tabla anterior (de materiales agrupados)
+      if (dom.simulationGlobalMaterials) {
+        dom.simulationGlobalMaterials.innerHTML = '';
+      }
+      
       // Renderizar tabla de proyección si los datos están disponibles
       if (state.simulationProyeccion) {
         renderTimelineTable(state.simulationProyeccion.timeline || []);
