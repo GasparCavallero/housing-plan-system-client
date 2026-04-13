@@ -536,6 +536,45 @@ textarea {
   white-space: nowrap;
 }
 
+.simulation-tabs {
+  margin: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.simulation-tabs-buttons {
+  display: flex;
+  gap: 0;
+}
+
+.simulation-tab-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.simulation-tab-button:hover {
+  color: var(--text);
+}
+
+.simulation-tab-button.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.simulation-tab-content {
+  display: none;
+}
+
+.simulation-tab-content.active {
+  display: block;
+}
+
 .house-cards {
   display: grid;
   gap: 0.8rem;

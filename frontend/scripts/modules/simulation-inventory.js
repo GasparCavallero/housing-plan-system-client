@@ -1757,6 +1757,11 @@ export function initSavedSimulationsWorkspace(options) {
       if (dom.simulationHousesContainer) {
         dom.simulationHousesContainer.innerHTML = '';
       }
+      // Ocultar tabs cuando no hay simulación seleccionada
+      const tabsElement = document.getElementById("simulation-tabs");
+      if (tabsElement) {
+        tabsElement.style.display = "none";
+      }
       return;
     }
 
@@ -1781,6 +1786,38 @@ export function initSavedSimulationsWorkspace(options) {
 
     // renderHouses() maneja todo el contenido según state.planView
     renderHouses(state.activeDetail);
+  }
+
+  async function loadSimulationResumen(simulacionId) {
+    try {
+      const response = await fetch(`/planes/simulaciones/${simulacionId}/resumen`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.warn("[inventory] Error cargando resumen", { simulacionId, error: String(error?.message || error) });
+      return null;
+    }
+  }
+
+  async function loadSimulationProyeccion(simulacionId) {
+    try {
+      const response = await fetch(`/planes/simulaciones/${simulacionId}/proyeccion`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.warn("[inventory] Error cargando proyección", { simulacionId, error: String(error?.message || error) });
+      return null;
+    }
   }
 
   async function loadDetail(simulationId, silent = false) {
@@ -1813,6 +1850,23 @@ export function initSavedSimulationsWorkspace(options) {
 
     if (!silent) {
       setSummary(dom.simSummary, `Simulación ${graph.titulo} cargada.`);
+    }
+
+    // Mostrar tabs y cargar resumen/proyección en paralelo
+    const tabsElement = document.getElementById("simulation-tabs");
+    if (tabsElement) {
+      tabsElement.style.display = "block";
+      // Resetear tab activo  a resumen
+      document.querySelectorAll(".simulation-tab-button").forEach(btn => btn.classList.remove("active"));
+      document.querySelector('[data-tab="resumen"]').classList.add("active");
+      
+      Promise.all([
+        loadSimulationResumen(normalizedSimulationId),
+        loadSimulationProyeccion(normalizedSimulationId)
+      ]).then(([resumen, proyeccion]) => {
+        state.simulationResumen = resumen;
+        state.simulationProyeccion = proyeccion;
+      });
     }
 
     state.loading = false;
@@ -2875,6 +2929,22 @@ export function initSavedSimulationsWorkspace(options) {
   }));
 
   dom.simulationHousesContainer?.addEventListener("submit", withUiFeedback(handleTreeSubmit));
+  
+  // Event listener para los tabs de simulaciones guardadas
+  document.querySelectorAll(".simulation-tab-button").forEach(button => {
+    button.addEventListener("click", (event) => {
+      const tabName = event.target.getAttribute("data-tab");
+      if (!tabName) return;
+      
+      // Actualizar visual de tabs
+      document.querySelectorAll(".simulation-tab-button").forEach(btn => btn.classList.remove("active"));
+      event.target.classList.add("active");
+      
+      // Por ahora los datos ya se cargan en LoadDetail
+      // Esta es una extensión para futuras integraciones con UI de proyección
+    });
+  });
+  
   dom.simulationHousesContainer?.addEventListener("click", (event) => {
     // Manejar cambios en los radios de tipo de mano de obra
     const manoObraRadio = event.target.closest('input[name="mano_obra_tipo"]');
