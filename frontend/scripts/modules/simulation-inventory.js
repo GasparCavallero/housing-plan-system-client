@@ -962,10 +962,9 @@ export function initSavedSimulationsWorkspace(options) {
     selectedPlanillaId: null,
     selectedItemId: null,
     selectedMaterialId: null,
-    planView: "root",  // "root" | "houses" | "house" | "planillas" | "planilla" | "items" | "item" | "materiales" | "material"
+    planView: "root",  // "root" | "houses" | "house" | "planillas" | "planilla" | "items" | "item" | "materiales" | "material" | "resumen"
     searchHousesText: "",
-    loading: false,
-    simulationActiveTab: "resumen"  // "resumen" | "proyeccion" para simulaciones guardadas
+    loading: false
   };
 
   // Redirigir referencias de DOM a los contenedores de simulaciones guardadas
@@ -1332,21 +1331,59 @@ export function initSavedSimulationsWorkspace(options) {
     }
 
     // Renderizar summary cards solo si estamos en root
+    // Vista raíz: mostrar secciones del plan
     if (state.planView === "root") {
-      if (state.simulationActiveTab === "proyeccion") {
-        // Renderizar tab de proyección
-        renderProjectionTab(state.simulationProyeccion);
-      } else {
-        // Renderizar tab de resumen (default)
-        const summary = buildSummary(detail);
-        renderSummaryCards(summary);
-        renderGlobalMaterials(summary);
-      }
-    } else {
-      // Limpiar summary cards si no estamos en root
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.remove("hidden");
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Simulación actual", action: "nav-root" }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Secciones del plan</h4>
+        </div>
+        <div class="house-selector-grid">
+          <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="resumen">
+            <p class="inventory-kicker">SECCIÓN</p>
+            <h4>Resumen</h4>
+            <p class="inventory-subtitle">KPIs y datos generales de la simulación</p>
+          </button>
+          <button type="button" class="house-selector-card" data-action="open-houses-section">
+            <p class="inventory-kicker">SECCIÓN</p>
+            <h4>Casas</h4>
+            <p class="inventory-subtitle">${detail.casas?.length ?? 0} casas registradas</p>
+          </button>
+        </div>
+        </section>
+      `;
+      // Limpiar KPIs en root
       if (dom.simulationGlobalSummary) {
         dom.simulationGlobalSummary.innerHTML = '';
       }
+      return;
+    }
+
+    // Vista de resumen: mostrar KPIs
+    if (state.planView === "resumen" && detail) {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      const summary = buildSummary(detail);
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Simulación actual", action: "nav-root" },
+          { label: "Resumen", current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Resumen de la simulación</h4>
+          <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver a simulación</button>
+        </div>
+        </section>
+      `;
+      renderSummaryCards(summary);
+      renderGlobalMaterials(summary);
+      return;
     }
 
     if (state.planView === "house" && selectedHouse) {
@@ -3023,24 +3060,6 @@ export function initSavedSimulationsWorkspace(options) {
 
   dom.simulationHousesContainer?.addEventListener("submit", withUiFeedback(handleTreeSubmit));
   
-  // Event listener para los tabs de simulaciones guardadas
-  document.querySelectorAll(".simulation-tab-button").forEach(button => {
-    button.addEventListener("click", (event) => {
-      const tabName = event.target.getAttribute("data-tab");
-      if (!tabName) return;
-      
-      // Actualizar estado y visual de tabs
-      state.simulationActiveTab = tabName;
-      document.querySelectorAll(".simulation-tab-button").forEach(btn => btn.classList.remove("active"));
-      event.target.classList.add("active");
-      
-      // Re-renderizar con el nuevo tab activo
-      if (state.activeDetail) {
-        renderHouses(state.activeDetail);
-      }
-    });
-  });
-  
   dom.simulationHousesContainer?.addEventListener("click", (event) => {
     // Manejar cambios en los radios de tipo de mano de obra
     const manoObraRadio = event.target.closest('input[name="mano_obra_tipo"]');
@@ -3127,9 +3146,28 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
+    const openSimulationSectionButton = event.target.closest('[data-action="open-simulation-section"]');
+    if (openSimulationSectionButton) {
+      const section = openSimulationSectionButton.getAttribute("data-section");
+      if (section === "resumen") {
+        state.planView = "resumen";
+        state.selectedHouseId = null;
+      }
+      renderHouses(state.activeDetail);
+      return;
+    }
+
     const openSectionButton = event.target.closest('[data-action="open-houses-section"]');
     if (openSectionButton) {
       state.planView = "houses";
+      state.selectedHouseId = null;
+      renderHouses(state.activeDetail);
+      return;
+    }
+
+    const backToRootButton = event.target.closest('[data-action="back-to-root"]');
+    if (backToRootButton) {
+      state.planView = "root";
       state.selectedHouseId = null;
       renderHouses(state.activeDetail);
       return;
