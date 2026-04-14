@@ -553,10 +553,39 @@ textarea {
   border-radius: 12px;
   background: #fff;
   text-align: left;
-  padding: 0.7rem;
+  padding: 1.2rem;
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(67, 50, 35, 0.06);
   width: 100%;
+}
+
+.house-selector-card-wrapper {
+  position: relative;
+}
+
+.house-selector-card-wrapper .house-selector-card {
+  width: 100%;
+}
+
+.simulation-delete-btn {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.6rem;
+  font-size: 0.85rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text);
+  z-index: 2;
+}
+
+.simulation-delete-btn:hover {
+  background: rgba(212, 111, 42, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .house-selector-card.is-page-link {
