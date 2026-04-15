@@ -1336,6 +1336,9 @@ export function initSavedSimulationsWorkspace(options) {
               <p class="inventory-subtitle">0 casas registradas</p>
             </button>
           </div>
+          <div style="margin-top:1rem;">
+            <button class="btn btn-ghost" type="button" data-action="back-to-simulations">← Volver a simulaciones</button>
+          </div>
           </section>
         `;
         // Limpiar KPIs en root
@@ -1357,6 +1360,7 @@ export function initSavedSimulationsWorkspace(options) {
           <div class="inventory-drilldown-head">
             <h4 class="inventory-page-title">Resumen de la simulación</h4>
             <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
+            <button class="btn btn-ghost" type="button" data-action="back-to-simulations">← Volver a simulaciones</button>
           </div>
           </section>
         `;
@@ -1376,8 +1380,11 @@ export function initSavedSimulationsWorkspace(options) {
           ])}
           <div class="inventory-drilldown-head">
             <h4 class="inventory-page-title">Casas</h4>
-            <button class="btn btn-primary" type="button" data-action="toggle-create-house">Agregar casa</button>
-            <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+              <button class="btn btn-primary" type="button" data-action="toggle-create-house">Agregar casa</button>
+              <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
+              <button class="btn btn-ghost" type="button" data-action="back-to-simulations">← Volver a simulaciones</button>
+            </div>
           </div>
           <p class="inventory-empty">Esta simulación todavía no tiene casas cargadas.</p>
           </section>
@@ -1789,9 +1796,12 @@ export function initSavedSimulationsWorkspace(options) {
           { label: "Plan simulado", action: "nav-root" },
           { label: "Casas", current: true }
         ])}
-        <div class="inventory-drilldown-head">
+        <div class="inventory-drilldown-head" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;justify-content:space-between;">
           <h4 class="inventory-page-title">Casas de la simulación</h4>
-          <button class="btn btn-primary" type="button" data-action="toggle-create-house">Agregar casa</button>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-primary" type="button" data-action="toggle-create-house">Agregar casa</button>
+            <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
+          </div>
         </div>
         <p class="inventory-page-subtitle">Elegí una casa para abrir su detalle completo.</p>
         
