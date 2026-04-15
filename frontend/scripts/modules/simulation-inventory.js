@@ -1,6 +1,5 @@
 import { formatterArs } from "./formatters.js";
 import { DEBUG_UI } from "./settings.js";
-import { apiRequest } from "./http.js";
 import {
   listarSimulacionesGuardadas,
   obtenerDetalleSimulacion,
@@ -786,7 +785,7 @@ function renderHouse(house, context) {
           <button type="button" class="house-selector-card is-page-link" data-action="nav-mano-obra">
             <p class="inventory-kicker">Sección</p>
             <h4>Mano de obra</h4>
-            <p class="inventory-subtitle">${escapeHtml(house["mano-obra"].length)} registros</p>
+            <p class="inventory-subtitle">${escapeHtml(house.mano_obra.length)} registros</p>
           </button>
         </div>
       </section>
@@ -794,167 +793,7 @@ function renderHouse(house, context) {
   `;
 }
 
-// Chequear rápidamente si una casa tiene datos (planillas, gastos, mano de obra)
-async function hasCasaData(simulacionId, casaId) {
-  try {
-    // Hacer un chequeo rápido de planillas (la consulta más rápida)
-    const planillasRes = await apiRequest(
-      `/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas`,
-      { method: "GET" }
-    );
-    const planillas = asList(planillasRes, ["planillas", "entregas"]) || [];
-    return planillas.length > 0;
-  } catch {
-    return false;
-  }
-}
-
-// Ejecutar promesas con pool (máximo N simultáneas)
-async function executeWithPool(tasks, poolSize = 5) {
-  const results = [];
-  const executing = [];
-  
-  for (const [index, task] of tasks.entries()) {
-    const p = Promise.resolve().then(() => task()).then(
-      result => { results[index] = result; },
-      error => { results[index] = error; }
-    );
-    
-    results.push(undefined);
-    executing.push(p);
-    
-    if (executing.length >= poolSize) {
-      await Promise.race(executing);
-      executing.splice(executing.findIndex(ep => ep === p), 1);
-    }
-  }
-  
-  await Promise.all(executing);
-  return results;
-}
-
-// Cargar recursos completos (planillas, items, materiales, gastos, mano de obra) para un snapshot
-async function loadSnapshotResourcesForCasa(simulacionId, casaId) {
-  try {
-    console.log(`[loadSnapshotResources] Cargando casa ${casaId}`);
-    
-    // Cargar planillas, gastos y mano de obra en paralelo
-    const [planillasRes, gastosRes, manoObraRes] = await Promise.allSettled([
-      apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas`, { method: "GET" }),
-      apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/gastos`, { method: "GET" }),
-      apiRequest(`/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/mano-obra`, { method: "GET" })
-    ]);
-
-    const planillas = asList(planillasRes.status === "fulfilled" ? planillasRes.value : undefined, ["planillas", "entregas"]) || [];
-    const gastos = asList(gastosRes.status === "fulfilled" ? gastosRes.value : undefined, ["gastos"]) || [];
-    const manoObra = asList(manoObraRes.status === "fulfilled" ? manoObraRes.value : undefined, ["mano-obra", "mano_obra"]) || [];
-
-    // Cargar items para cada planilla en paralelo
-    const planillasConItems = await Promise.all(
-      planillas.map(async (planilla) => {
-        try {
-          const itemsRes = await apiRequest(
-            `/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planilla.id}/items`,
-            { method: "GET" }
-          );
-          const items = asList(itemsRes, ["items", "entregas"]) || [];
-
-          // Cargar materiales para cada item en paralelo
-          const itemsConMateriales = await Promise.all(
-            items.map(async (item) => {
-              try {
-                const materialesRes = await apiRequest(
-                  `/planes/simulaciones-entregas/${simulacionId}/casas/${casaId}/planillas/${planilla.id}/items/${item.id}/materiales`,
-                  { method: "GET" }
-                );
-                const materiales = asList(materialesRes, ["materiales", "items"]) || [];
-                return { ...item, materiales };
-              } catch (error) {
-                console.debug(`[loadSnapshotResources] Error materiales item ${item.id}:`, error?.message);
-                return { ...item, materiales: [] };
-              }
-            })
-          );
-
-          return { ...planilla, items: itemsConMateriales };
-        } catch (error) {
-          console.debug(`[loadSnapshotResources] Error items planilla ${planilla.id}:`, error?.message);
-          return { ...planilla, items: [] };
-        }
-      })
-    );
-
-    console.log(`[loadSnapshotResources] Casa ${casaId}: ${planillasConItems.length} planillas, ${gastos.length} gastos, ${manoObra.length} mano de obra`);
-
-    return {
-      planillas: planillasConItems,
-      gastos: gastos.map(normalizeGasto),
-      "mano-obra": manoObra.map(normalizeManoObra)
-    };
-  } catch (error) {
-    console.warn(`[loadSnapshotResources] Error cargando casa ${casaId}:`, error?.message);
-    return {
-      planillas: [],
-      gastos: [],
-      "mano-obra": []
-    };
-  }
-}
-
-
-async function loadSimulationTree(simulacionId, list = []) {
-  console.log("[loadSimulationTree] Iniciando con simulacionId:", simulacionId, "list.length:", list.length);
-  
-  // PRIMERO: Si es un snapshot guardado, usar esos datos directamente (evitar API)
-  if (list && list.length) {
-    const savedSimulation = list.find((item) => normalizeId(item.id) === normalizeId(simulacionId));
-    console.log("[loadSimulationTree] Buscando en state.list, encontrado:", !!savedSimulation);
-    if (savedSimulation) {
-      console.log("[loadSimulationTree] savedSimulation keys:", Object.keys(savedSimulation || {}));
-      console.log("[loadSimulationTree] savedSimulation.casas:", savedSimulation.casas);
-    }
-    
-    if (savedSimulation && savedSimulation.casas && savedSimulation.casas.length > 0) {
-      console.log("[loadSimulationTree] Usando snapshot guardado:", simulacionId);
-      
-      // Cargar casas REALES desde el endpoint
-      let casasReales = [];
-      try {
-        const casasResponse = await listarCasasSimulacion(simulacionId);
-        casasReales = asList(casasResponse, ["casas", "houses"]) || [];
-        console.log("[loadSimulationTree] Casas reales del endpoint:", casasReales.length);
-      } catch (error) {
-        console.warn("[loadSimulationTree] Error cargando casas reales, fallback a snapshot:", error?.message);
-        casasReales = asList(savedSimulation, ["casas", "houses"]) || [];
-      }
-      
-      // Normalizar casas
-      const housesNormalized = casasReales.map((houseRaw) => {
-        const houseId = houseRaw?.id ?? houseRaw?.casa_id ?? houseRaw?.house_id;
-        return {
-          ...houseRaw,
-          id: houseId,
-          planillas: [],
-          gastos: [],
-          "mano-obra": []
-        };
-      });
-      
-      const resultado = normalizeSimulation(
-        {
-          ...savedSimulation,
-          casas: housesNormalized
-        },
-        simulacionId
-      );
-      console.log("[loadSimulationTree] Retornando resultado desde snapshot con casas:", resultado.casas.length);
-      return resultado;
-    }
-  }
-
-  console.log("[loadSimulationTree] No usó snapshot, intentando desde API");
-  
-  // SEGUNDO: Intentar cargar desde API (para simulaciones en las tablas principales)
+async function loadSimulationTree(simulacionId) {
   let simulationDetail = {
     id: simulacionId,
     titulo: `Simulacion #${simulacionId}`,
@@ -969,7 +808,8 @@ async function loadSimulationTree(simulacionId, list = []) {
     const detailPayload = await obtenerDetalleSimulacion(simulacionId);
     simulationDetail = { ...simulationDetail, ...(detailPayload || {}) };
   } catch {
-    // Continuamos si falla el detalle de simulación
+    // Continuamos con endpoints de entregas para no vaciar la UI
+    // cuando falla el detalle de simulación.
   }
   const detailHouses = asList(simulationDetail, ["casas", "houses"]);
 
@@ -983,19 +823,8 @@ async function loadSimulationTree(simulacionId, list = []) {
   const listedHouses = asList(housesRaw, ["casas", "houses"]);
 
   let housesBase = listedHouses.length ? listedHouses : detailHouses;
-  console.log("[loadSimulationTree] housesBase.length después de API:", housesBase.length);
-
-  // TERCERO: Si aún no hay casas, fallback a snapshot silencioso
-  if (!housesBase.length && list && list.length) {
-    const savedSimulation = list.find((item) => normalizeId(item.id) === normalizeId(simulacionId));
-    if (savedSimulation && savedSimulation.casas) {
-      housesBase = asList(savedSimulation, ["casas", "houses"]);
-      console.log("[loadSimulationTree] Usando fallback desde snapshot, housesBase.length:", housesBase.length);
-    }
-  }
 
   if (!housesBase.length) {
-    console.log("[loadSimulationTree] No hay casas, retornando simulación vacía");
     const normalizedOnlyDetail = normalizeSimulation(simulationDetail, simulacionId);
     if (!normalizedOnlyDetail.titulo) {
       normalizedOnlyDetail.titulo = `Simulacion #${simulacionId}`;
@@ -1003,70 +832,101 @@ async function loadSimulationTree(simulacionId, list = []) {
     return normalizedOnlyDetail;
   }
 
-  console.log("[loadSimulationTree] Procesando casas, total:", housesBase.length);
-
-  // Usar planillas/gastos/mano_obra que ya existen en houseRaw, no intentar cargarlas del API
-  const houses = housesBase.map((houseRaw) => {
+  const houses = await Promise.all(housesBase.map(async (houseRaw) => {
     const houseId = houseRaw?.id ?? houseRaw?.casa_id ?? houseRaw?.house_id;
-    
-    console.log(`[loadSimulationTree] Raw house ${houseId} keys:`, Object.keys(houseRaw || {}));
-    console.log(`[loadSimulationTree] Raw house ${houseId} estructura:`, {
-      tiene_planillas_prop: !!houseRaw?.planillas,
-      planillas_es_array: Array.isArray(houseRaw?.planillas),
-      planillas_length: houseRaw?.planillas?.length,
-      tiene_entregas_prop: !!houseRaw?.entregas,
-      entregas_es_array: Array.isArray(houseRaw?.entregas),
-      toda_estructura: houseRaw
+    let planillasRaw = null;
+    let planillasError = "";
+    try {
+      planillasRaw = await listarPlanillasCasa(simulacionId, houseId);
+    } catch (error) {
+      planillasError = String(error?.message || error);
+      console.warn("[inventory] Error listando planillas", {
+        simulacionId,
+        houseId,
+        error: planillasError
+      });
+      planillasRaw = null;
+    }
+
+    const gastosRaw = await listarGastosCasa(simulacionId, houseId).catch((error) => {
+      console.warn("[inventory] Error listando gastos", {
+        simulacionId,
+        houseId,
+        error: String(error?.message || error)
+      });
+      return [];
     });
-    
-    // Usar planillas que ya están en houseRaw, sino devolver array vacío
-    // Intentar primero con array directo si existe
-    let planillasSource = houseRaw?.planillas;
-    if (!Array.isArray(planillasSource) || planillasSource.length === 0) {
+
+    const manoObraRaw = await listarManoObraCasa(simulacionId, houseId).catch((error) => {
+      console.warn("[inventory] Error listando mano de obra", {
+        simulacionId,
+        houseId,
+        error: String(error?.message || error)
+      });
+      return [];
+    });
+
+    let planillasSource = asList(planillasRaw, ["planillas", "entregas", "items"]);
+    if (!planillasSource.length) {
       planillasSource = asList(houseRaw, ["planillas", "entregas", "ordenes", "items"]);
     }
-    
-    let gastosSource = houseRaw?.gastos;
-    if (!Array.isArray(gastosSource)) {
-      gastosSource = asList(houseRaw, ["gastos"]);
-    }
-    
-    let manoObraSource = houseRaw?.["mano-obra"];
-    if (!Array.isArray(manoObraSource)) {
-      manoObraSource = houseRaw?.["mano_obra"];
-    }
-    if (!Array.isArray(manoObraSource)) {
-      manoObraSource = asList(houseRaw, ["mano-obra", "mano_obra"]);
-    }
+    const planillasRawCount = Array.isArray(planillasSource) ? planillasSource.length : 0;
+    const gastos = asList(gastosRaw, ["gastos"]).map(normalizeGasto);
+    const mano_obra = asList(manoObraRaw, ["mano-obra", "mano_obra"]).map(normalizeManoObra);
 
-    console.log(`[loadSimulationTree] Casa ${houseId}:`, {
-      planillas: Array.isArray(planillasSource) ? planillasSource.length : 0,
-      gastos: Array.isArray(gastosSource) ? gastosSource.length : 0,
-      manoObra: Array.isArray(manoObraSource) ? manoObraSource.length : 0
-    });
+    const planillas = await Promise.all(planillasSource.map(async (planillaRaw) => {
+      const planillaId = planillaRaw?.id ?? planillaRaw?.planilla_id;
+      const itemsRaw = await listarItemsPlanilla(simulacionId, houseId, planillaId).catch(() => null);
+      let itemsSource = asList(itemsRaw, ["items", "detalles"]);
+      if (!itemsSource.length) {
+        itemsSource = asList(planillaRaw, ["items", "detalles"]);
+      }
 
-    return {
+      const items = await Promise.all(itemsSource.map(async (itemRaw) => {
+        const itemId = itemRaw?.id ?? itemRaw?.item_id;
+        const materialsRaw = await listarMaterialesItem(simulacionId, houseId, planillaId, itemId).catch(() => null);
+        let materialsSource = asList(materialsRaw, ["materiales", "items"]);
+        if (!materialsSource.length) {
+          materialsSource = asList(itemRaw, ["materiales", "items"]);
+        }
+
+        const materiales = await Promise.all(materialsSource.map(async (materialRaw) => {
+          const materialId = materialRaw?.id ?? materialRaw?.material_id;
+          const movimientosRaw = await listarMovimientosMaterial({
+            simulacion_id: simulacionId,
+            casa_id: houseId,
+            planilla_id: planillaId,
+            item_id: itemId,
+            material_id: materialId
+          }).catch(() => []);
+
+          return normalizeMaterial({
+            ...materialRaw,
+            movimientos: asList(movimientosRaw, ["movimientos", "items"]).map(normalizeMovimiento)
+          });
+        }));
+
+        return normalizeItem({ ...itemRaw, materiales });
+      }));
+
+      return normalizePlanilla({ ...planillaRaw, items });
+    }));
+
+    return normalizeCasa({
       ...houseRaw,
-      id: houseId,
-      planillas: Array.isArray(planillasSource) ? planillasSource : [],
-      gastos: (Array.isArray(gastosSource) ? gastosSource : []).map(normalizeGasto),
-      "mano-obra": Array.isArray(manoObraSource) ? manoObraSource.map(normalizeManoObra) : []
-    };
-  });
+      planillas,
+      gastos,
+      "mano-obra": mano_obra
+    });
+  }));
 
-  const resultado = normalizeSimulation(
-    {
-      ...simulationDetail,
-      casas: houses
-    },
-    simulacionId
-  );
+  const normalized = normalizeSimulation({ ...simulationDetail, casas: houses }, simulacionId);
 
-  if (!resultado.titulo) {
-    resultado.titulo = `Simulacion #${simulacionId}`;
+  if (!normalized.titulo) {
+    normalized.titulo = `Simulacion #${simulacionId}`;
   }
 
-  return resultado;
+  return normalized;
 }
 
 function buildFallbackSimulation(simulationId, list = []) {
@@ -1102,7 +962,7 @@ export function initSavedSimulationsWorkspace(options) {
     selectedPlanillaId: null,
     selectedItemId: null,
     selectedMaterialId: null,
-    planView: "root",  // "root" | "houses" | "house" | "planillas" | "planilla" | "items" | "item" | "materiales" | "material" | "resumen"
+    planView: "resumen",  // Al entrar, mostrar siempre la vista resumen
     searchHousesText: "",
     loading: false
   };
@@ -1127,10 +987,10 @@ export function initSavedSimulationsWorkspace(options) {
       simulationDetailOverview = document.getElementById("simulation-detail-overview");
     }
 
-    const isSectionFocused = state.planView !== "root" && state.planView !== "resumen" && state.planView !== "proyeccion";
+    const isSectionFocused = state.planView !== "root" && state.planView !== "resumen";
     planSection.classList.toggle("plan-section-focused", isSectionFocused);
     
-    // Mostrar tabla solo en resumen (proyección lo controla manualmente en renderHouses)
+    // Mostrar tabla de materiales solo en resumen (ocultar en otros views)
     if (simulationDetailOverview) {
       simulationDetailOverview.style.display = state.planView === "resumen" ? "" : "none";
     }
@@ -1245,14 +1105,11 @@ export function initSavedSimulationsWorkspace(options) {
 
   function renderSimulationCard(sim) {
     return `
-      <div class="house-selector-card-wrapper">
-        <button class="house-selector-card is-page-link" type="button" data-action="open-simulation" data-simulation-id="${escapeHtml(sim.id)}">
-          <p class="inventory-kicker">Simulación #${escapeHtml(sim.id)}</p>
-          <h4>${escapeHtml(sim.titulo || sim.title || `Simulación ${sim.id}`)}</h4>
-          <p class="inventory-subtitle">${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
-        </button>
-        <button class="simulation-delete-btn" type="button" data-action="delete-simulation" data-simulation-id="${escapeHtml(sim.id)}" title="Eliminar simulación">🗑️</button>
-      </div>
+      <button class="house-selector-card is-page-link" type="button" data-action="open-simulation" data-simulation-id="${escapeHtml(sim.id)}">
+        <p class="inventory-kicker">Simulación #${escapeHtml(sim.id)}</p>
+        <h4>${escapeHtml(sim.titulo || sim.title || `Simulación ${sim.id}`)}</h4>
+        <p class="inventory-subtitle">${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
+      </button>
     `;
   }
 
@@ -1317,45 +1174,6 @@ export function initSavedSimulationsWorkspace(options) {
       <article class="plan-summary-card"><p>Total materiales</p><h4>${money(summary.totalMateriales)}</h4></article>
       <article class="plan-summary-card"><p>Saldo total</p><h4>${money(summary.totalSaldo)}</h4></article>
     `;
-  }
-
-  function renderTimelineTable(rows) {
-    if (!dom.simulationGlobalMaterials) {
-      return;
-    }
-
-    // Actualizar título y headers
-    const tableTitle = document.getElementById("simulation-detail-table-title");
-    if (tableTitle) {
-      tableTitle.textContent = "Timeline mensual de proyección";
-    }
-    const tableHead = document.getElementById("simulation-detail-table-head");
-    if (tableHead) {
-      tableHead.innerHTML = `
-        <tr>
-          <th>Mes</th>
-          <th>Cuota completa</th>
-          <th>Media cuota</th>
-          <th>Adherentes activos</th>
-          <th>En construcción</th>
-        </tr>
-      `;
-    }
-
-    if (!rows.length) {
-      dom.simulationGlobalMaterials.innerHTML = '<tr><td colspan="5">Sin datos de timeline en la proyección.</td></tr>';
-      return;
-    }
-
-    dom.simulationGlobalMaterials.innerHTML = rows.map((row) => `
-      <tr>
-        <td>${escapeHtml(row.mes ?? "-")}</td>
-        <td>${money(row.cuota_completa_mes_ars ?? 0)}</td>
-        <td>${money(row.media_cuota_mes_ars ?? 0)}</td>
-        <td>${escapeHtml(row.adherentes_activos ?? 0)}</td>
-        <td>${escapeHtml(row.adherentes_en_construccion ?? 0)}</td>
-      </tr>
-    `).join("");
   }
 
   function renderGlobalMaterials(summary) {
@@ -1491,76 +1309,81 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
-    // Si estamos en resumen o proyección, renderizar esas vistas aunque no haya casas
-    if (state.planView === "resumen" && detail) {
-      syncPlanFocusMode();
-      dom.buttonAddHouse?.classList.add("hidden");
-      const summary = buildSummary(detail);
-      dom.simulationHousesContainer.innerHTML = `
-        <section class="inventory-page inventory-page-list">
-        ${renderPlanBreadcrumb([
-          { label: "Simulación actual", action: "nav-root" },
-          { label: "Resumen", current: true }
-        ])}
-        <div class="inventory-drilldown-head">
-          <h4 class="inventory-page-title">Resumen de la simulación</h4>
-          <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
-        </div>
-        </section>
-      `;
-      renderSummaryCards(summary);
-      renderGlobalMaterials(summary);
-      return;
-    }
-
-    // Vista de proyección: mostrar timeline
-    if (state.planView === "proyeccion") {
-      syncPlanFocusMode();
-      dom.buttonAddHouse?.classList.add("hidden");
-      dom.simulationHousesContainer.innerHTML = `
-        <section class="inventory-page inventory-page-list">
-        ${renderPlanBreadcrumb([
-          { label: "Simulación actual", action: "nav-root" },
-          { label: "Proyección", current: true }
-        ])}
-        <div class="inventory-drilldown-head">
-          <h4 class="inventory-page-title">Proyección de la simulación</h4>
-          <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
-        </div>
-        </section>
-      `;
-      
-      // Ocultar completamente el div de materiales en proyección
-      if (simulationDetailOverview) {
-        simulationDetailOverview.style.display = "none";
-      }
-      
-      // Renderizar tabla de proyección si los datos están disponibles
-      if (state.simulationProyeccion) {
-        const proyeccion = state.simulationProyeccion;
-        const timeline = proyeccion.timeline || [];
-        
-        // Ocultar KPIs en proyección
-        if (dom.simulationGlobalSummary) {
-          dom.simulationGlobalSummary.style.display = "none";
-        }
-        
-        renderTimelineTable(timeline);
-        // Mostrar tabla cuando hay datos
-        if (simulationDetailOverview) {
-          simulationDetailOverview.style.display = "";
-        }
-      }
-      return;
-    }
-
+    // Siempre mostrar las secciones "Resumen" y "Casas" aunque no haya casas
     if (!detail?.casas?.length) {
       state.selectedHouseId = null;
-      state.planView = "root";
-      syncPlanFocusMode();
-      dom.buttonAddHouse?.classList.remove("hidden");
-      dom.simulationHousesContainer.innerHTML = '<p class="inventory-empty">Esta simulación todavía no tiene casas cargadas.</p>';
-      return;
+      // Si está en root, mostrar los botones de navegación
+      if (state.planView === "root") {
+        syncPlanFocusMode();
+        dom.buttonAddHouse?.classList.remove("hidden");
+        dom.simulationHousesContainer.innerHTML = `
+          <section class="inventory-page inventory-page-list">
+          ${renderPlanBreadcrumb([
+            { label: "Simulación actual", action: "nav-root" }
+          ])}
+          <div class="inventory-drilldown-head">
+            <h4 class="inventory-page-title">Secciones del plan</h4>
+          </div>
+          <div class="house-selector-grid">
+            <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="resumen">
+              <p class="inventory-kicker">SECCIÓN</p>
+              <h4>Resumen</h4>
+              <p class="inventory-subtitle">KPIs y datos generales de la simulación</p>
+            </button>
+            <button type="button" class="house-selector-card" data-action="open-houses-section">
+              <p class="inventory-kicker">SECCIÓN</p>
+              <h4>Casas</h4>
+              <p class="inventory-subtitle">0 casas registradas</p>
+            </button>
+          </div>
+          </section>
+        `;
+        // Limpiar KPIs en root
+        if (dom.simulationGlobalSummary) {
+          dom.simulationGlobalSummary.innerHTML = '';
+        }
+        return;
+      }
+      // Si está en resumen, mostrar el resumen vacío
+      if (state.planView === "resumen") {
+        syncPlanFocusMode();
+        dom.buttonAddHouse?.classList.add("hidden");
+        dom.simulationHousesContainer.innerHTML = `
+          <section class="inventory-page inventory-page-list">
+          ${renderPlanBreadcrumb([
+            { label: "Simulación actual", action: "nav-root" },
+            { label: "Resumen", current: true }
+          ])}
+          <div class="inventory-drilldown-head">
+            <h4 class="inventory-page-title">Resumen de la simulación</h4>
+            <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
+          </div>
+          </section>
+        `;
+        renderSummaryCards(buildSummary(detail));
+        renderGlobalMaterials(buildSummary(detail));
+        return;
+      }
+      // Si está en casas, mostrar mensaje y botón para crear
+      if (state.planView === "houses") {
+        syncPlanFocusMode();
+        dom.buttonAddHouse?.classList.remove("hidden");
+        dom.simulationHousesContainer.innerHTML = `
+          <section class="inventory-page inventory-page-list">
+          ${renderPlanBreadcrumb([
+            { label: "Simulación actual", action: "nav-root" },
+            { label: "Casas", current: true }
+          ])}
+          <div class="inventory-drilldown-head">
+            <h4 class="inventory-page-title">Casas</h4>
+            <button class="btn btn-primary" type="button" data-action="toggle-create-house">Agregar casa</button>
+            <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
+          </div>
+          <p class="inventory-empty">Esta simulación todavía no tiene casas cargadas.</p>
+          </section>
+        `;
+        return;
+      }
     }
 
     const selectedHouseId = normalizeId(state.selectedHouseId);
@@ -1590,11 +1413,6 @@ export function initSavedSimulationsWorkspace(options) {
             <h4>Resumen</h4>
             <p class="inventory-subtitle">KPIs y datos generales de la simulación</p>
           </button>
-          <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="proyeccion">
-            <p class="inventory-kicker">SECCIÓN</p>
-            <h4>Proyección</h4>
-            <p class="inventory-subtitle">Timeline mensual y datos de proyección</p>
-          </button>
           <button type="button" class="house-selector-card" data-action="open-houses-section">
             <p class="inventory-kicker">SECCIÓN</p>
             <h4>Casas</h4>
@@ -1607,6 +1425,28 @@ export function initSavedSimulationsWorkspace(options) {
       if (dom.simulationGlobalSummary) {
         dom.simulationGlobalSummary.innerHTML = '';
       }
+      return;
+    }
+
+    // Vista de resumen: mostrar KPIs
+    if (state.planView === "resumen" && detail) {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      const summary = buildSummary(detail);
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+        ${renderPlanBreadcrumb([
+          { label: "Simulación actual", action: "nav-root" },
+          { label: "Resumen", current: true }
+        ])}
+        <div class="inventory-drilldown-head">
+          <h4 class="inventory-page-title">Resumen de la simulación</h4>
+          <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
+        </div>
+        </section>
+      `;
+      renderSummaryCards(summary);
+      renderGlobalMaterials(summary);
       return;
     }
 
@@ -1887,7 +1727,7 @@ export function initSavedSimulationsWorkspace(options) {
     if (state.planView === "mano-obra" && selectedHouse) {
       syncPlanFocusMode();
       dom.buttonAddHouse?.classList.add("hidden");
-      const mano_obra = safeArray(selectedHouse["mano-obra"]);
+      const mano_obra = safeArray(selectedHouse.mano_obra);
       dom.simulationHousesContainer.innerHTML = `
         <section class="inventory-page inventory-page-list">
         ${renderPlanBreadcrumb([
@@ -2144,10 +1984,14 @@ export function initSavedSimulationsWorkspace(options) {
 
   async function loadSimulationResumen(simulacionId) {
     try {
-      const data = await apiRequest(`/planes/simulaciones/${simulacionId}/resumen`, {
-        method: "GET"
+      const response = await fetch(`/planes/simulaciones/${simulacionId}/resumen`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
       });
-      return data;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
     } catch (error) {
       console.warn("[inventory] Error cargando resumen", { simulacionId, error: String(error?.message || error) });
       return null;
@@ -2156,10 +2000,14 @@ export function initSavedSimulationsWorkspace(options) {
 
   async function loadSimulationProyeccion(simulacionId) {
     try {
-      const data = await apiRequest(`/planes/simulaciones/${simulacionId}/proyeccion`, {
-        method: "GET"
+      const response = await fetch(`/planes/simulaciones/${simulacionId}/proyeccion`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
       });
-      return data;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
     } catch (error) {
       console.warn("[inventory] Error cargando proyección", { simulacionId, error: String(error?.message || error) });
       return null;
@@ -2172,7 +2020,7 @@ export function initSavedSimulationsWorkspace(options) {
     let graph;
 
     try {
-      graph = await loadSimulationTree(normalizedSimulationId, state.list);
+      graph = await loadSimulationTree(normalizedSimulationId);
     } catch (error) {
       graph = buildFallbackSimulation(normalizedSimulationId, state.list);
       writeLog(dom.systemLog, "Error cargar detalle simulación", {
@@ -2198,22 +2046,21 @@ export function initSavedSimulationsWorkspace(options) {
       setSummary(dom.simSummary, `Simulación ${graph.titulo} cargada.`);
     }
 
-    // Solo cargar resumen y proyección desde API si NO es un snapshot guardado
-    if (!graph.snapshot_id) {
-      // Cargar resumen y proyección en paralelo para simulaciones "vivas"
+    // Mostrar tabs y cargar resumen/proyección en paralelo
+    const tabsElement = document.getElementById("simulation-tabs");
+    if (tabsElement) {
+      tabsElement.style.display = "block";
+      // Resetear tab activo  a resumen
+      document.querySelectorAll(".simulation-tab-button").forEach(btn => btn.classList.remove("active"));
+      document.querySelector('[data-tab="resumen"]').classList.add("active");
+      
       Promise.all([
         loadSimulationResumen(normalizedSimulationId),
         loadSimulationProyeccion(normalizedSimulationId)
       ]).then(([resumen, proyeccion]) => {
         state.simulationResumen = resumen;
         state.simulationProyeccion = proyeccion;
-        // Re-renderizar si estamos en resumen o proyección
-        if (state.planView === "resumen" || state.planView === "proyeccion") {
-          renderHouses(state.activeDetail);
-        }
       });
-    } else {
-      console.log("[loadDetail] Es un snapshot guardado, saltando carga de resumen/proyección desde API");
     }
 
     state.loading = false;
@@ -2399,59 +2246,6 @@ export function initSavedSimulationsWorkspace(options) {
     return true;
   }
 
-  function upsertItemInState(casaId, planillaId, rawItem) {
-    if (!state.activeDetail || !rawItem) {
-      return false;
-    }
-
-    const targetHouseId = normalizeId(casaId);
-    const targetPlanillaId = normalizeId(planillaId);
-    const houseIndex = safeArray(state.activeDetail.casas).findIndex(
-      (house) => normalizeId(house.id) === targetHouseId
-    );
-
-    if (houseIndex < 0) {
-      return false;
-    }
-
-    const house = state.activeDetail.casas[houseIndex];
-    const planillas = [...safeArray(house.planillas)];
-    const planillaIndex = planillas.findIndex(
-      (planilla) => normalizeId(planilla.id) === targetPlanillaId
-    );
-
-    if (planillaIndex < 0) {
-      return false;
-    }
-
-    const planilla = planillas[planillaIndex];
-    const items = [...safeArray(planilla.items)];
-    const itemIndex = items.findIndex(
-      (item) => normalizeId(item.id) === normalizeId(rawItem.id)
-    );
-
-    if (itemIndex >= 0) {
-      items[itemIndex] = rawItem;
-    } else {
-      items.push(rawItem);
-    }
-
-    const updatedPlanilla = { ...planilla, items };
-    planillas[planillaIndex] = updatedPlanilla;
-
-    const rebuiltHouse = normalizeCasa({
-      ...house,
-      planillas,
-      gastos: safeArray(house.gastos)
-    });
-
-    state.activeDetail.casas = state.activeDetail.casas.map((entry, index) =>
-      index === houseIndex ? rebuiltHouse : entry
-    );
-
-    return true;
-  }
-
   async function handleTreeSubmit(event) {
     const form = event.target.closest("form[data-action]");
     if (!form) {
@@ -2464,287 +2258,244 @@ export function initSavedSimulationsWorkspace(options) {
     const simulationId = context.simulacionId;
     const payload = readFormPayload(form);
     let response = null;
-    let hasError = false;
 
-    try {
-      if (action === "update-house") {
-        response = await actualizarCasaSimulacion(simulationId, context.casaId, {
-          adherente_id: payload.adherente_id || null,
-          adherente_nombre: payload.adherente_nombre,
-          precio_ars: numberOrZero(payload.precio_ars),
-          fondo_disponible_ars: numberOrZero(payload.fondo_disponible_ars),
-          descripcion: payload.descripcion,
-          completada: Boolean(payload.completada)
-        });
-      } else if (action === "create-planilla") {
-        // Asegurar que la casa existe en simulaciones_entregas antes de crear planilla
-        try {
-          await crearCasaSimulacion(simulationId, {
-            numero: context.casaId,
-            numero_casa: context.casaId,
-            descripcion: ""
-          });
-        } catch (error) {
-          // La casa ya existe, continuamos
-        }
-
-        response = await crearPlanillaCasa(simulationId, context.casaId, {
-          numero: payload.numero,
-          nro: payload.numero,
-          numero_planilla: payload.numero,
-          nro_planilla: payload.numero,
-          fecha: payload.fecha,
-          vencimiento: payload.vencimiento,
-          proveedor: payload.proveedor,
-          contratista: payload.contratista,
-          adherente: payload.adherente,
-          direccion: payload.direccion,
-          observaciones: payload.observaciones
-        });
-      } else if (action === "update-planilla") {
-        response = await actualizarPlanillaCasa(simulationId, context.casaId, context.planillaId, {
-          numero: payload.numero,
-          nro: payload.numero,
-          numero_planilla: payload.numero,
-          nro_planilla: payload.numero,
-          fecha: payload.fecha,
-          vencimiento: payload.vencimiento,
-          proveedor: payload.proveedor,
-          contratista: payload.contratista,
-          adherente: payload.adherente,
-          direccion: payload.direccion,
-          observaciones: payload.observaciones
-        });
-      } else if (action === "create-item") {
-        // Usar planilla_id del select si está disponible, sino usar context.planillaId del data-attribute
-        const planillaId = payload.planilla_id || context.planillaId;
-        if (!planillaId) {
-          throw new Error("Selecciona la planilla destino para crear el item.");
-        }
-        response = await crearItemPlanilla(simulationId, context.casaId, planillaId, {
-          nombre: payload.nombre,
-          proveedor: payload.proveedor,
-          descripcion: payload.descripcion,
-          orden: numberOrZero(payload.orden)
-        });
-      } else if (action === "create-item-direct") {
-        if (!payload.planilla_id) {
-          throw new Error("Selecciona la planilla destino para crear el item.");
-        }
-        response = await crearItemPlanilla(simulationId, context.casaId, payload.planilla_id, {
-          nombre: payload.nombre,
-          proveedor: payload.proveedor,
-          descripcion: payload.descripcion,
-          orden: numberOrZero(payload.orden)
-        });
-      } else if (action === "update-item") {
-        response = await actualizarItemPlanilla(simulationId, context.casaId, context.planillaId, context.itemId, {
-          nombre: payload.nombre,
-          proveedor: payload.proveedor,
-          descripcion: payload.descripcion,
-          orden: numberOrZero(payload.orden)
-        });
-      } else if (action === "create-material") {
-        const precioUnitario = numberOrZero(payload.precio_unitario_ars);
-        const cantidadTotal = numberOrZero(payload.cantidad_total);
-        const cantidadRetirada = numberOrZero(payload.cantidad_retirada);
-        const cantidadEnConstruccion = numberOrZero(payload.cantidad_en_construccion);
-        if (cantidadTotal < 0 || cantidadRetirada < 0 || cantidadEnConstruccion < 0) {
-          throw new Error("Las cantidades de material no pueden ser negativas.");
-        }
-        if (cantidadRetirada > cantidadTotal) {
-          throw new Error("El retirado no puede superar la cantidad total del material.");
-        }
-        response = await crearMaterialPlanilla(simulationId, context.casaId, context.planillaId, context.itemId, {
-          nombre: payload.nombre,
-          unidad: payload.unidad,
-          proveedor: payload.proveedor,
-          descripcion: payload.descripcion,
-          nota: payload.nota,
-          cantidad_total: cantidadTotal,
-          cantidad_retirada: cantidadRetirada,
-          cantidad_en_construccion: cantidadEnConstruccion,
-          precio_unitario_ars: precioUnitario,
-          total_ars: Number((cantidadTotal * precioUnitario).toFixed(2))
-        });
-      } else if (action === "create-material-direct") {
-        const precioUnitario = numberOrZero(payload.precio_unitario_ars);
-        const cantidadTotal = numberOrZero(payload.cantidad_total);
-        const cantidadRetirada = numberOrZero(payload.cantidad_retirada);
-        const cantidadEnConstruccion = numberOrZero(payload.cantidad_en_construccion);
-        if (cantidadTotal < 0 || cantidadRetirada < 0 || cantidadEnConstruccion < 0) {
-          throw new Error("Las cantidades de material no pueden ser negativas.");
-        }
-        if (cantidadRetirada > cantidadTotal) {
-          throw new Error("El retirado no puede superar la cantidad total del material.");
-        }
-        const [planillaId, itemId] = String(payload.target || "").split("::");
-        if (!planillaId || !itemId) {
-          throw new Error("Selecciona planilla e item para cargar el material.");
-        }
-        response = await crearMaterialPlanilla(simulationId, context.casaId, planillaId, itemId, {
-          nombre: payload.nombre,
-          unidad: payload.unidad,
-          proveedor: payload.proveedor,
-          descripcion: payload.descripcion,
-          nota: payload.nota,
-          cantidad_total: cantidadTotal,
-          cantidad_retirada: cantidadRetirada,
-          cantidad_en_construccion: cantidadEnConstruccion,
-          precio_unitario_ars: precioUnitario,
-          total_ars: Number((cantidadTotal * precioUnitario).toFixed(2))
-        });
-      } else if (action === "update-material") {
-        const precioUnitario = numberOrZero(payload.precio_unitario_ars);
-        const cantidadTotal = numberOrZero(payload.cantidad_total);
-        const cantidadRetirada = numberOrZero(payload.cantidad_retirada);
-        const cantidadEnConstruccion = numberOrZero(payload.cantidad_en_construccion);
-        if (cantidadTotal < 0 || cantidadRetirada < 0 || cantidadEnConstruccion < 0) {
-          throw new Error("Las cantidades de material no pueden ser negativas.");
-        }
-        if (cantidadRetirada > cantidadTotal) {
-          throw new Error("El retirado no puede superar la cantidad total del material.");
-        }
-        response = await actualizarMaterialPlanilla(simulationId, context.casaId, context.planillaId, context.itemId, context.materialId, {
-          nombre: payload.nombre,
-          unidad: payload.unidad,
-          proveedor: payload.proveedor,
-          descripcion: payload.descripcion,
-          nota: payload.nota,
-          cantidad_total: cantidadTotal,
-          cantidad_retirada: cantidadRetirada,
-          cantidad_en_construccion: cantidadEnConstruccion,
-          precio_unitario_ars: precioUnitario,
-          total_ars: Number((cantidadTotal * precioUnitario).toFixed(2))
-        });
-      } else if (action === "create-movement") {
-        const cantidadMovimiento = numberOrZero(payload.cantidad);
-        if (cantidadMovimiento <= 0) {
-          throw new Error("La cantidad entregada debe ser mayor a 0.");
-        }
-
-        const casa = safeArray(state.activeDetail?.casas).find((item) => normalizeId(item.id) === normalizeId(context.casaId));
-        const planilla = safeArray(casa?.planillas).find((item) => normalizeId(item.id) === normalizeId(context.planillaId));
-        const item = safeArray(planilla?.items).find((entry) => normalizeId(entry.id) === normalizeId(context.itemId));
-        const material = safeArray(item?.materiales).find((entry) => normalizeId(entry.id) === normalizeId(context.materialId));
-        const tipoMovimiento = payload.tipo || "entrega";
-        if (material && tipoMovimiento === "entrega") {
-          const disponible = Math.max(0, numberOrZero(material.cantidad_total) - numberOrZero(material.cantidad_retirada));
-          if (cantidadMovimiento > disponible) {
-            throw new Error(`No puedes entregar ${cantidadMovimiento}. Disponible en este item: ${disponible}.`);
-          }
-        }
-
-        response = await registrarMovimientoEntrega({
-          simulacion_id: simulationId,
-          casa_id: context.casaId,
-          planilla_id: context.planillaId,
-          item_id: context.itemId,
-          material_id: context.materialId,
-          cantidad: cantidadMovimiento,
-          fecha: payload.fecha || new Date().toISOString(),
-          tipo: tipoMovimiento,
-          observacion: payload.observacion || ""
-        });
-      } else if (action === "create-gasto") {
-        response = await crearGastoCasa(simulationId, context.casaId, {
-          nombre: payload.nombre,
-          descripcion: payload.descripcion,
-          monto_ars: numberOrZero(payload.monto_ars)
-        });
-      } else if (action === "update-gasto") {
-        response = await actualizarGastoCasa(simulationId, context.casaId, context.gastoId, {
-          nombre: payload.nombre,
-          descripcion: payload.descripcion,
-          monto_ars: numberOrZero(payload.monto_ars)
-        });
-      } else if (action === "create-mano-obra") {
-        const tipo = payload.mano_obra_tipo || "monto";
-        const manoObraPayload = {
-          rubro: payload.rubro,
-          descripcion: payload.descripcion,
-          fecha: payload.fecha || new Date().toISOString()
-        };
-        
-        if (tipo === "porcentaje") {
-          manoObraPayload.porcentaje = numberOrZero(payload.porcentaje);
-        } else {
-          manoObraPayload.monto_ars = numberOrZero(payload.monto_ars);
-        }
-        
-        response = await crearManoObraCasa(simulationId, context.casaId, manoObraPayload);
-      } else if (action === "update-mano-obra") {
-        const tipo = payload.mano_obra_tipo || "monto";
-        const manoObraPayload = {
-          rubro: payload.rubro,
-          descripcion: payload.descripcion,
-          fecha: payload.fecha || new Date().toISOString()
-        };
-        
-        if (tipo === "porcentaje") {
-          manoObraPayload.porcentaje = numberOrZero(payload.porcentaje);
-        } else {
-          manoObraPayload.monto_ars = numberOrZero(payload.monto_ars);
-        }
-        
-        response = await actualizarManoObraCasa(simulationId, context.casaId, context.manoObraId, manoObraPayload);
-      } else if (action === "create-house") {
-        response = await crearCasaSimulacion(simulationId, {
-          adherente_id: payload.adherente_id || null,
-          adherente_nombre: payload.adherente_nombre,
-          precio_ars: numberOrZero(payload.precio_ars),
-          descripcion: payload.descripcion
-        });
+    if (action === "update-house") {
+      response = await actualizarCasaSimulacion(simulationId, context.casaId, {
+        adherente_id: payload.adherente_id || null,
+        adherente_nombre: payload.adherente_nombre,
+        precio_ars: numberOrZero(payload.precio_ars),
+        fondo_disponible_ars: numberOrZero(payload.fondo_disponible_ars),
+        descripcion: payload.descripcion,
+        completada: Boolean(payload.completada)
+      });
+    } else if (action === "create-planilla") {
+      response = await crearPlanillaCasa(simulationId, context.casaId, {
+        numero: payload.numero,
+        nro: payload.numero,
+        numero_planilla: payload.numero,
+        nro_planilla: payload.numero,
+        fecha: payload.fecha,
+        vencimiento: payload.vencimiento,
+        proveedor: payload.proveedor,
+        contratista: payload.contratista,
+        adherente: payload.adherente,
+        direccion: payload.direccion,
+        observaciones: payload.observaciones
+      });
+    } else if (action === "update-planilla") {
+      response = await actualizarPlanillaCasa(simulationId, context.casaId, context.planillaId, {
+        numero: payload.numero,
+        nro: payload.numero,
+        numero_planilla: payload.numero,
+        nro_planilla: payload.numero,
+        fecha: payload.fecha,
+        vencimiento: payload.vencimiento,
+        proveedor: payload.proveedor,
+        contratista: payload.contratista,
+        adherente: payload.adherente,
+        direccion: payload.direccion,
+        observaciones: payload.observaciones
+      });
+    } else if (action === "create-item") {
+      // Usar planilla_id del select si está disponible, sino usar context.planillaId del data-attribute
+      const planillaId = payload.planilla_id || context.planillaId;
+      if (!planillaId) {
+        throw new Error("Selecciona la planilla destino para crear el item.");
       }
-    } catch (error) {
-      // Si hay error, marcarlo para que no haga loadDetail
-      hasError = true;
-      console.error(`[handleTreeSubmit] Error en acción ${action}:`, error);
-      throw error; // Re-throw para que withUiFeedback lo maneje
-    }
-
-    // Solo hacer updates si no hubo error
-    if (!hasError) {
-      let shouldRenderAfterFallback = false;
-      if (action === "create-planilla" || action === "update-planilla") {
-        shouldRenderAfterFallback = upsertPlanillaInState(context.casaId, response);
-      } else if (action === "create-item" || action === "create-item-direct") {
-        const planillaId = response?.planilla_id || context.planillaId || payload.planilla_id;
-        shouldRenderAfterFallback = upsertItemInState(context.casaId, planillaId, response);
+      response = await crearItemPlanilla(simulationId, context.casaId, planillaId, {
+        nombre: payload.nombre,
+        proveedor: payload.proveedor,
+        descripcion: payload.descripcion,
+        orden: numberOrZero(payload.orden)
+      });
+    } else if (action === "create-item-direct") {
+      if (!payload.planilla_id) {
+        throw new Error("Selecciona la planilla destino para crear el item.");
+      }
+      response = await crearItemPlanilla(simulationId, context.casaId, payload.planilla_id, {
+        nombre: payload.nombre,
+        proveedor: payload.proveedor,
+        descripcion: payload.descripcion,
+        orden: numberOrZero(payload.orden)
+      });
+    } else if (action === "update-item") {
+      response = await actualizarItemPlanilla(simulationId, context.casaId, context.planillaId, context.itemId, {
+        nombre: payload.nombre,
+        proveedor: payload.proveedor,
+        descripcion: payload.descripcion,
+        orden: numberOrZero(payload.orden)
+      });
+    } else if (action === "create-material") {
+      const precioUnitario = numberOrZero(payload.precio_unitario_ars);
+      const cantidadTotal = numberOrZero(payload.cantidad_total);
+      const cantidadRetirada = numberOrZero(payload.cantidad_retirada);
+      const cantidadEnConstruccion = numberOrZero(payload.cantidad_en_construccion);
+      if (cantidadTotal < 0 || cantidadRetirada < 0 || cantidadEnConstruccion < 0) {
+        throw new Error("Las cantidades de material no pueden ser negativas.");
+      }
+      if (cantidadRetirada > cantidadTotal) {
+        throw new Error("El retirado no puede superar la cantidad total del material.");
+      }
+      response = await crearMaterialPlanilla(simulationId, context.casaId, context.planillaId, context.itemId, {
+        nombre: payload.nombre,
+        unidad: payload.unidad,
+        proveedor: payload.proveedor,
+        descripcion: payload.descripcion,
+        nota: payload.nota,
+        cantidad_total: cantidadTotal,
+        cantidad_retirada: cantidadRetirada,
+        cantidad_en_construccion: cantidadEnConstruccion,
+        precio_unitario_ars: precioUnitario,
+        total_ars: Number((cantidadTotal * precioUnitario).toFixed(2))
+      });
+    } else if (action === "create-material-direct") {
+      const precioUnitario = numberOrZero(payload.precio_unitario_ars);
+      const cantidadTotal = numberOrZero(payload.cantidad_total);
+      const cantidadRetirada = numberOrZero(payload.cantidad_retirada);
+      const cantidadEnConstruccion = numberOrZero(payload.cantidad_en_construccion);
+      if (cantidadTotal < 0 || cantidadRetirada < 0 || cantidadEnConstruccion < 0) {
+        throw new Error("Las cantidades de material no pueden ser negativas.");
+      }
+      if (cantidadRetirada > cantidadTotal) {
+        throw new Error("El retirado no puede superar la cantidad total del material.");
+      }
+      const [planillaId, itemId] = String(payload.target || "").split("::");
+      if (!planillaId || !itemId) {
+        throw new Error("Selecciona planilla e item para cargar el material.");
+      }
+      response = await crearMaterialPlanilla(simulationId, context.casaId, planillaId, itemId, {
+        nombre: payload.nombre,
+        unidad: payload.unidad,
+        proveedor: payload.proveedor,
+        descripcion: payload.descripcion,
+        nota: payload.nota,
+        cantidad_total: cantidadTotal,
+        cantidad_retirada: cantidadRetirada,
+        cantidad_en_construccion: cantidadEnConstruccion,
+        precio_unitario_ars: precioUnitario,
+        total_ars: Number((cantidadTotal * precioUnitario).toFixed(2))
+      });
+    } else if (action === "update-material") {
+      const precioUnitario = numberOrZero(payload.precio_unitario_ars);
+      const cantidadTotal = numberOrZero(payload.cantidad_total);
+      const cantidadRetirada = numberOrZero(payload.cantidad_retirada);
+      const cantidadEnConstruccion = numberOrZero(payload.cantidad_en_construccion);
+      if (cantidadTotal < 0 || cantidadRetirada < 0 || cantidadEnConstruccion < 0) {
+        throw new Error("Las cantidades de material no pueden ser negativas.");
+      }
+      if (cantidadRetirada > cantidadTotal) {
+        throw new Error("El retirado no puede superar la cantidad total del material.");
+      }
+      response = await actualizarMaterialPlanilla(simulationId, context.casaId, context.planillaId, context.itemId, context.materialId, {
+        nombre: payload.nombre,
+        unidad: payload.unidad,
+        proveedor: payload.proveedor,
+        descripcion: payload.descripcion,
+        nota: payload.nota,
+        cantidad_total: cantidadTotal,
+        cantidad_retirada: cantidadRetirada,
+        cantidad_en_construccion: cantidadEnConstruccion,
+        precio_unitario_ars: precioUnitario,
+        total_ars: Number((cantidadTotal * precioUnitario).toFixed(2))
+      });
+    } else if (action === "create-movement") {
+      const cantidadMovimiento = numberOrZero(payload.cantidad);
+      if (cantidadMovimiento <= 0) {
+        throw new Error("La cantidad entregada debe ser mayor a 0.");
       }
 
-      // Para snapshots guardados: recargar siempre (incluye gastos, mano-obra, etc)
-      if (state.activeDetail?.snapshot_id) {
-        console.log("[handleTreeSubmit] Snapshot detected, recargando detail completo");
-        
-        // Preservar la vista actual antes de recargar
-        const previousPlanView = state.planView;
-        const previousSelectedHouseId = state.selectedHouseId;
-        
-        // Recargar detail completo para asegurar consistency de selectedHouse y totales
-        await loadDetail(simulationId, true);
-        
-        // Restaurar la vista y casa seleccionada
-        state.planView = previousPlanView;
-        state.selectedHouseId = previousSelectedHouseId;
-        renderHouses(state.activeDetail);
+      const casa = safeArray(state.activeDetail?.casas).find((item) => normalizeId(item.id) === normalizeId(context.casaId));
+      const planilla = safeArray(casa?.planillas).find((item) => normalizeId(item.id) === normalizeId(context.planillaId));
+      const item = safeArray(planilla?.items).find((entry) => normalizeId(entry.id) === normalizeId(context.itemId));
+      const material = safeArray(item?.materiales).find((entry) => normalizeId(entry.id) === normalizeId(context.materialId));
+      const tipoMovimiento = payload.tipo || "entrega";
+      if (material && tipoMovimiento === "entrega") {
+        const disponible = Math.max(0, numberOrZero(material.cantidad_total) - numberOrZero(material.cantidad_retirada));
+        if (cantidadMovimiento > disponible) {
+          throw new Error(`No puedes entregar ${cantidadMovimiento}. Disponible en este item: ${disponible}.`);
+        }
+      }
+
+      response = await registrarMovimientoEntrega({
+        simulacion_id: simulationId,
+        casa_id: context.casaId,
+        planilla_id: context.planillaId,
+        item_id: context.itemId,
+        material_id: context.materialId,
+        cantidad: cantidadMovimiento,
+        fecha: payload.fecha || new Date().toISOString(),
+        tipo: tipoMovimiento,
+        observacion: payload.observacion || ""
+      });
+    } else if (action === "create-gasto") {
+      response = await crearGastoCasa(simulationId, context.casaId, {
+        nombre: payload.nombre,
+        descripcion: payload.descripcion,
+        monto_ars: numberOrZero(payload.monto_ars)
+      });
+    } else if (action === "update-gasto") {
+      response = await actualizarGastoCasa(simulationId, context.casaId, context.gastoId, {
+        nombre: payload.nombre,
+        descripcion: payload.descripcion,
+        monto_ars: numberOrZero(payload.monto_ars)
+      });
+    } else if (action === "create-mano-obra") {
+      const tipo = payload.mano_obra_tipo || "monto";
+      const manoObraPayload = {
+        rubro: payload.rubro,
+        descripcion: payload.descripcion,
+        fecha: payload.fecha || new Date().toISOString()
+      };
+      
+      if (tipo === "porcentaje") {
+        manoObraPayload.porcentaje = numberOrZero(payload.porcentaje);
       } else {
-        // Para simulaciones "vivas" en la API, hacer reload completo
-        await loadDetail(simulationId, true);
-
-        // Si el backend respondió OK al POST/PATCH pero el reload no trae la planilla,
-        // mantenemos visible la entidad desde la respuesta para no perderla en UI.
-        if ((action === "create-planilla" || action === "update-planilla") && response) {
-          const synced = upsertPlanillaInState(context.casaId, response);
-          if (synced || shouldRenderAfterFallback) {
-            renderDetail();
-          }
-        }
+        manoObraPayload.monto_ars = numberOrZero(payload.monto_ars);
       }
-
-      setSummary(dom.simSummary, "Cambios guardados en la estructura de entregas.");
-      writeLog(dom.systemLog, `Acción ${action}`, response);
+      
+      response = await crearManoObraCasa(simulationId, context.casaId, manoObraPayload);
+    } else if (action === "update-mano-obra") {
+      const tipo = payload.mano_obra_tipo || "monto";
+      const manoObraPayload = {
+        rubro: payload.rubro,
+        descripcion: payload.descripcion,
+        fecha: payload.fecha || new Date().toISOString()
+      };
+      
+      if (tipo === "porcentaje") {
+        manoObraPayload.porcentaje = numberOrZero(payload.porcentaje);
+      } else {
+        manoObraPayload.monto_ars = numberOrZero(payload.monto_ars);
+      }
+      
+      response = await actualizarManoObraCasa(simulationId, context.casaId, context.manoObraId, manoObraPayload);
+    } else if (action === "create-house") {
+      response = await crearCasaSimulacion(simulationId, {
+        adherente_id: payload.adherente_id || null,
+        adherente_nombre: payload.adherente_nombre,
+        precio_ars: numberOrZero(payload.precio_ars),
+        descripcion: payload.descripcion
+      });
     }
+
+    let shouldRenderAfterFallback = false;
+    if (action === "create-planilla" || action === "update-planilla") {
+      shouldRenderAfterFallback = upsertPlanillaInState(context.casaId, response);
+    }
+
+    await loadDetail(simulationId, true);
+
+    // Si el backend respondió OK al POST/PATCH pero el reload no trae la planilla,
+    // mantenemos visible la entidad desde la respuesta para no perderla en UI.
+    if ((action === "create-planilla" || action === "update-planilla") && response) {
+      const synced = upsertPlanillaInState(context.casaId, response);
+      if (synced || shouldRenderAfterFallback) {
+        renderDetail();
+      }
+    }
+
+    setSummary(dom.simSummary, "Cambios guardados en la estructura de entregas.");
+    writeLog(dom.systemLog, `Acción ${action}`, response);
   }
 
   function syncMaterialTotals(form) {
@@ -3224,41 +2975,33 @@ export function initSavedSimulationsWorkspace(options) {
     const data = await showSaveSimulationModal();
     if (!data) return;
 
-    try {
-      // Obtener horizonte_meses y ofertas de state o usar defaults
-      const horizonte = state.activeDetail?.horizonte_meses || 120;
-      const ofertas = state.activeDetail?.ofertas || [];
 
+    // Tomar horizonte directamente del input del formulario de configuración
+    let horizonte = null;
+    if (dom.form && dom.form.elements.cantidadCuotas) {
+      horizonte = Number(dom.form.elements.cantidadCuotas.value);
+    }
+    if (!Number.isFinite(horizonte) || horizonte <= 0) {
+      setSummary(dom.simSummary, "Error: El horizonte de meses es inválido o está vacío. No se puede guardar la simulación.");
+      return;
+    }
+
+    try {
+
+      const ofertas = (state.activeDetail && Array.isArray(state.activeDetail.ofertas)) ? state.activeDetail.ofertas : [];
       const response = await guardarSimulacionComoCopia({
         titulo_snapshot: data.titulo_snapshot,
         descripcion_snapshot: data.descripcion_snapshot,
         horizonte_meses: horizonte,
-        ofertas: ofertas
+        ofertas
       });
 
-      console.log("[saveSimulationAsSnapshot] Response from API:", response);
-
-      const snapshotId = response?.snapshot_id || response?.id || response?.simulacion_id;
-      if (!snapshotId) {
-        setSummary(dom.simSummary, `Error: respuesta inválida del servidor. ${JSON.stringify(response)}`);
-        return;
+      if (response.snapshot_id) {
+        // Cargar la simulación guardada en Plan simulado
+        await loadDetail(response.snapshot_id, false);
+        setSummary(dom.simSummary, `Simulación "${data.titulo_snapshot}" guardada correctamente.`);
       }
-
-      // Actualizar la lista primero
-      await refreshList({ silent: true });
-      
-      // Buscar el snapshot en la lista actualizada
-      const savedSnapshot = state.list.find((item) => normalizeId(item.id) === normalizeId(snapshotId));
-      if (savedSnapshot) {
-        // Cargar directamente desde state.list sin intentar API
-        state.activeId = normalizeId(snapshotId);
-        state.activeDetail = savedSnapshot;
-        renderDetail();
-      }
-      
-      setSummary(dom.simSummary, `Simulación "${data.titulo_snapshot}" guardada correctamente.`);
     } catch (error) {
-      console.error("[saveSimulationAsSnapshot] Error:", error);
       setSummary(dom.simSummary, `Error al guardar: ${error.message}`);
     }
   }
@@ -3386,13 +3129,6 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
     const selectedId = normalizeId(openButton.getAttribute("data-simulation-id"));
-    
-    // Guard: no volver a cargar si ya estamos cargando esta simulación
-    if (state.activeId === selectedId && state.loading) {
-      console.log("[open-simulation] Ya estamos cargando simulación:", selectedId);
-      return;
-    }
-    
     state.activeId = selectedId;
     await loadDetail(selectedId);
     renderSimulationList();
@@ -3493,9 +3229,6 @@ export function initSavedSimulationsWorkspace(options) {
       if (section === "resumen") {
         state.planView = "resumen";
         state.selectedHouseId = null;
-      } else if (section === "proyeccion") {
-        state.planView = "proyeccion";
-        state.selectedHouseId = null;
       }
       renderHouses(state.activeDetail);
       return;
@@ -3533,22 +3266,7 @@ export function initSavedSimulationsWorkspace(options) {
     if (openButton) {
       state.planView = "house";
       state.selectedHouseId = normalizeId(openButton.getAttribute("data-house-id"));
-      
-      // CARGAR RECURSOS DE LA CASA CUANDO SE ABRE (solo para snapshots)
-      (async () => {
-        const selectedHouse = state.activeDetail.casas.find((h) => normalizeId(h.id) === state.selectedHouseId);
-        if (selectedHouse && (!selectedHouse.planillas || selectedHouse.planillas.length === 0)) {
-          console.log("[openHouse] Cargando recursos para casa", selectedHouse.id);
-          const resources = await loadSnapshotResourcesForCasa(state.activeDetail.id, selectedHouse.id);
-          selectedHouse.planillas = resources.planillas;
-          selectedHouse.gastos = resources.gastos;
-          selectedHouse["mano-obra"] = resources["mano-obra"];
-          console.log("[openHouse] Recursos cargados:", selectedHouse.planillas.length, "planillas");
-          renderHouses(state.activeDetail);
-        } else {
-          renderHouses(state.activeDetail);
-        }
-      })();
+      renderHouses(state.activeDetail);
       return;
     }
 
