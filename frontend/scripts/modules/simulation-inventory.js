@@ -964,7 +964,9 @@ export function initSavedSimulationsWorkspace(options) {
     selectedMaterialId: null,
     planView: "resumen",  // Al entrar, mostrar siempre la vista resumen
     searchHousesText: "",
-    loading: false
+    loading: false,
+    selectMode: false,
+    selectedSimIds: []
   };
 
   // Redirigir referencias de DOM a los contenedores de simulaciones guardadas
@@ -1104,13 +1106,27 @@ export function initSavedSimulationsWorkspace(options) {
   }
 
   function renderSimulationCard(sim) {
-    return `
-      <button class="house-selector-card is-page-link" type="button" data-action="open-simulation" data-simulation-id="${escapeHtml(sim.id)}">
-        <p class="inventory-kicker">Simulación #${escapeHtml(sim.id)}</p>
-        <h4>${escapeHtml(sim.titulo || sim.title || `Simulación ${sim.id}`)}</h4>
-        <p class="inventory-subtitle">${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
-      </button>
-    `;
+    if (state.selectMode) {
+      const checked = state.selectedSimIds.includes(sim.id) ? 'checked' : '';
+      return `
+        <div class="house-selector-card is-page-link" style="display:flex;align-items:center;gap:0.7rem;">
+          <input type="checkbox" class="sim-select-checkbox" data-simulation-id="${escapeHtml(sim.id)}" ${checked} style="margin-left:0;" />
+          <div style="flex:1;">
+            <p class="inventory-kicker">Simulación #${escapeHtml(sim.id)}</p>
+            <h4>${escapeHtml(sim.titulo || sim.title || `Simulación ${sim.id}`)}</h4>
+            <p class="inventory-subtitle">${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
+          </div>
+        </div>
+      `;
+    } else {
+      return `
+        <button class="house-selector-card is-page-link" type="button" data-action="open-simulation" data-simulation-id="${escapeHtml(sim.id)}">
+          <p class="inventory-kicker">Simulación #${escapeHtml(sim.id)}</p>
+          <h4>${escapeHtml(sim.titulo || sim.title || `Simulación ${sim.id}`)}</h4>
+          <p class="inventory-subtitle">${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
+        </button>
+      `;
+    }
   }
 
   function renderSimulationList() {
@@ -1152,11 +1168,55 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
+    // Cabecera de selección múltiple
+    let headerHtml = `<div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:1rem;">
+      <button class="btn btn-secondary" id="toggle-select-sims-btn" type="button">${state.selectMode ? 'Cancelar selección' : 'Seleccionar simulaciones'}</button>
+      ${state.selectMode && state.selectedSimIds.length > 0 ? `<button class="btn btn-ghost" id="delete-selected-sims-btn" type="button" style="color:#d32f2f;">Eliminar seleccionadas</button>` : ''}
+    </div>`;
+
     dom.simulationsList.innerHTML = `
+      ${headerHtml}
       <div class="house-selector-grid">
         ${state.list.map((sim) => renderSimulationCard(sim)).join("")}
       </div>
     `;
+
+    // Event listeners para selección múltiple
+    const toggleBtn = document.getElementById("toggle-select-sims-btn");
+    if (toggleBtn) {
+      toggleBtn.onclick = () => {
+        state.selectMode = !state.selectMode;
+        if (!state.selectMode) state.selectedSimIds = [];
+        renderSimulationList();
+      };
+    }
+    if (state.selectMode) {
+      // Checkbox listeners
+      document.querySelectorAll('.sim-select-checkbox').forEach((cb) => {
+        cb.addEventListener('change', (e) => {
+          const simId = e.target.getAttribute('data-simulation-id');
+          if (e.target.checked) {
+            if (!state.selectedSimIds.includes(simId)) state.selectedSimIds.push(simId);
+          } else {
+            state.selectedSimIds = state.selectedSimIds.filter(id => id !== simId);
+          }
+          renderSimulationList();
+        });
+      });
+      // Eliminar seleccionadas
+      const deleteBtn = document.getElementById('delete-selected-sims-btn');
+      if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+          if (!window.confirm('¿Seguro que querés eliminar las simulaciones seleccionadas?')) return;
+          for (const simId of state.selectedSimIds) {
+            try { await eliminarSimulacion(simId); } catch {}
+          }
+          state.selectedSimIds = [];
+          await refreshList({ silent: true });
+          renderSimulationList();
+        };
+      }
+    }
   }
 
   function renderSummaryCards(summary) {
@@ -1336,9 +1396,7 @@ export function initSavedSimulationsWorkspace(options) {
               <p class="inventory-subtitle">0 casas registradas</p>
             </button>
           </div>
-          <div style="margin-top:1rem;">
-            <button class="btn btn-ghost" type="button" data-action="back-to-simulations">← Volver a simulaciones</button>
-          </div>
+          <!-- Botón de volver solo en la cabecera, no duplicado abajo -->
           </section>
         `;
         // Limpiar KPIs en root
@@ -1360,7 +1418,6 @@ export function initSavedSimulationsWorkspace(options) {
           <div class="inventory-drilldown-head">
             <h4 class="inventory-page-title">Resumen de la simulación</h4>
             <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
-            <button class="btn btn-ghost" type="button" data-action="back-to-simulations">← Volver a simulaciones</button>
           </div>
           </section>
         `;
@@ -1383,7 +1440,6 @@ export function initSavedSimulationsWorkspace(options) {
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
               <button class="btn btn-primary" type="button" data-action="toggle-create-house">Agregar casa</button>
               <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
-              <button class="btn btn-ghost" type="button" data-action="back-to-simulations">← Volver a simulaciones</button>
             </div>
           </div>
           <p class="inventory-empty">Esta simulación todavía no tiene casas cargadas.</p>
