@@ -1,4 +1,5 @@
 
+import { formatterArs } from "./formatters.js";
 import {
   listarSimulacionesGuardadas,
   obtenerDetalleSimulacion,
@@ -457,65 +458,65 @@ function renderHouseMaterials(house) {
 
 function renderMaterial(material, context) {
   const { simulacionId, casaId, planillaId, itemId } = context;
-  return `
-    <details class="inventory-card inventory-card-material" data-material-id="${escapeHtml(material.id)}" open>
-      <summary class="inventory-summary">
-        <div>
-          <p class="inventory-kicker">Material #${escapeHtml(material.id)}</p>
-          <h6>${escapeHtml(material.nombre)}</h6>
-          <p class="inventory-subtitle">Total ${money(material.total_ars)} | Cantidad ${escapeHtml(material.cantidad_total)} ${escapeHtml(material.unidad)}</p>
-        </div>
-        <div class="inventory-badges">
-          <span>Retirado ${escapeHtml(material.cantidad_retirada)}</span>
-          <span>En obra ${escapeHtml(material.cantidad_en_construccion)}</span>
-        </div>
-      </summary>
-
-      <div class="inventory-card-tools">
-        <button class="btn btn-ghost" type="button" data-action="toggle-card-edit">Editar material</button>
-        <button class="btn btn-ghost" type="button" data-action="toggle-create-movement">Agregar movimiento</button>
-        <button class="btn btn-ghost" type="button" data-action="delete-material" data-material-id="${escapeHtml(material.id)}" style="color:#d32f2f;">Borrar</button>
-      </div>
-
-      <form class="inventory-form inventory-editable-form inventory-form-tight inventory-grid-3" data-action="update-material" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(casaId)}" data-planilla-id="${escapeHtml(planillaId)}" data-item-id="${escapeHtml(itemId)}" data-material-id="${escapeHtml(material.id)}">
-        ${inputField("Nombre", "nombre", material.nombre)}
-        ${inputField("Unidad", "unidad", material.unidad)}
-        ${inputField("Proveedor", "proveedor", material.proveedor)}
-        ${inputField("Descripción", "descripcion", material.descripcion)}
-        ${inputField("Cantidad total", "cantidad_total", material.cantidad_total, "number", "min=0 step=0.01")}
-        ${inputField("Cantidad retirada", "cantidad_retirada", material.cantidad_retirada, "number", "min=0 step=0.01")}
-        ${inputField("Cantidad en construcción", "cantidad_en_construccion", material.cantidad_en_construccion, "number", "min=0 step=0.01")}
-        ${inputField("Precio unitario ARS", "precio_unitario_ars", material.precio_unitario_ars, "number", "min=0 step=0.01")}
-        ${inputField("Nota", "nota", material.nota)}
-        <label>
-          Total ARS
-          <input name="total_ars" type="number" value="${escapeHtml(material.total_ars)}" readonly />
-        </label>
-        <div class="inventory-actions inventory-actions-full">
-          <button class="btn btn-secondary" type="submit">Guardar material</button>
-        </div>
-      </form>
-
-      <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-2" data-action="create-movement" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(casaId)}" data-planilla-id="${escapeHtml(planillaId)}" data-item-id="${escapeHtml(itemId)}" data-material-id="${escapeHtml(material.id)}">
-        ${inputField("Cantidad entregada", "cantidad", 0, "number", "min=0 step=0.01")}
-        ${inputField("Fecha", "fecha", new Date().toISOString().slice(0, 10), "date")}
-        ${selectField("Tipo", "tipo", "entrega", [
-          { value: "entrega", label: "Entrega" },
-          { value: "retiro", label: "Retiro" },
-          { value: "ajuste", label: "Ajuste" }
-        ])}
-        ${inputField("Observación", "observacion", "")}
-        <div class="inventory-actions inventory-actions-full">
-          <button class="btn btn-primary" type="submit">Registrar movimiento</button>
-        </div>
-      </form>
-
-      <div class="inventory-section">
-        <h6>Movimientos</h6>
-        ${renderMovements(material.movimientos)}
-      </div>
-    </details>
-  `;
+      return `
+        <details class="inventory-card inventory-card-material" data-material-id="${escapeHtml(material.id)}" open>
+          <summary class="inventory-summary">
+            <div>
+              <p class="inventory-kicker">Material #${escapeHtml(material.id)}</p>
+              <h6>${escapeHtml(material.nombre)}</h6>
+              <p class="inventory-subtitle">Total ${money(material.total_ars)} | Cantidad ${escapeHtml(material.cantidad_total)} ${escapeHtml(material.unidad)}</p>
+            </div>
+            <div class="inventory-badges">
+              <span>Retirado ${escapeHtml(material.cantidad_retirada)}</span>
+              <span>En obra ${escapeHtml(material.cantidad_en_construccion)}</span>
+            </div>
+          </summary>
+  
+          <div class="inventory-card-tools">
+            <button class="btn btn-ghost" type="button" data-action="toggle-card-edit">Editar material</button>
+            <button class="btn btn-ghost" type="button" data-action="toggle-create-movement">Agregar movimiento</button>
+            <button class="btn btn-ghost" type="button" data-action="delete-material" data-material-id="${escapeHtml(material.id)}" style="color:#d32f2f;">Borrar</button>
+          </div>
+  
+          <form class="inventory-form inventory-editable-form inventory-form-tight inventory-grid-3" data-action="update-material" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(casaId)}" data-planilla-id="${escapeHtml(planillaId)}" data-item-id="${escapeHtml(itemId)}" data-material-id="${escapeHtml(material.id)}">
+            ${inputField("Nombre", "nombre", material.nombre)}
+            ${inputField("Unidad", "unidad", material.unidad)}
+            ${inputField("Proveedor", "proveedor", material.proveedor)}
+            ${inputField("Descripción", "descripcion", material.descripcion)}
+            ${inputField("Cantidad total", "cantidad_total", material.cantidad_total, "number", "min=0 step=0.01")}
+            ${inputField("Cantidad retirada", "cantidad_retirada", material.cantidad_retirada, "number", "min=0 step=0.01")}
+            ${inputField("Cantidad en construcción", "cantidad_en_construccion", material.cantidad_en_construccion, "number", "min=0 step=0.01")}
+            ${inputField("Precio unitario ARS", "precio_unitario_ars", material.precio_unitario_ars, "number", "min=0 step=0.01")}
+            ${inputField("Nota", "nota", material.nota)}
+            <label>
+              Total ARS
+              <input name="total_ars" type="number" value="${escapeHtml(material.total_ars)}" readonly />
+            </label>
+            <div class="inventory-actions inventory-actions-full">
+              <button class="btn btn-secondary" type="submit">Guardar material</button>
+            </div>
+          </form>
+  
+          <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-2" data-action="create-movement" data-simulacion-id="${escapeHtml(simulacionId)}" data-casa-id="${escapeHtml(casaId)}" data-planilla-id="${escapeHtml(planillaId)}" data-item-id="${escapeHtml(itemId)}" data-material-id="${escapeHtml(material.id)}">
+            ${inputField("Cantidad entregada", "cantidad", 0, "number", "min=0 step=0.01")}
+            ${inputField("Fecha", "fecha", new Date().toISOString().slice(0, 10), "date")}
+            ${selectField("Tipo", "tipo", "entrega", [
+              { value: "entrega", label: "Entrega" },
+              { value: "retiro", label: "Retiro" },
+              { value: "ajuste", label: "Ajuste" }
+            ])}
+            ${inputField("Observación", "observacion", "")}
+            <div class="inventory-actions inventory-actions-full">
+              <button class="btn btn-primary" type="submit">Registrar movimiento</button>
+            </div>
+          </form>
+  
+          <div class="inventory-section">
+            <h6>Movimientos</h6>
+            ${renderMovements(material.movimientos)}
+          </div>
+        </details>
+      `;
 }
 
 function renderItem(item, context) {
@@ -1484,6 +1485,14 @@ export function initSavedSimulationsWorkspace(options) {
               <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
             </div>
           </div>
+          <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-4 hidden" data-action="create-house" data-simulacion-id="${escapeHtml(state.activeDetail?.id ?? detail?.id ?? '')}">
+            <input type="number" name="adherente_id" min="1" step="1" placeholder="ID del adherente (opcional)" />
+            <input type="text" name="adherente_nombre" placeholder="Nombre del adherente" required />
+            <input type="number" name="precio_ars" min="0" step="0.01" placeholder="Precio ARS" required />
+            <input type="text" name="descripcion" placeholder="Descripción de la casa" />
+            <button class="btn btn-secondary" type="submit">Guardar casa</button>
+            <button class="btn btn-ghost" type="button" data-action="toggle-create-house">Cancelar</button>
+          </form>
           <p class="inventory-empty">Esta simulación todavía no tiene casas cargadas.</p>
           </section>
         `;
@@ -1902,7 +1911,6 @@ export function initSavedSimulationsWorkspace(options) {
           </div>
         </div>
         <p class="inventory-page-subtitle">Elegí una casa para abrir su detalle completo.</p>
-        
         <form class="inventory-form inventory-create-form inventory-form-tight inventory-grid-4 hidden" data-action="create-house" data-simulacion-id="${escapeHtml(state.activeDetail.id)}">
           <input type="number" name="adherente_id" min="1" step="1" placeholder="ID del adherente (opcional)" />
           <input type="text" name="adherente_nombre" placeholder="Nombre del adherente" required />
@@ -1911,7 +1919,6 @@ export function initSavedSimulationsWorkspace(options) {
           <button class="btn btn-secondary" type="submit">Guardar casa</button>
           <button class="btn btn-ghost" type="button" data-action="toggle-create-house">Cancelar</button>
         </form>
-        
         <div class="house-search-container">
           <input 
             type="text" 
@@ -1923,14 +1930,13 @@ export function initSavedSimulationsWorkspace(options) {
           ${filteredHouses.length < detail.casas.length ? `<p class="inventory-search-info">${filteredHouses.length} de ${detail.casas.length} casas</p>` : ""}
         </div>
         ${filteredHouses.length === 0 
-          ? '<p class="inventory-empty">No se encontraron casas que coincidan con tu búsqueda.</p>'
+          ? '<p class="inventory-empty">Esta simulación todavía no tiene casas cargadas.</p>'
           : `<div class="house-selector-grid">
               ${filteredHouses.map((house) => renderHouseSelectorCard(house)).join("")}
             </div>`
         }
         </section>
       `;
-      
       // Agregar event listener al input de búsqueda
       const searchInput = document.getElementById("house-search-input");
       if (searchInput) {
@@ -3022,10 +3028,14 @@ export function initSavedSimulationsWorkspace(options) {
 
     if (shouldOpen) {
       form.classList.add("is-visible");
+      form.classList.remove("hidden");
       const trigger = container.querySelector(`[data-action="${triggerAction}"]`);
       if (trigger) {
         trigger.textContent = "Cancelar";
       }
+    } else {
+      form.classList.remove("is-visible");
+      form.classList.add("hidden");
     }
   }
 
@@ -3319,7 +3329,16 @@ export function initSavedSimulationsWorkspace(options) {
 
     const toggleCreateHouseButton = event.target.closest('[data-action="toggle-create-house"]');
     if (toggleCreateHouseButton) {
-      const container = toggleCreateHouseButton.closest(".inventory-page");
+      // Refuerzo: si no encuentra .inventory-page, uso el parentNode de la sección
+      let container = toggleCreateHouseButton.closest(".inventory-page");
+      if (!container) {
+        container = document.querySelector(".inventory-page-list") || document.querySelector(".inventory-page");
+      }
+      if (!container) {
+        // console.warn("[Agregar casa] No se encontró contenedor para toggleCreateForm");
+      } else {
+        // console.log("[Agregar casa] Contenedor encontrado:", container);
+      }
       toggleCreateForm(container, 'form[data-action="create-house"]', "toggle-create-house");
       return;
     }
@@ -3342,8 +3361,18 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
+
     const openSectionButton = event.target.closest('[data-action="open-houses-section"]');
     if (openSectionButton) {
+      state.planView = "houses";
+      state.selectedHouseId = null;
+      renderHouses(state.activeDetail);
+      return;
+    }
+
+    // Breadcrumb: ir a casas
+    const navHousesBreadcrumbBtn = event.target.closest('[data-action="nav-houses"]');
+    if (navHousesBreadcrumbBtn) {
       state.planView = "houses";
       state.selectedHouseId = null;
       renderHouses(state.activeDetail);
