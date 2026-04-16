@@ -1,5 +1,4 @@
-import { formatterArs } from "./formatters.js";
-import { DEBUG_UI } from "./settings.js";
+
 import {
   listarSimulacionesGuardadas,
   obtenerDetalleSimulacion,
@@ -35,6 +34,8 @@ import {
   eliminarGastoCasa,
   eliminarManoObraCasa
 } from "./services.js";
+
+import { eliminarSimulacionesBatch } from "./services.js";
 
 function money(value) {
   return formatterArs.format(Number(value || 0));
@@ -1169,9 +1170,18 @@ export function initSavedSimulationsWorkspace(options) {
     }
 
     // Cabecera de selección múltiple
+    let seleccionadas = state.selectedSimIds.length;
+    let deleteBtnText = '';
+    if (seleccionadas === 1) {
+      deleteBtnText = 'Eliminar selección';
+    } else if (seleccionadas > 1) {
+      deleteBtnText = `Eliminar selecciones (${seleccionadas})`;
+    } else {
+      deleteBtnText = 'Eliminar seleccionadas';
+    }
     let headerHtml = `<div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:1rem;">
       <button class="btn btn-secondary" id="toggle-select-sims-btn" type="button">${state.selectMode ? 'Cancelar selección' : 'Seleccionar simulaciones'}</button>
-      ${state.selectMode && state.selectedSimIds.length > 0 ? `<button class="btn btn-ghost" id="delete-selected-sims-btn" type="button" style="color:#d32f2f;">Eliminar seleccionadas</button>` : ''}
+      <button class="btn btn-ghost" id="delete-selected-sims-btn" type="button" style="color:#d32f2f;${state.selectMode && seleccionadas > 0 ? '' : 'display:none;'}">${deleteBtnText}</button>
     </div>`;
 
     dom.simulationsList.innerHTML = `
@@ -1190,8 +1200,8 @@ export function initSavedSimulationsWorkspace(options) {
         renderSimulationList();
       };
     }
+    // Actualizar selección de checkboxes y visibilidad del botón eliminar
     if (state.selectMode) {
-      // Checkbox listeners
       document.querySelectorAll('.sim-select-checkbox').forEach((cb) => {
         cb.addEventListener('change', (e) => {
           const simId = e.target.getAttribute('data-simulation-id');
@@ -1203,19 +1213,51 @@ export function initSavedSimulationsWorkspace(options) {
           renderSimulationList();
         });
       });
-      // Eliminar seleccionadas
-      const deleteBtn = document.getElementById('delete-selected-sims-btn');
-      if (deleteBtn) {
-        deleteBtn.onclick = async () => {
-          if (!window.confirm('¿Seguro que querés eliminar las simulaciones seleccionadas?')) return;
-          for (const simId of state.selectedSimIds) {
-            try { await eliminarSimulacion(simId); } catch {}
-          }
+    }
+    const deleteBtn = document.getElementById('delete-selected-sims-btn');
+    if (deleteBtn) {
+      deleteBtn.onclick = () => {
+        if (!state.selectMode || state.selectedSimIds.length === 0) return;
+        // Modal de confirmación custom
+        let modal = document.getElementById('modal-eliminar-sims');
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = 'modal-eliminar-sims';
+          modal.innerHTML = `
+            <div style="position:fixed;inset:0;z-index:1000;background:rgba(24,20,16,0.32);display:grid;place-items:center;">
+              <div style="background:#fff;padding:2.2rem 1.5rem 1.5rem;border-radius:18px;box-shadow:0 8px 32px rgba(0,0,0,0.18);max-width:95vw;width:340px;text-align:center;">
+                <h3 style='margin-top:0'>¿Eliminar simulaciones seleccionadas?</h3>
+                <p style=\"color:#d32f2f;font-weight:600;\">Esta acción no se puede deshacer.<br>Se eliminarán también todas las casas, planillas, materiales y datos internos de cada simulación.</p>
+                <div style=\"display:flex;gap:1rem;justify-content:center;margin-top:1.5rem;\">
+                  <button id=\"modal-cancelar-eliminar-sims\" class=\"btn btn-secondary\" type=\"button\">Cancelar</button>
+                  <button id=\"modal-confirmar-eliminar-sims\" class=\"btn btn-ghost\" style=\"color:#d32f2f;font-weight:600;\" type=\"button\">Eliminar</button>
+                </div>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        }
+        modal.style.display = 'grid';
+        document.getElementById('modal-cancelar-eliminar-sims').onclick = () => {
+          modal.style.display = 'none';
+        };
+        document.getElementById('modal-confirmar-eliminar-sims').onclick = async () => {
+          modal.style.display = 'none';
+          // Eliminar solo al confirmar
+          const ids = state.selectedSimIds;
+          try {
+            if (ids.length === 1) {
+              await eliminarSimulacion(ids[0]);
+            } else if (ids.length > 1) {
+              await eliminarSimulacionesBatch(ids);
+            }
+          } catch {}
           state.selectedSimIds = [];
+          state.selectMode = false;
           await refreshList({ silent: true });
           renderSimulationList();
         };
-      }
+      };
     }
   }
 

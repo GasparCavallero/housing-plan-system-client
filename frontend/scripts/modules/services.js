@@ -1,3 +1,11 @@
+export async function eliminarSimulacionesBatch(ids) {
+  // Usar POST para máxima compatibilidad
+  return apiRequest('/planes/simulaciones/batch-delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids })
+  });
+}
 import { apiRequest } from "./http.js";
 import { BASE_URL } from "./settings.js";
 import { clearTokens, getRefreshToken, setTokens } from "./auth.js";
