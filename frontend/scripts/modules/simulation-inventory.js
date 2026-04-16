@@ -2241,7 +2241,8 @@ export function initSavedSimulationsWorkspace(options) {
     });
 
     await loadDetail(simulationId, true);
-    await refreshList({ silent: true });
+    // Refrescar la lista de simulaciones guardadas para detectar nuevas
+    await refreshList({ silent: false });
     setSummary(dom.simSummary, "Cambios guardados en la simulación.");
     writeLog(dom.systemLog, "Guardar simulación", payload);
   }
