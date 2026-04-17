@@ -765,11 +765,8 @@ async function ejecutarSimulacionServidor(options = {}) {
     return;
   }
 
-  // Intentamos persistir, pero sin bloquear por validaciones locales estrictas.
-  const config = await persistirConfiguracionActual({
-    silent: true,
-    strictValidation: false
-  });
+  // Tomar la configuración actual del formulario, pero NO guardar automáticamente
+  const config = getConfig(dom.form);
   const horizonte = Number(config.cantidad_cuotas) || 36;
   const payload = await simularServidor({
     horizonteMeses: horizonte,

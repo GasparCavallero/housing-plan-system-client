@@ -362,7 +362,7 @@ input:focus {
 }
 
 .simulation-workspace {
-  display: grid;
+  /* display: grid; */
   grid-template-columns: minmax(250px, 340px) 1fr;
   gap: 0.8rem;
   align-items: start;
@@ -545,6 +545,12 @@ textarea {
   display: grid;
   gap: 0.8rem;
   margin-top: 0.5rem;
+}
+
+.house-selector-flex {
+  display: flex;
+  flex-direction: row;
+  width: 400px;
 }
 
 .house-selector-grid {

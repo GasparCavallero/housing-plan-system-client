@@ -1187,7 +1187,8 @@ export function initSavedSimulationsWorkspace(options) {
 
     dom.simulationsList.innerHTML = `
       ${headerHtml}
-      <div class="house-selector-grid">
+      <div class="house-selector-grid" style="display: flex;
+      flex-direction: row; width: 400px;">
         ${state.list.map((sim) => renderSimulationCard(sim)).join("")}
       </div>
     `;
