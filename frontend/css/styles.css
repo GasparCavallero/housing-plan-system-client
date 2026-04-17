@@ -1,3 +1,18 @@
+/* Grid flexible para tarjetas de simulaciones guardadas */
+.house-selector-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  width: 100%;
+  align-items: stretch;
+  flex-direction: row;
+}
+/* Contenedor flexible para simulaciones guardadas */
+.simulations-list-container {
+  width: 100%;
+  display: block;
+  margin-bottom: 1rem;
+}
 /* Checkbox de selección múltiple en simulaciones guardadas */
 .sim-select-checkbox:checked {
   accent-color: #d32f2f;
@@ -366,16 +381,27 @@ input:focus {
   grid-template-columns: minmax(250px, 340px) 1fr;
   gap: 0.8rem;
   align-items: start;
+  height: auto;
 }
 
 .simulation-list {
-  display: grid;
-  gap: 0.45rem;
-  max-height: 520px;
-  overflow: auto;
-  padding-right: 0.2rem;
-  position: sticky;
-  top: 5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  position: static;
+  top: unset;
+  align-items: flex-start;
+}
+
+/* Forzar que el primer hijo (el botón) ocupe toda la fila y las tarjetas empiecen abajo */
+.simulation-list > :first-child {
+  flex-basis: 100%;
+  max-width: 100%;
+  margin-bottom: 0.7rem;
 }
 
 .simulation-list-item {
@@ -384,6 +410,9 @@ input:focus {
   border-radius: 12px;
   padding: 0.65rem;
   cursor: pointer;
+  flex: 1 1 340px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .simulation-list-item h4 {
@@ -554,7 +583,7 @@ textarea {
 }
 
 .house-selector-grid {
-  display: grid;
+  /* display: grid; */
   grid-template-columns: 1fr;
   gap: 0.7rem;
 }
@@ -602,6 +631,9 @@ textarea {
 .house-selector-card.is-page-link {
   position: relative;
   padding-right: 2rem;
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
 }
 
 .house-selector-card.is-page-link::after {
@@ -1411,11 +1443,14 @@ textarea {
 .table-wrap {
   overflow-x: auto;
   margin-top: 0.9rem;
-}
-
-.sim-table-wrap {
-  max-height: 420px;
-  overflow: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  position: static;
+  top: unset;
 }
 
 .sim-table-wrap th {
@@ -1551,6 +1586,7 @@ td.evento {
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.74rem;
   cursor: pointer;
+  overflow-x: visible;
 }
 
 .btn-table:hover {

@@ -1136,17 +1136,18 @@ export function initSavedSimulationsWorkspace(options) {
       return;
     }
 
-    // Si hay un detalle activo, ocultar el listado
+    // Usar div.simulations-list-container en vez de aside
     const workspace = document.querySelector(".simulation-workspace");
-    const aside = workspace?.querySelector("aside");
+    const listContainer = workspace?.querySelector(".simulations-list-container");
     const article = workspace?.querySelector("article");
 
     if (state.activeDetail) {
-      if (aside) {
-        aside.style.display = "none";
+      if (listContainer) {
+        listContainer.style.display = "none";
       }
       if (article) {
         article.style.display = "block";
+        article.style.height = "auto"
       }
       if (workspace) {
         workspace.style.gridTemplateColumns = "1fr";
@@ -1155,8 +1156,8 @@ export function initSavedSimulationsWorkspace(options) {
     }
 
     // Mostrar grid de simulaciones
-    if (aside) {
-      aside.style.display = "block";
+    if (listContainer) {
+      listContainer.style.display = "flex";
     }
     if (article) {
       article.style.display = "none";
@@ -1187,8 +1188,7 @@ export function initSavedSimulationsWorkspace(options) {
 
     dom.simulationsList.innerHTML = `
       ${headerHtml}
-      <div class="house-selector-grid" style="display: flex;
-      flex-direction: row; width: 400px;">
+      <div class="house-selector-grid">
         ${state.list.map((sim) => renderSimulationCard(sim)).join("")}
       </div>
     `;
