@@ -945,6 +945,14 @@ function buildFallbackSimulation(simulationId, list = []) {
 }
 
 export function initSavedSimulationsWorkspace(options) {
+    // Listener global para sección Proyección (solo uno, fuera de renderHouses)
+    document.addEventListener("click", function (e) {
+      const btn = e.target.closest('[data-action="open-simulation-section"][data-section="proyeccion"]');
+      if (btn) {
+        state.planView = "proyeccion";
+        renderHouses(state.activeDetail);
+      }
+    });
   const {
     dom,
     withUiFeedback,
@@ -1552,14 +1560,7 @@ export function initSavedSimulationsWorkspace(options) {
       }
       return;
     }
-  // Manejar click en el botón Proyección
-  document.addEventListener("click", function (e) {
-    const btn = e.target.closest('[data-action="open-simulation-section"][data-section="proyeccion"]');
-    if (btn) {
-      state.planView = "proyeccion";
-      renderHouses(state.activeDetail);
-    }
-  });
+  // (El listener de Proyección ahora está fuera, en el scope principal)
     // Vista de proyección: mostrar solo hola mundo
     if (state.planView === "proyeccion") {
       syncPlanFocusMode();
