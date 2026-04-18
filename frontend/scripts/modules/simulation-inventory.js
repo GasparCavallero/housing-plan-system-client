@@ -1567,7 +1567,14 @@ export function initSavedSimulationsWorkspace(options) {
       dom.buttonAddHouse?.classList.add("hidden");
       dom.simulationHousesContainer.innerHTML = `
         <section class="inventory-page inventory-page-list">
-          <div style="padding:2rem;text-align:center;font-size:1.3rem;">hola mundo</div>
+          ${renderPlanBreadcrumb([
+            { label: "Simulación actual", action: "nav-root" },
+            { label: "Proyección", current: true }
+          ])}
+          <div class="inventory-drilldown-head">
+            <h4 class="inventory-page-title">Proyección</h4>
+            <button class="btn btn-ghost" type="button" data-action="back-to-root">Volver</button>
+          </div>
           <div id="proyeccion-table-container"></div>
         </section>
       `;
@@ -1607,26 +1614,49 @@ export function initSavedSimulationsWorkspace(options) {
   }
 
   function renderTablaProyeccion(filas, columnas) {
-    let html = `<div class="table-wrap sim-table-wrap" style="margin-top:1.5rem;overflow-x:auto;">
-      <table>
+    // Mapeo visual -> clave real JSON
+    const columnasMostrar = [
+      { key: 'mes', label: 'Mes' },
+      { key: 'adherentes_activos', label: 'Activos' },
+      { key: 'adherentes_en_construccion', label: 'En construcción' },
+      { key: 'adherentes_adjudicados', label: 'Adjudicados' },
+      { key: 'cuota_completa_mes_ars', label: 'Cuota completa mes' },
+      { key: 'media_cuota_mes_ars', label: 'Media cuota mes' },
+      { key: 'ingreso_licitacion_mes_ars', label: 'Ingreso licitación mes' },
+      { key: 'ingreso_mes_ars', label: 'Ingreso mes' },
+      { key: 'evento_mes', label: 'Evento' },
+    ];
+
+    let html = `<div class="table-wrap sim-table-wrap proyeccion-table">
+      <table style="table-layout:fixed;width:100%;">
         <thead>
           <tr>`;
-    columnas.forEach(col => {
-      html += `<th>${escapeHtml(col)}</th>`;
+    columnasMostrar.forEach((col, idx) => {
+      let label = col.label;
+      if (idx === 0) label = 'MES';
+      html += `<th>${escapeHtml(label)}</th>`;
     });
     html += `</tr>
         </thead>
         <tbody>`;
     filas.forEach(fila => {
       html += '<tr>';
-      columnas.forEach(col => {
-        html += `<td>${escapeHtml(fila[col])}</td>`;
+      columnasMostrar.forEach(col => {
+        let val = (col.key in fila) ? fila[col.key] : '';
+        // Formato monetario
+        if (/ars|cuota|ingreso|egreso|fondo/i.test(col.key) && !isNaN(val) && val !== null && val !== undefined && val !== '') {
+          val = money(val);
+        }
+        // Evento destacado
+        if (/evento/i.test(col.key)) {
+          html += `<td class=\"evento\">${escapeHtml(val)}</td>`;
+        } else {
+          html += `<td>${escapeHtml(val)}</td>`;
+        }
       });
       html += '</tr>';
     });
-    html += `</tbody>
-      </table>
-    </div>`;
+    html += `</tbody>\n      </table>\n    </div>`;
     return html;
   }
 

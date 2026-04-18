@@ -1,3 +1,13 @@
+.proyeccion-table thead th {
+  font-size: 0.78rem;
+  text-align: left;
+}
+.proyeccion-table table,
+.proyeccion-table th,
+.proyeccion-table td {
+  font-size: 0.85rem;
+  text-align: left;
+}
 /* Tarjetas de simulaciones guardadas */
 #simulation-card {
   /* Personaliza aquí los estilos de las tarjetas de simulaciones */
@@ -1449,11 +1459,8 @@ textarea {
 .table-wrap {
   overflow-x: auto;
   margin-top: 0.9rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  max-height: none;
-  overflow: visible;
+  display: block;
+  max-height: 60vh;
   padding: 0;
   position: static;
   top: unset;
@@ -1538,7 +1545,6 @@ textarea {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 880px;
   font-size: 0.9rem;
 }
 
