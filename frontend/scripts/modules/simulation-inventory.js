@@ -1607,11 +1607,16 @@ export function initSavedSimulationsWorkspace(options) {
   }
 
   function renderTablaProyeccion(filas, columnas) {
-    let html = '<div style="overflow-x:auto"><table class="proyeccion-table"><thead><tr>';
+    let html = `<div class="table-wrap sim-table-wrap" style="margin-top:1.5rem;overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>`;
     columnas.forEach(col => {
       html += `<th>${escapeHtml(col)}</th>`;
     });
-    html += '</tr></thead><tbody>';
+    html += `</tr>
+        </thead>
+        <tbody>`;
     filas.forEach(fila => {
       html += '<tr>';
       columnas.forEach(col => {
@@ -1619,7 +1624,9 @@ export function initSavedSimulationsWorkspace(options) {
       });
       html += '</tr>';
     });
-    html += '</tbody></table></div>';
+    html += `</tbody>
+      </table>
+    </div>`;
     return html;
   }
 
