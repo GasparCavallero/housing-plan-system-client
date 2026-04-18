@@ -1,3 +1,9 @@
+/* Tarjetas de simulaciones guardadas */
+#simulation-card {
+  /* Personaliza aquí los estilos de las tarjetas de simulaciones */
+  width: 200px;
+}
+
 /* Grid flexible para tarjetas de simulaciones guardadas */
 .house-selector-grid {
   display: flex;
@@ -631,9 +637,9 @@ textarea {
 .house-selector-card.is-page-link {
   position: relative;
   padding-right: 2rem;
-  width: 200px;
+  /* width: 200px; */
   min-width: 200px;
-  max-width: 200px;
+  /* max-width: 200px; */
 }
 
 .house-selector-card.is-page-link::after {

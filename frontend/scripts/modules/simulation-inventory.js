@@ -1018,7 +1018,7 @@ export function initSavedSimulationsWorkspace(options) {
 
   function renderHouseSelectorCard(house) {
     return `
-      <button class="house-selector-card is-page-link" type="button" data-action="open-house" data-house-id="${escapeHtml(house.id)}">
+      <button class="house-selector-card is-page-link simulation-card" type="button" data-action="open-house" data-house-id="${escapeHtml(house.id)}">
         <p class="inventory-kicker">Casa #${escapeHtml(house.id)}</p>
         <h4>${escapeHtml(house.adherente_nombre || `Casa ${house.id}`)}</h4>
         <p class="inventory-subtitle">Saldo ${money(house.saldo_ars)} | Materiales ${money(house.total_materiales_ars)} | Gastos ${money(house.total_gastos_ars)}</p>
@@ -1122,7 +1122,7 @@ export function initSavedSimulationsWorkspace(options) {
       `;
     } else {
       return `
-        <button class="house-selector-card is-page-link" type="button" data-action="open-simulation" data-simulation-id="${escapeHtml(sim.id)}">
+        <button class="house-selector-card is-page-link" id="simulation-card" type="button" data-action="open-simulation" data-simulation-id="${escapeHtml(sim.id)}">
           <p class="inventory-kicker">Simulación #${escapeHtml(sim.id)}</p>
           <h4>${escapeHtml(sim.titulo || sim.title || `Simulación ${sim.id}`)}</h4>
           <p class="inventory-subtitle">${escapeHtml(sim.descripcion || sim.description || "Sin descripción")}</p>
@@ -1624,7 +1624,7 @@ export function initSavedSimulationsWorkspace(options) {
         ${planillas.length === 0 ? '<p class="inventory-empty">Sin planillas cargadas.</p>' : `
           <div class="house-selector-grid">
             ${planillas.map((p) => `
-              <button type="button" class="house-selector-card" data-action="open-planilla" data-planilla-id="${escapeHtml(p.id)}">
+              <button type="button" class="house-selector-card simulation-card" data-action="open-planilla" data-planilla-id="${escapeHtml(p.id)}">
                 <p class="inventory-kicker">Planilla #${escapeHtml(p.numero || p.id)}</p>
                 <h4>${escapeHtml(p.proveedor || p.contratista || "Sin proveedor")}</h4>
                 <p class="inventory-subtitle">Items: ${escapeHtml(safeArray(p.items).length)} | Monto: ${money(p.total_materiales_ars)}</p>
@@ -1680,9 +1680,9 @@ export function initSavedSimulationsWorkspace(options) {
         </form>
         <p class="inventory-page-subtitle">Todos los items de todas las planillas</p>
         ${houseItems.length === 0 ? '<p class="inventory-empty">Sin items cargados.</p>' : `
-          <div class="house-selector-grid">
+          <div class="house-selector-grid" id="simulation-card">
             ${houseItems.map(({ planilla, item }) => `
-              <button type="button" class="house-selector-card" data-action="open-item" data-item-id="${escapeHtml(item.id)}">
+              <button type="button" class="house-selector-card simulation-card" data-action="open-item" data-item-id="${escapeHtml(item.id)}">
                 <p class="inventory-kicker">Planilla ${escapeHtml(planilla.numero || planilla.id)}</p>
                 <h4>${escapeHtml(item.nombre)}</h4>
                 <p class="inventory-subtitle">Materiales: ${escapeHtml(safeArray(item.materiales).length)} | Monto: ${money(item.total_materiales_ars)}</p>
