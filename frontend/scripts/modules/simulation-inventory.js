@@ -1568,12 +1568,60 @@ export function initSavedSimulationsWorkspace(options) {
       dom.simulationHousesContainer.innerHTML = `
         <section class="inventory-page inventory-page-list">
           <div style="padding:2rem;text-align:center;font-size:1.3rem;">hola mundo</div>
+          <div id="proyeccion-table-container"></div>
         </section>
       `;
       if (dom.simulationGlobalSummary) dom.simulationGlobalSummary.innerHTML = '';
       if (dom.simulationGlobalMaterials) dom.simulationGlobalMaterials.innerHTML = '';
+      cargarYRenderizarProyeccion(getActiveSimulationId());
       return;
     }
+  // --- Proyección: fetch y render dinámico ---
+  async function cargarYRenderizarProyeccion(simulacionId) {
+    const container = document.getElementById("proyeccion-table-container");
+    if (!container) return;
+    container.innerHTML = '<p style="color:#888">Cargando proyección...</p>';
+    try {
+      // Usar apiRequest para autenticación y manejo de errores
+      const { apiRequest } = await import("./http.js");
+      const data = await apiRequest(`/planes/simulaciones/${simulacionId}/proyeccion-json`, { method: "GET" });
+      // Elegir la clave a mostrar (timeline si existe, si no la primera array)
+      let filas = [];
+      let columnas = [];
+      if (Array.isArray(data.timeline) && data.timeline.length > 0) {
+        filas = data.timeline;
+      } else {
+        // Buscar la primera clave array no vacía
+        const arrKey = Object.keys(data).find(k => Array.isArray(data[k]) && data[k].length > 0);
+        if (arrKey) filas = data[arrKey];
+      }
+      if (filas.length > 0) {
+        columnas = Object.keys(filas[0]);
+        container.innerHTML = renderTablaProyeccion(filas, columnas);
+      } else {
+        container.innerHTML = '<p>No hay datos de proyección para mostrar.</p>';
+      }
+    } catch (err) {
+      container.innerHTML = `<p style="color:#d32f2f">Error al cargar proyección: ${err.message}</p>`;
+    }
+  }
+
+  function renderTablaProyeccion(filas, columnas) {
+    let html = '<div style="overflow-x:auto"><table class="proyeccion-table"><thead><tr>';
+    columnas.forEach(col => {
+      html += `<th>${escapeHtml(col)}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    filas.forEach(fila => {
+      html += '<tr>';
+      columnas.forEach(col => {
+        html += `<td>${escapeHtml(fila[col])}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
 
     // Vista de resumen: mostrar KPIs
     if (state.planView === "resumen" && detail) {
