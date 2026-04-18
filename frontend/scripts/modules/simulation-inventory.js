@@ -1111,7 +1111,7 @@ export function initSavedSimulationsWorkspace(options) {
     if (state.selectMode) {
       const checked = state.selectedSimIds.includes(sim.id) ? 'checked' : '';
       return `
-        <div class="house-selector-card is-page-link" style="display:flex;align-items:center;gap:0.7rem;">
+        <div class="house-selector-card is-page-link" id="simulation-card" style="display:flex;align-items:center;gap:0.7rem;">
           <input type="checkbox" class="sim-select-checkbox" data-simulation-id="${escapeHtml(sim.id)}" ${checked} style="margin-left:0;" />
           <div style="flex:1;">
             <p class="inventory-kicker">Simulación #${escapeHtml(sim.id)}</p>
