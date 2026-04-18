@@ -1439,6 +1439,11 @@ export function initSavedSimulationsWorkspace(options) {
               <h4>Casas</h4>
               <p class="inventory-subtitle">0 casas registradas</p>
             </button>
+            <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="proyeccion">
+              <p class="inventory-kicker">SECCIÓN</p>
+              <h4>Proyección</h4>
+              <p class="inventory-subtitle">Proyección financiera y de entregas</p>
+            </button>
           </div>
           <!-- Botón de volver solo en la cabecera, no duplicado abajo -->
           </section>
@@ -1533,6 +1538,11 @@ export function initSavedSimulationsWorkspace(options) {
             <h4>Casas</h4>
             <p class="inventory-subtitle">${detail.casas?.length ?? 0} casas registradas</p>
           </button>
+          <button type="button" class="house-selector-card" data-action="open-simulation-section" data-section="proyeccion">
+            <p class="inventory-kicker">SECCIÓN</p>
+            <h4>Proyección</h4>
+            <p class="inventory-subtitle">Proyección financiera y de entregas</p>
+          </button>
         </div>
         </section>
       `;
@@ -1540,6 +1550,27 @@ export function initSavedSimulationsWorkspace(options) {
       if (dom.simulationGlobalSummary) {
         dom.simulationGlobalSummary.innerHTML = '';
       }
+      return;
+    }
+  // Manejar click en el botón Proyección
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest('[data-action="open-simulation-section"][data-section="proyeccion"]');
+    if (btn) {
+      state.planView = "proyeccion";
+      renderHouses(state.activeDetail);
+    }
+  });
+    // Vista de proyección: mostrar solo hola mundo
+    if (state.planView === "proyeccion") {
+      syncPlanFocusMode();
+      dom.buttonAddHouse?.classList.add("hidden");
+      dom.simulationHousesContainer.innerHTML = `
+        <section class="inventory-page inventory-page-list">
+          <div style="padding:2rem;text-align:center;font-size:1.3rem;">hola mundo</div>
+        </section>
+      `;
+      if (dom.simulationGlobalSummary) dom.simulationGlobalSummary.innerHTML = '';
+      if (dom.simulationGlobalMaterials) dom.simulationGlobalMaterials.innerHTML = '';
       return;
     }
 
