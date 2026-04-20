@@ -55,7 +55,12 @@ form.addEventListener("submit", async (event) => {
     setCurrentUser(user);
     goDashboard();
   } catch (error) {
-    showError(error.message || "No se pudo iniciar sesión");
+    // Si es error de rate limit (429), mostrar mensaje especial
+    if (error?.status === 429) {
+      showError("Demasiados intentos. Esperá unos minutos e intentá de nuevo.");
+    } else {
+      showError(error.message || "No se pudo iniciar sesión");
+    }
   }
 });
 

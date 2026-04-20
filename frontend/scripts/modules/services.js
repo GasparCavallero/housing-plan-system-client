@@ -23,7 +23,9 @@ export async function login(username, password) {
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data?.detail || "No se pudo iniciar sesión");
+    const error = new Error(data?.detail || "No se pudo iniciar sesión");
+    error.status = response.status;
+    throw error;
   }
 
   setTokens(data.access_token, data.refresh_token);
