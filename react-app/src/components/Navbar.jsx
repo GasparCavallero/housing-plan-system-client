@@ -1,33 +1,16 @@
-import { logout } from "../services/services";
-
-function Header() {
-  const handleLogout = async () => {
-    await logout();
-    window.location.reload(); // simple por ahora
-  };
+function Navbar() {
 
   return (
-    <header className="hero">
-      <p className="eyebrow">Gestión interna</p>
-      <h1>Sistema de Ahorro para Viviendas</h1>
-      <p className="subtitle">
-        Controlá planes, cuotas, adjudicaciones y simulación financiera.
-      </p>
-
-      <div className="session-bar">
-        <p>Sesión activa</p>
-        <button className="btn btn-secondary" onClick={handleLogout}>
-          Cerrar sesión
-        </button>
-      </div>
-    </header>
+    <nav className="section-nav" aria-label="Navegación de secciones">
+      <a id="nav-link-admin" href="#admin-panel">Admin</a>
+      <a href="#simulaciones-guardadas">Simulaciones guardadas</a>
+      <a href="#configuracion">Configuración + Estado</a>
+      <a href="#simulacion">Simulación</a>
+      <a href="#grafico-casas">Gráfico de casas</a>
+      <a href="#adherentes">Adherentes</a>
+      <a href="#pagos">Pagos</a>
+    </nav>
   );
 }
 
-export default Header;
-
-// function Navbar() {
-//   return <h1>Navbar ok</h1>;
-// }
-
-// export default Navbar;
+export default Navbar;

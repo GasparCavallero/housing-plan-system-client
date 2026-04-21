@@ -18,7 +18,7 @@ function Dashboard() {
       <Navbar />
 
       <main className="layout">
-        <AdminPanel />
+        {<AdminPanel />}
         <Simulaciones />
         <Configuracion />
         <Simulacion />

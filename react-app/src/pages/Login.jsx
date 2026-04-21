@@ -108,9 +108,3 @@ function Login({ onLogin }) {
 }
 
 export default Login;
-
-// function Login() {
-//   return <h1>Login OK</h1>;
-// }
-
-// export default Login;

@@ -25,9 +25,3 @@ function Header() {
 }
 
 export default Header;
-
-// function Header() {
-//   return <h1>Header OK</h1>;
-// }
-
-// export default Header;
