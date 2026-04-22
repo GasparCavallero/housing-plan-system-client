@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Header from "../components/Header";
 import Navbar from "../components/Navbar";
 
@@ -9,6 +10,7 @@ import Adherentes from "../sections/Adherentes";
 import Pagos from "../sections/Pagos";
 
 function Dashboard({ user }) {
+  const [section, setSection] = useState("simulaciones");
   const isAdmin = user?.role === "admin";
 
   return (
@@ -17,15 +19,15 @@ function Dashboard({ user }) {
       <div className="bg-shape bg-shape-b"></div>
 
       <Header user={user} />
-      <Navbar user={user} />
+      <Navbar user={user} setSection={setSection} />
 
       <main className="layout">
-        {isAdmin && <AdminPanel />}
-        <Simulaciones />
-        <Configuracion />
-        <Simulacion />
-        <Adherentes />
-        <Pagos />
+        {section === "admin" && isAdmin && <AdminPanel />}
+        {section === "simulaciones" && <Simulaciones />}
+        {section === "configuracion" && <Configuracion />}
+        {section === "simulacion" && <Simulacion />}
+        {section === "adherentes" && <Adherentes />}
+        {section === "pagos" && <Pagos />}
       </main>
     </div>
   );
