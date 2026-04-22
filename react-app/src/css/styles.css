@@ -1,3 +1,8 @@
+.modal-form {
+  display: grid;
+  grid-auto-columns: min-content;
+}
+
 #small {
   font-size: small;
 }

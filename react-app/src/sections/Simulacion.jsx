@@ -6,6 +6,8 @@ import {
   cargarConfiguracion,
 } from "../services/services.js";
 
+import { useGuardarSimulacionModal } from "../hooks/useGuardarSimulacionModal.jsx";
+
 const formatterArs = new Intl.NumberFormat("es-AR", {
   style: "currency",
   currency: "ARS",
@@ -69,6 +71,7 @@ function Simulacion() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [soloEventos, setSoloEventos] = useState(false);
+  const { pedirDatos, modal } = useGuardarSimulacionModal();
 
   const handleSimular = async () => {
     setError("");
@@ -119,11 +122,23 @@ function Simulacion() {
 
   const handleGuardar = async () => {
     setError("");
+
+    // abrir modal y esperar datos
+    const result = await pedirDatos();
+
+    if (!result) return; // canceló
+
+    const { titulo, descripcion } = result;
+
     setLoading(true);
+
     try {
       const config = await cargarConfiguracion().catch(() => null);
-      await guardarSimulacionComoCopia({ configuracion: config });
+
+      await guardarSimulacionComoCopia({ configuracion: config, titulo, descripcion });
+
       setSummary("Simulación guardada correctamente.");
+
     } catch (err) {
       setError(err?.message || "Error al guardar simulación.");
     } finally {
@@ -148,6 +163,7 @@ function Simulacion() {
         <button className="btn btn-secondary" type="button" onClick={handleGuardar} disabled={loading}>
           Guardar simulación
         </button>
+        {modal}
       </div>
 
       {error && <p className="config-help" style={{ color: "red" }}>{error}</p>}
