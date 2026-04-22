@@ -99,13 +99,34 @@ function Configuracion() {
     return "Preview: cuota_completa = - | media_cuota = -";
   })();
 
+  const STORAGE_KEY = "hps_sim_config";
+
   const cargarDesdeServidor = useCallback(async () => {
     try {
+      // 1. Intento cargar desde localStorage
+      const guardado = localStorage.getItem(STORAGE_KEY);
+
+      if (guardado) {
+        const parsed = JSON.parse(guardado);
+        setForm(normalizeConfig(parsed));
+        return; // Si cargó desde localStorage, no intento cargar desde servidor
+      }
+
+      // 2. Si no hay en localStorage, intento cargar desde el servidor
       const items = await listarConfiguraciones();
+
       const config = items?.[0]
         ? normalizeConfig(items[0].configuracion ?? items[0].payload ?? items[0])
         : normalizeConfig(await cargarConfiguracion());
-      if (config) setForm(config);
+
+      if (config) {
+        setForm(config);
+
+        // 3. Guardo en localStorage para futuras cargas rápidas
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+
+      };
+
     } catch {
       // si falla silencioso, queda con defaults
     }
@@ -127,11 +148,18 @@ function Configuracion() {
     try {
       const payload = configToPayload(form);
       validateConfig(payload);
+
       await guardarConfiguracion(payload);
+
+      // guarda también en localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+
       const ahora = new Date().toLocaleTimeString("es-AR");
       setSaveStatus(`Estado: guardado correctamente (${ahora}).`);
+
       const warn = payload.porcentaje_media_cuota > payload.porcentaje_cuota_completa;
       if (warn) setSaveStatus((s) => s + " Advertencia: % media cuota mayor que % cuota completa.");
+      
     } catch (err) {
       setError(err?.message || "Error al guardar.");
     } finally {

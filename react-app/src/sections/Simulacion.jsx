@@ -63,17 +63,6 @@ function hasMetrics(rows) {
   return rows.some((row) => keys.some((k) => row[k] !== null && row[k] !== undefined));
 }
 
-function getConfigFromLocalStorage() {
-  // Lee la config guardada por el componente Configuracion via localStorage
-  try {
-    const raw = localStorage.getItem("hps_kpi_snapshot") || localStorage.getItem("hps_sim_config");
-    if (raw) return JSON.parse(raw);
-  } catch {
-    // Si hay error leyendo/parsing, simplemente ignoramos y retornamos null
-  }
-  return null;
-}
-
 function Simulacion() {
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState("Ejecutá la simulación para ver proyecciones.");
@@ -116,8 +105,6 @@ function Simulacion() {
   };
 
   const handleReiniciar = async () => {
-    if (!window.confirm("Esta acción restablece el estado del plan y no se puede deshacer desde esta pantalla. ¿Continuar?")) return;
-    setError("");
     setLoading(true);
     try {
       await reiniciarPlan();
