@@ -6,6 +6,7 @@ import { hasSession, setCurrentUser, clearTokens } from "../services/auth.js";
 export function useAuth() {
   const [isAuth, setIsAuth] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     setRefreshHandler(refreshToken);
@@ -19,8 +20,9 @@ export function useAuth() {
       }
 
       try {
-        const user = await me();
-        setCurrentUser(user);
+        const userData = await me();
+        setCurrentUser(userData);
+        setUser(userData);
         setIsAuth(true);
       } catch {
         clearTokens();
@@ -32,11 +34,21 @@ export function useAuth() {
     bootstrap();
   }, []);
 
-  const loginSuccess = () => setIsAuth(true);
+  const loginSuccess = async () => {
+    try{
+      const userData = await me();
+      setCurrentUser(userData);
+      setUser(userData);
+    } catch {
+      // 
+    }
+    setIsAuth(true);
+  };
   const logout = () => {
     clearTokens();
     setIsAuth(false);
+    setUser(null);
   };
 
-  return { isAuth, loading, loginSuccess, logout };
+  return { isAuth, loading, user, loginSuccess, logout };
 }

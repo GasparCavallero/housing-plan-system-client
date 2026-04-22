@@ -1,10 +1,14 @@
 import { logout } from "../services/services";
 
-function Header() {
+function Header({ user }) {
   const handleLogout = async () => {
     await logout();
     window.location.reload(); // simple por ahora
   };
+
+  const sessionLabel = user 
+  ? `Sesión: ${user.username} (${user.role})` 
+  : "Sin sesión";
 
   return (
     <header className="hero">
@@ -15,8 +19,8 @@ function Header() {
       </p>
 
       <div className="session-bar">
-        <p>Sesión activa</p>
-        <button className="btn btn-secondary" onClick={handleLogout}>
+        <p id="session-status">{sessionLabel}</p>
+        <button id="btn-logout" className="btn btn-secondary" type="button" onClick={handleLogout}>
           Cerrar sesión
         </button>
       </div>

@@ -8,17 +8,19 @@ import Simulacion from "../sections/Simulacion";
 import Adherentes from "../sections/Adherentes";
 import Pagos from "../sections/Pagos";
 
-function Dashboard() {
+function Dashboard({ user }) {
+  const isAdmin = user?.role === "admin";
+
   return (
     <div>
       <div className="bg-shape bg-shape-a"></div>
       <div className="bg-shape bg-shape-b"></div>
 
-      <Header />
-      <Navbar />
+      <Header user={user} />
+      <Navbar user={user} />
 
       <main className="layout">
-        {<AdminPanel />}
+        {isAdmin && <AdminPanel />}
         <Simulaciones />
         <Configuracion />
         <Simulacion />

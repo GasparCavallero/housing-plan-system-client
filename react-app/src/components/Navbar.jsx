@@ -1,8 +1,11 @@
-function Navbar() {
+function Navbar({ user }) {
+  const isAdmin = user?.role === "admin";
 
   return (
     <nav className="section-nav" aria-label="Navegación de secciones">
-      <a id="nav-link-admin" href="#admin-panel">Admin</a>
+      {isAdmin && (
+        <a id="nav-link-admin" href="#admin-panel">Admin</a>
+      )}
       <a href="#simulaciones-guardadas">Simulaciones guardadas</a>
       <a href="#configuracion">Configuración + Estado</a>
       <a href="#simulacion">Simulación</a>
