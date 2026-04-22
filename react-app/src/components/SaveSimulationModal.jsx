@@ -24,7 +24,7 @@ function GuardarSimulacionModal({ open, onClose, onSubmit }) {
 
           <div>
             <div>
-              <strong>Título</strong>
+              <strong>Título *</strong>
               <input
                 type="text"
                 placeholder="Título"
@@ -52,9 +52,9 @@ function GuardarSimulacionModal({ open, onClose, onSubmit }) {
               Cancelar
             </button>
             <button
-              onClick={() => onSubmit({ title, descripcion })}
+              onClick={() => onSubmit({ titulo: title, descripcion })}
               disabled={!title.trim()}
-              className="btn btn-secondary"
+              className="btn btn-primary"
             >
               Guardar
             </button>
