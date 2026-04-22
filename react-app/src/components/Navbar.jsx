@@ -1,53 +1,43 @@
-function Navbar({ setSection, user }) {
+function Navbar({ section, setSection, user }) {
   const isAdmin = user?.role === "admin";
+
+  const handleClick = (e, sec) => {
+    e.preventDefault();
+    setSection(sec);
+  };
+
+  const getProps = (sec) => ({
+    className: section === sec ? "is-active" : "",
+    "aria-current": section === sec ? "true" : undefined,
+    onClick: (e) => handleClick(e, sec),
+  });
 
   return (
     <nav className="section-nav" aria-label="Navegación de secciones">
       {isAdmin && (
         <a id="nav-link-admin" 
         href="#admin-panel" 
-        onClick={(e) => {
-          e.preventDefault();
-          setSection("admin")
-        }}
+        {...getProps("admin")}
         >
           Admin
         </a>
       )}
-      <a href="#simulaciones-guardadas" onClick={(e) => {
-        e.preventDefault();
-        setSection("simulaciones")
-      }}>
+      <a href="#simulaciones-guardadas" {...getProps("simulaciones")}>
         Simulaciones guardadas
       </a>
-      <a href="#configuracion" onClick={(e) => {
-        e.preventDefault();
-        setSection("configuracion")
-      }}>
+      <a href="#configuracion" {...getProps("configuracion")}>
         Configuración + Estado
       </a>
-      <a href="#simulacion" onClick={(e) => {
-        e.preventDefault();
-        setSection("simulacion")
-      }}>
+      <a href="#simulacion" {...getProps("simulacion")}>
         Simulación
       </a>
-      <a href="#grafico-casas" onClick={(e) => {
-        e.preventDefault();
-        setSection("grafico-casas")
-      }}>
+      <a href="#grafico-casas" {...getProps("grafico-casas")}>
         Gráfico de casas
       </a>
-      <a href="#adherentes" onClick={(e) => {
-        e.preventDefault();
-        setSection("adherentes")
-      }}>
+      <a href="#adherentes" {...getProps("adherentes")}>
         Adherentes
       </a>
-      <a href="#pagos" onClick={(e) => {
-        e.preventDefault();
-        setSection("pagos")
-      }}>
+      <a href="#pagos" {...getProps("pagos")}>
         Pagos
       </a>
     </nav>

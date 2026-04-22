@@ -19,7 +19,7 @@ function Dashboard({ user }) {
       <div className="bg-shape bg-shape-b"></div>
 
       <Header user={user} />
-      <Navbar user={user} setSection={setSection} />
+      <Navbar section={section} user={user} setSection={setSection} />
 
       <main className="layout">
         {section === "admin" && isAdmin && <AdminPanel />}
