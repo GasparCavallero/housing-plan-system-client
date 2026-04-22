@@ -1,3 +1,7 @@
+#small {
+  font-size: small;
+}
+
 .proyeccion-table thead th {
   font-size: 0.78rem;
   text-align: left;
@@ -224,7 +228,7 @@ h1 {
 }
 
 .panel-config {
-  grid-column: span 5;
+  grid-column: span 12;
   animation-delay: 0.08s;
 }
 
@@ -239,7 +243,7 @@ h1 {
 }
 
 .panel-kpi {
-  grid-column: span 7;
+  grid-column: span 12;
   animation-delay: 0.13s;
 }
 

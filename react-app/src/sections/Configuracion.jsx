@@ -192,7 +192,6 @@ function Configuracion() {
             Meses de media cuota inicial
             <input type="number" name="mesesMediaCuotaInicial" min="0" step="1" value={form.mesesMediaCuotaInicial} onChange={handleChange} required />
           </label>
-          <label />
           <label>
             Periodicidad licitación (meses)
             <input type="number" name="periodicidadLicitacionMeses" min="1" step="1" value={form.periodicidadLicitacionMeses} onChange={handleChange} required />
@@ -217,17 +216,17 @@ function Configuracion() {
         </form>
 
         <p className="config-help">{preview}</p>
-        <p className="config-help">
+        <p className="config-help" id="small">
           <strong>Fórmula de cuota:</strong><br />
           <span className="formula-mono">cuota_completa = valor_por_m2 × (porcentaje_cuota_completa / 100)</span><br />
           <span className="formula-mono">media_cuota = valor_por_m2 × (porcentaje_media_cuota / 100)</span><br />
-          <br />
+          {/* <br />
           Hasta adjudicación paga media cuota según porcentaje configurado.<br />
           Luego paga cuota completa según porcentaje configurado.<br />
           No quedan casas para iniciar: se continúa cobrando cuotas pendientes mientras haya aportes vigentes.<br />
           El sistema recalcula la cuota para cumplir el objetivo de casas en el plazo de cuotas usando los porcentajes.<br />
           El cupo anual de inicios se controla por cronograma.<br />
-          Tope de pago por adherente: 180 cuotas.<br />
+          Tope de pago por adherente: 180 cuotas.<br /> */}
         </p>
 
         <div className="actions multi-actions">
