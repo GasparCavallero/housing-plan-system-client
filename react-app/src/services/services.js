@@ -569,12 +569,6 @@ export async function crearAdherente(nombre) {
   });
 }
 
-export async function actualizarEstadoAdherente(adherenteId, estado) {
-  return apiRequest(`/adherentes/${adherenteId}/estado?estado=${encodeURIComponent(estado)}`, {
-    method: "PATCH"
-  });
-}
-
 export async function actualizarAdherente(adherenteId, payload) {
   const body = JSON.stringify(payload);
 
@@ -588,11 +582,6 @@ export async function actualizarAdherente(adherenteId, payload) {
     if (status !== 404 && status !== 405) {
       throw error;
     }
-
-    return apiRequest(`/adherentes/${adherenteId}`, {
-      method: "PUT",
-      body
-    });
   }
 }
 
