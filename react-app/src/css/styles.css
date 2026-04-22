@@ -228,7 +228,7 @@ h1 {
 }
 
 .panel-config {
-  grid-column: span 12;
+  grid-column: 1 / -1;
   animation-delay: 0.08s;
 }
 
@@ -243,7 +243,7 @@ h1 {
 }
 
 .panel-kpi {
-  grid-column: span 12;
+  grid-column: 1 / -1;
   animation-delay: 0.13s;
 }
 
@@ -259,7 +259,7 @@ h1 {
 
 .panel-adherentes,
 .panel-pagos {
-  grid-column: span 6;
+  grid-column: 1 / -1;
 }
 
 .panel-log {

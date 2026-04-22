@@ -1,6 +1,12 @@
 function Simulaciones() {
   return (
-    <h1>Simulaciones OK</h1>
+    <section id="simulaciones-guardadas" className="panel panel-simulations">
+      <div className="panel-head">
+        <h2>Simulaciones guardadas</h2>
+        <p id="simulations-summary">Elegí una simulación para editar su inventario y sus entregas.</p>
+      </div>
+      Simulaciones OK
+    </section>
   )
 }
 

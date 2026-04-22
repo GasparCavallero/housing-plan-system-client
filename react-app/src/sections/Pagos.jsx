@@ -1,6 +1,11 @@
 function Pagos() {
   return (
-    <h1>Pagos OK</h1>
+    <section id="pagos" className="panel panel-pagos">
+      <div className="panel-head">
+        <h2>Pagos</h2>
+        <p id="pagos-summary">Sin datos cargados.</p>
+      </div>
+    </section>
   )
 }
 
