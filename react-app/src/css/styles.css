@@ -1,3 +1,20 @@
+.password-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.btn-show-password {
+  color: var(--primary-color); /* o el color de tu sistema */
+  font-weight: bold;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.btn-show-password:hover {
+  opacity: 1;
+}
+
 .panel-timeline {
   min-height: 50vh;
 }
