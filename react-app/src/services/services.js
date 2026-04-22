@@ -131,8 +131,16 @@ export async function simularServidor({ horizonteMeses = null, ofertas = [], con
 
 export async function guardarSimulacionComoCopia(payload) {
   const body = {
+    // guardar_snapshot: true,
+    // ...payload
     guardar_snapshot: true,
-    ...payload
+    configuracion: payload.configuracion,
+
+    titulo_snapshot: payload.titulo,
+    descripcion_snapshot: payload.descripcion,
+
+    horizonte_meses: payload.configuracion?.cantidad_cuotas,
+    ofertas: []
   };
   
   return apiRequest("/planes/simular", {
