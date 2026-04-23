@@ -6,6 +6,7 @@ import AdminPanel from "../sections/AdminPanel";
 import Simulaciones from "../sections/Simulaciones";
 import Configuracion from "../sections/Configuracion";
 import Simulacion from "../sections/Simulacion";
+import GraficosCasas from "../sections/GraficosCasas";
 import Adherentes from "../sections/Adherentes";
 import Pagos from "../sections/Pagos";
 
@@ -26,6 +27,7 @@ function Dashboard({ user }) {
         {section === "simulaciones" && <Simulaciones />}
         {section === "configuracion" && <Configuracion />}
         {section === "simulacion" && <Simulacion />}
+        {section === "graficos" && <GraficosCasas />}
         {section === "adherentes" && <Adherentes />}
         {section === "pagos" && <Pagos />}
       </main>
