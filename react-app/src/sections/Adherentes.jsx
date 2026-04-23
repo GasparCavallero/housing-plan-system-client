@@ -1,11 +1,28 @@
 import { useState, useEffect } from "react";
 import { listarAdherentes, crearAdherente, actualizarAdherente, eliminarAdherente } from "../services/services";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Adherentes() {
   const [nombre, setNombre] = useState("");
   const [adherentes, setAdherentes] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
-  
+  const [modalConfig, setModalConfig] = useState({ isOpen: false, id: null });
+
+  const abrirModalEliminar = (id) => {
+    setModalConfig({ isOpen: true, id });
+  };
+
+  const confirmarEliminacion = async () => {
+    try {
+      await eliminarAdherente(modalConfig.id);
+      await cargarAdherentes();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setModalConfig({ isOpen: false, id: null });
+    }
+  }
+
   // 1. Estado para la búsqueda
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -28,16 +45,6 @@ function Adherentes() {
     } finally {
       setEditandoId(null);
       await cargarAdherentes();
-    }
-  };
-
-  const handleEliminar = async (id) => {
-    if (!window.confirm("¿Eliminar este adherente?")) return;
-    try {
-      await eliminarAdherente(id);
-      await cargarAdherentes();
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -83,9 +90,9 @@ function Adherentes() {
         <h2>Adherentes</h2>
         <p id="adherentes-summary">
           {
-            adherentes.length === 0 
-            ? "Sin datos cargados." : adherentes.length === 1 
-              ? "1 adherente cargado." : `${adherentes.length} adherentes cargados.`
+            adherentes.length === 0
+              ? "Sin datos cargados." : adherentes.length === 1
+                ? "1 adherente cargado." : `${adherentes.length} adherentes cargados.`
           }
         </p>
       </div>
@@ -98,17 +105,17 @@ function Adherentes() {
 
       {/* 3. Buscador con botón de limpiar */}
       <div className="inline-form" style={{ position: 'relative', marginBottom: '1rem' }}>
-        <input 
-          id="adherentes-search" 
-          type="text" 
-          placeholder="Buscar por ID, nombre, estado..." 
+        <input
+          id="adherentes-search"
+          type="text"
+          placeholder="Buscar por ID, nombre, estado..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: '100%', paddingRight: '40px' }}
         />
         {searchTerm && (
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => setSearchTerm("")}
             style={{
               position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
@@ -172,7 +179,14 @@ function Adherentes() {
                     ) : (
                       <>
                         <button className="btn-table" type="button" onClick={() => handleEditar(a.id)}>Editar</button>
-                        <button className="btn-table" type="button" onClick={() => handleEliminar(a.id)}>Eliminar</button>
+                        <button className="btn-table" type="button" onClick={() => abrirModalEliminar(a.id)}>Eliminar</button>
+                        <ConfirmModal
+                          isOpen={modalConfig.isOpen}
+                          title="Eliminar adherente"
+                          message={`Se eliminará el adherente ID ${modalConfig.id}. Esta acción puede afectar pagos y estado del plan.`}
+                          onConfirm={confirmarEliminacion}
+                          onCancel={() => setModalConfig({ isOpen: false, id: null })}
+                        />
                       </>
                     )}
                   </td>
