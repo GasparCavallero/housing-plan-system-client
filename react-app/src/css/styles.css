@@ -281,11 +281,13 @@ h1 {
 .panel-chart {
   grid-column: 1 / -1;
   animation-delay: 0.24s;
+  min-height: 50vh;
 }
 
 .panel-adherentes,
 .panel-pagos {
   grid-column: 1 / -1;
+  min-height: 50vh;
 }
 
 .panel-log {
@@ -1204,6 +1206,7 @@ textarea {
 
 .panel-simulations {
   padding-top: 1.1rem;
+  min-height: 50vh;
 }
 
 .panel-plan-overview .panel-head.mt-1 {
