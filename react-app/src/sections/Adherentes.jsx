@@ -4,19 +4,20 @@ import { listarAdherentes, crearAdherente, actualizarAdherente, eliminarAdherent
 function Adherentes() {
   const [nombre, setNombre] = useState("");
   const [adherentes, setAdherentes] = useState([]);
-  const [editandoId, setEditandoId] = useState(null); // id del adherente que se está editando
+  const [editandoId, setEditandoId] = useState(null);
+  
+  // 1. Estado para la búsqueda
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleChange = (id, field, vlue) => {
     setAdherentes((prev) => prev.map((a) => (a.id === id ? { ...a, [field]: vlue } : a)));
   }
 
-  const handleEditar = (id) => {
-    setEditandoId(id);
-  };
+  const handleEditar = (id) => setEditandoId(id);
 
   const handleCancelar = () => {
     setEditandoId(null);
-    cargarAdherentes(); // vuelve a estado original
+    cargarAdherentes();
   };
 
   const handleGuardar = async (adherente) => {
@@ -31,6 +32,7 @@ function Adherentes() {
   };
 
   const handleEliminar = async (id) => {
+    if (!window.confirm("¿Eliminar este adherente?")) return;
     try {
       await eliminarAdherente(id);
       await cargarAdherentes();
@@ -42,7 +44,7 @@ function Adherentes() {
   const cargarAdherentes = async () => {
     try {
       const data = await listarAdherentes();
-      setAdherentes(data);
+      setAdherentes(data || []);
     } catch (err) {
       console.error("Error al listar adherentes:", err);
     }
@@ -54,11 +56,22 @@ function Adherentes() {
     try {
       await crearAdherente(nombre.trim());
       setNombre("");
-      await cargarAdherentes(); // refresca la lista después de crear
+      await cargarAdherentes();
     } catch (err) {
       console.error("Error al crear adherente:", err);
     }
   };
+
+  // 2. Lógica de filtrado
+  const adherentesFiltrados = adherentes.filter((a) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      a.id?.toString().includes(term) ||
+      a.nombre?.toLowerCase().includes(term) ||
+      a.estado?.toLowerCase().includes(term) ||
+      a.cuotas_pagadas?.toString().includes(term)
+    );
+  });
 
   useEffect(() => {
     cargarAdherentes();
@@ -76,18 +89,37 @@ function Adherentes() {
           }
         </p>
       </div>
+
       <form id="adherente-form" className="inline-form" onSubmit={handleSubmit}>
-        <input type="text" name="nombre" placeholder="Nombre nuevo adherente" required="" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-        <button type="submit" id="btn-crear-adherente" className="btn btn-primary">
-          Crear
-        </button>
-        <button type="button" id="btn-listar-adherentes" className="btn btn-ghost" onClick={cargarAdherentes}>
-          Actualizar lista
-        </button>
+        <input type="text" placeholder="Nombre nuevo adherente" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
+        <button type="submit" className="btn btn-primary">Crear</button>
+        <button type="button" className="btn btn-ghost" onClick={cargarAdherentes}>Actualizar lista</button>
       </form>
-      <form className="inline-form" role="search" aria-label="Buscar adherentes">
-        <input id="adherentes-search" type="search" placeholder="Buscar adherentes por ID, nombre, estado o cuotas" />
-      </form>
+
+      {/* 3. Buscador con botón de limpiar */}
+      <div className="inline-form" style={{ position: 'relative', marginBottom: '1rem' }}>
+        <input 
+          id="adherentes-search" 
+          type="text" 
+          placeholder="Buscar por ID, nombre, estado..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ width: '100%', paddingRight: '40px' }}
+        />
+        {searchTerm && (
+          <button 
+            type="button" 
+            onClick={() => setSearchTerm("")}
+            style={{
+              position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: '20px'
+            }}
+          >
+            &times;
+          </button>
+        )}
+      </div>
+
       <div className="table-wrap">
         <table>
           <thead>
@@ -101,89 +133,46 @@ function Adherentes() {
             </tr>
           </thead>
           <tbody>
-            {adherentes.map((a) => {
+            {/* 4. Usamos la lista filtrada */}
+            {adherentesFiltrados.map((a) => {
               const editando = editandoId === a.id;
-
               return (
                 <tr key={a.id}>
                   <td>{a.id}</td>
-
                   <td>
                     {editando ? (
-                      <input
-                        value={a.nombre}
-                        onChange={(e) =>
-                          handleChange(a.id, "nombre", e.target.value)
-                        }
-                        className="inline-cell-input cell-edit"
-                      />
-                    ) : (
-                      a.nombre
-                    )}
+                      <input value={a.nombre} onChange={(e) => handleChange(a.id, "nombre", e.target.value)} className="inline-cell-input cell-edit" />
+                    ) : a.nombre}
                   </td>
-
                   <td>
                     {editando ? (
-                      <select
-                        value={a.estado}
-                        onChange={(e) =>
-                          handleChange(a.id, "estado", e.target.value)
-                        }
-                        className="inline-cell-input cell-edit"
-                      >
+                      <select value={a.estado} onChange={(e) => handleChange(a.id, "estado", e.target.value)} className="inline-cell-input cell-edit">
                         <option value="activo">activo</option>
                         <option value="en_construccion">en_construccion</option>
                         <option value="adjudicado">adjudicado</option>
                       </select>
-                    ) : (
-                      a.estado
-                    )}
+                    ) : a.estado}
                   </td>
-
                   <td>
                     {editando ? (
-                      <input
-                        type="number"
-                        value={a.cuotas_pagadas}
-                        onChange={(e) =>
-                          handleChange(a.id, "cuotas_pagadas", e.target.value)
-                        }
-                        className="inline-cell-input cell-edit"
-                      />
-                    ) : (
-                      a.cuotas_pagadas
-                    )}
+                      <input type="number" value={a.cuotas_pagadas} onChange={(e) => handleChange(a.id, "cuotas_pagadas", e.target.value)} className="inline-cell-input cell-edit" />
+                    ) : a.cuotas_pagadas}
                   </td>
-
                   <td>
                     {editando ? (
-                      <input
-                        type="number"
-                        value={a.cuotas_bonificadas_por_licitacion}
-                        onChange={(e) =>
-                          handleChange(
-                            a.id,
-                            "cuotas_bonificadas_por_licitacion",
-                            e.target.value
-                          )
-                        }
-                        className="inline-cell-input cell-edit"
-                      />
-                    ) : (
-                      a.cuotas_bonificadas_por_licitacion
-                    )}
+                      <input type="number" value={a.cuotas_bonificadas_por_licitacion} onChange={(e) => handleChange(a.id, "cuotas_bonificadas_por_licitacion", e.target.value)} className="inline-cell-input cell-edit" />
+                    ) : a.cuotas_bonificadas_por_licitacion}
                   </td>
-
                   <td>
                     {editando ? (
                       <>
-                        <button className="btn-table js-save-adherente" onClick={() => handleGuardar(a)} type="button">Guardar</button>
-                        <button className="btn-table js-cancel-adherente" onClick={handleCancelar} type="button">Cancelar</button>
+                        <button className="btn-table" onClick={() => handleGuardar(a)} type="button">Guardar</button>
+                        <button className="btn-table" onClick={handleCancelar} type="button">Cancelar</button>
                       </>
                     ) : (
                       <>
-                        <button className="btn-table js-edit-adherente" type="button"  onClick={() => handleEditar(a.id)}>Editar</button>
-                        <button className="btn-table js-delete-adherente" type="button" onClick={() => handleEliminar(a.id)}>Eliminar</button>
+                        <button className="btn-table" type="button" onClick={() => handleEditar(a.id)}>Editar</button>
+                        <button className="btn-table" type="button" onClick={() => handleEliminar(a.id)}>Eliminar</button>
                       </>
                     )}
                   </td>
