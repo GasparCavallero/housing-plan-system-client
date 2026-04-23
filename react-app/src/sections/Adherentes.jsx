@@ -68,7 +68,13 @@ function Adherentes() {
     <section id="adherentes" className="panel panel-adherentes">
       <div className="panel-head">
         <h2>Adherentes</h2>
-        <p id="adherentes-summary">Sin datos cargados.</p>
+        <p id="adherentes-summary">
+          {
+            adherentes.length === 0 
+            ? "Sin datos cargados." : adherentes.length === 1 
+              ? "1 adherente cargado." : `${adherentes.length} adherentes cargados.`
+          }
+        </p>
       </div>
       <form id="adherente-form" className="inline-form" onSubmit={handleSubmit}>
         <input type="text" name="nombre" placeholder="Nombre nuevo adherente" required="" value={nombre} onChange={(e) => setNombre(e.target.value)} />
