@@ -28,7 +28,7 @@ function ResumenTab({ detalle }) {
 
   return (
     <div>
-      <div className="sim-kpi-grid">
+      <div className="plan-summary-grid">
         <KpiBox label="Casas"           value={casasTotal} />
         <KpiBox label="Planillas"        value={planillasTotal} />
         <KpiBox label="Items"            value={itemsTotal} />

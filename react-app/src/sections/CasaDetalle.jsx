@@ -17,7 +17,7 @@ function KpiBox({ label, value }) {
 function ProgressBar({ pct }) {
   const safe = Math.min(100, Math.max(0, Number(pct ?? 0)));
   return (
-    <div className="sim-progress-wrap">
+    <div className="progress-wrap">
       <div className="sim-progress-bar" style={{ width: `${safe}%` }} />
       <p className="sim-progress-label">Uso de fondo: {safe.toFixed(2)}%</p>
     </div>
@@ -88,7 +88,7 @@ function CasaDetalle({ casa, onVolver }) {
           Editar casa
         </button>
 
-        <div className="sim-kpi-grid">
+        <div className="house-finance-grid">
           <KpiBox label="Fondo disponible" value={fmt(fondoDisponible)} />
           <KpiBox label="Comprometido"     value={fmt(comprometido)} />
           <KpiBox label="Total material"   value={totalMaterial} />
