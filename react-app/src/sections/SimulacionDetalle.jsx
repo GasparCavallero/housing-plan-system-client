@@ -120,6 +120,14 @@ function SimulacionDetalle({ simulacion, onVolver }) {
           detalle={detalle}
           simulacionId={simulacion.id}
           onVolver={() => setView("menu")}
+          onDetalleRefresh={() => {
+            // setView("menu");
+            setDetalle(null);
+            setLoading(true);
+            obtenerDetalleSimulacion(simulacion.id)
+              .then(setDetalle)
+              .finally(() => setLoading(false));
+          }}
         />
       </section>
     );

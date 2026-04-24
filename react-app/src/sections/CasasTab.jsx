@@ -1,5 +1,6 @@
 import { useState } from "react";
 import CasaDetalle from "./CasaDetalle.jsx";
+import { crearCasaSimulacion } from "../services/services.js";
 
 const fmt = (n) =>
   Number(n ?? 0).toLocaleString("es-AR", {
@@ -23,9 +24,15 @@ function CasaCard({ casa, onClick }) {
   );
 }
 
-function CasasTab({ detalle, simulacionId, onVolver }) {
-  const [query, setQuery]         = useState("");
+const FORM_EMPTY = { adherente_id: "", adherente_nombre: "", precio_ars: "", descripcion: "" };
+
+function CasasTab({ detalle, simulacionId, onVolver, onDetalleRefresh }) {
+  const [query, setQuery] = useState("");
   const [selectedCasa, setSelectedCasa] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(FORM_EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const casas = detalle?.casas ?? [];
 
@@ -38,6 +45,40 @@ function CasasTab({ detalle, simulacionId, onVolver }) {
       (c.descripcion ?? "").toLowerCase().includes(q)
     );
   });
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleGuardar = async () => {
+    if (!form.adherente_nombre.trim()) {
+      setFormError("El nombre del adherente es requerido.");
+      return;
+    }
+    if (!form.precio_ars || Number(form.precio_ars) <= 0) {
+      setFormError("El precio debe ser mayor a 0.");
+      return;
+    }
+    setSaving(true);
+    setFormError("");
+    try {
+      const payload = {
+        adherente_id: form.adherente_id ? Number(form.adherente_id) : null,
+        adherente_nombre: form.adherente_nombre.trim(),
+        precio_ars: Number(form.precio_ars),
+        descripcion: form.descripcion.trim() || null,
+      };
+      await crearCasaSimulacion(simulacionId, payload);
+      setForm(FORM_EMPTY);
+      setShowForm(false);
+      if (onDetalleRefresh) onDetalleRefresh();
+    } catch (err) {
+      setFormError(err?.message || "Error al crear la casa.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (selectedCasa) {
     return (
@@ -58,34 +99,114 @@ function CasasTab({ detalle, simulacionId, onVolver }) {
       </div>
 
       <div className="sim-section-header">
-        <h3>Casas de la simulación</h3>
+        <h3>Casas{showForm ? "" : " de la simulación"}</h3>
         <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button className="btn btn-primary" disabled>Agregar casa</button>
+          {showForm ? (
+            <button className="btn btn-primary" onClick={() => { setShowForm(false); setForm(FORM_EMPTY); setFormError(""); }}>
+              Cancelar
+            </button>
+          ) : (
+            <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+              Agregar casa
+            </button>
+          )}
           <button className="btn btn-ghost" onClick={onVolver}>Volver</button>
         </div>
       </div>
 
-      <p className="config-help" style={{ marginBottom: "1rem" }}>
-        Elegí una casa para abrir su detalle completo.
-      </p>
-
-      <input
-        className="sim-search"
-        type="text"
-        placeholder="Buscar por número de casa o adherente..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-
-      {filtered.length === 0 && (
-        <p className="config-help">No se encontraron casas.</p>
+      {showForm && (
+        <div className="sim-casa-form">
+          <div className="inline-form">
+            <input
+              type="number"
+              name="adherente_id"
+              placeholder="ID del adherente (opcional)"
+              value={form.adherente_id}
+              onChange={handleFormChange}
+            />
+            <input
+              type="text"
+              name="adherente_nombre"
+              placeholder="Nombre del adherente"
+              value={form.adherente_nombre}
+              onChange={handleFormChange}
+              required
+            />
+            <input
+              type="number"
+              name="precio_ars"
+              placeholder="Precio ARS"
+              value={form.precio_ars}
+              onChange={handleFormChange}
+              required
+            />
+            <input
+              type="text"
+              name="descripcion"
+              placeholder="Descripción de la casa"
+              value={form.descripcion}
+              onChange={handleFormChange}
+            />
+          </div>
+          <div className="inline-form">
+            <button className="btn btn-primary" onClick={handleGuardar} disabled={saving}>
+              {saving ? "Guardando..." : "Guardar casa"}
+            </button>
+          </div>
+          {formError && <p className="config-help" style={{ color: "red" }}>{formError}</p>}
+          {casas.length === 0 && !showForm && (
+            <p className="config-help">Esta simulación todavía no tiene casas cargadas.</p>
+          )}
+        </div>
       )}
 
-      <div className="sim-sections-list" style={{ marginTop: "1rem" }}>
-        {filtered.map((casa) => (
-          <CasaCard key={casa.id} casa={casa} onClick={() => setSelectedCasa(casa)} />
-        ))}
-      </div>
+      {!showForm && (
+        <>
+          <p className="config-help" style={{ marginBottom: "1rem" }}>
+            Elegí una casa para abrir su detalle completo.
+          </p>
+          <div style={{ position: "relative", marginBottom: "1rem" }}>
+            <input
+              className="sim-search"
+              type="text"
+              placeholder="Buscar por número de casa o adherente..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={{ paddingRight: query ? "2.5rem" : undefined }}
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                style={{
+                  position: "absolute",
+                  right: "0.7rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--muted)",
+                  fontSize: "1rem",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            )}
+          </div>
+          {casas.length === 0 && (
+            <p className="config-help" style={{ marginTop: "1rem" }}>Esta simulación todavía no tiene casas cargadas.</p>
+          )}
+          {casas.length > 0 && filtered.length === 0 && (
+            <p className="config-help">No se encontraron casas.</p>
+          )}
+          <div className="sim-sections-list" style={{ marginTop: "1rem" }}>
+            {filtered.map((casa) => (
+              <CasaCard key={casa.id} casa={casa} onClick={() => setSelectedCasa(casa)} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
