@@ -86,6 +86,10 @@ function CasasTab({ detalle, simulacionId, onVolver, onDetalleRefresh }) {
         casa={selectedCasa}
         simulacionId={simulacionId}
         onVolver={() => setSelectedCasa(null)}
+        onRefresh={() => {
+          if (onDetalleRefresh) onDetalleRefresh();
+          setSelectedCasa(null);
+        }}
       />
     );
   }

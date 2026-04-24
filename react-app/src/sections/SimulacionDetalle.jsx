@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { obtenerDetalleSimulacion } from "../services/services.js";
-import ResumenTab    from "./ResumenTab.jsx";
+import ResumenTab from "./ResumenTab.jsx";
 import ProyeccionTab from "./ProyeccionTab.jsx";
-import CasasTab      from "./CasasTab.jsx";
+import CasasTab from "./CasasTab.jsx";
 
 function SectionCard({ title, desc, onClick }) {
   return (
@@ -35,7 +35,7 @@ function Breadcrumb({ items }) {
 
 function SimHeader({ detalle, onVolver }) {
   const titulo = detalle?.titulo ?? detalle?.title ?? detalle?.nombre ?? `Simulación #${detalle?.id}`;
-  const fecha  = detalle?.updated_at
+  const fecha = detalle?.updated_at
     ? new Date(detalle.updated_at).toLocaleString("es-AR")
     : null;
 
@@ -57,8 +57,8 @@ function SimHeader({ detalle, onVolver }) {
 function SimulacionDetalle({ simulacion, onVolver }) {
   const [detalle, setDetalle] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState("");
-  const [view, setView]       = useState("menu"); // menu | resumen | proyeccion | casas
+  const [error, setError] = useState("");
+  const [view, setView] = useState("menu"); // menu | resumen | proyeccion | casas
 
   useEffect(() => {
     const load = async () => {
@@ -115,23 +115,27 @@ function SimulacionDetalle({ simulacion, onVolver }) {
   if (view === "casas") {
     return (
       <section id="simulaciones-guardadas" className="panel panel-simulations">
-        <SimHeader detalle={detalle} onVolver={onVolver} />
-        <CasasTab
-          detalle={detalle}
-          simulacionId={simulacion.id}
-          onVolver={() => setView("menu")}
-          onDetalleRefresh={() => {
-            // setView("menu");
-            setDetalle(null);
-            setLoading(true);
-            obtenerDetalleSimulacion(simulacion.id)
-              .then(setDetalle)
-              .finally(() => setLoading(false));
-          }}
-        />
+        <SimHeader detalle={detalle ?? simulacion} onVolver={onVolver} />
+        {!detalle ? (
+          <p className="config-help">Cargando...</p>
+        ) : (
+          <CasasTab
+            detalle={detalle}
+            simulacionId={simulacion.id}
+            onVolver={() => setView("menu")}
+            onDetalleRefresh={() => {
+              setDetalle(null);
+              setLoading(true);
+              obtenerDetalleSimulacion(simulacion.id)
+                .then(setDetalle)
+                .finally(() => setLoading(false));
+            }}
+          />
+        )}
       </section>
     );
   }
+
 
   // ── Menú principal ───────────────────────────────────────────────────────
   return (
@@ -139,7 +143,7 @@ function SimulacionDetalle({ simulacion, onVolver }) {
       <SimHeader detalle={detalle ?? simulacion} onVolver={onVolver} />
 
       {loading && <p className="config-help">Cargando detalle...</p>}
-      {error   && <p className="config-help" style={{ color: "red" }}>{error}</p>}
+      {error && <p className="config-help" style={{ color: "red" }}>{error}</p>}
 
       {detalle && (
         <>
