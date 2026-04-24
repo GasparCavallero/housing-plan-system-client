@@ -6,13 +6,20 @@ import AdminPanel from "../sections/AdminPanel";
 import Simulaciones from "../sections/Simulaciones";
 import Configuracion from "../sections/Configuracion";
 import Simulacion from "../sections/Simulacion";
-import GraficosCasas from "../sections/GraficosCasas";
 import Adherentes from "../sections/Adherentes";
 import Pagos from "../sections/Pagos";
 
 function Dashboard({ user }) {
   const [section, setSection] = useState("simulaciones");
   const isAdmin = user?.role === "admin";
+
+  const [simulacionRows, setSimulacionRows] = useState([]);
+
+  const handleRowsChange = (rows) => {
+    setSimulacionRows(rows);
+  };
+  const [valorViviendaArs, setValorViviendaArs] = useState(0);
+  console.log("Dashboard render - simulacionRows:", simulacionRows?.length, "section:", section);
 
   return (
     <div>
@@ -25,9 +32,11 @@ function Dashboard({ user }) {
       <main className="layout">
         {section === "admin" && isAdmin && <AdminPanel />}
         {section === "simulaciones" && <Simulaciones />}
-        {section === "configuracion" && <Configuracion />}
-        {section === "simulacion" && <Simulacion />}
-        {section === "graficos" && <GraficosCasas />}
+        {section === "configuracion" && <Configuracion onValorViviendaChange={setValorViviendaArs} />}
+        {section === "simulacion" && <Simulacion onRowsChange={handleRowsChange} />}
+        {section === "graficos" && (
+          <GraficosCasas rows={simulacionRows} valorViviendaArs={valorViviendaArs} />
+        )}
         {section === "adherentes" && <Adherentes />}
         {section === "pagos" && <Pagos />}
       </main>

@@ -31,9 +31,6 @@ function Navbar({ section, setSection, user }) {
       <a href="#simulacion" {...getProps("simulacion")}>
         Simulación
       </a>
-      <a href="#grafico-casas" {...getProps("grafico-casas")}>
-        Gráfico de casas
-      </a>
       <a href="#adherentes" {...getProps("adherentes")}>
         Adherentes
       </a>

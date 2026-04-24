@@ -82,7 +82,7 @@ function validateConfig(payload) {
     throw new Error("El cronograma anual debe tener enteros no negativos separados por coma. Ejemplo: 5,5,5,6,6,7.");
 }
 
-function Configuracion() {
+function Configuracion({ onValorViviendaChange }) {
   const [form, setForm] = useState(DEFAULTS);
   const [kpi, setKpi] = useState(null);
   const [saveStatus, setSaveStatus] = useState("Estado: cambios sin guardar.");
@@ -121,6 +121,8 @@ function Configuracion() {
 
       if (config) {
         setForm(config);
+        const valor = Number(config.metrosCuadrados) * Number(config.valorPorM2);
+        if (onValorViviendaChange && valor > 0) onValorViviendaChange(valor);
 
         // 3. Guardo en localStorage para futuras cargas rápidas
         localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
@@ -130,7 +132,7 @@ function Configuracion() {
     } catch {
       // si falla silencioso, queda con defaults
     }
-  }, []);
+  }, [onValorViviendaChange]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -139,7 +141,12 @@ function Configuracion() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+      const valor = Number(next.metrosCuadrados) * Number(next.valorPorM2);
+      if (onValorViviendaChange && valor > 0) onValorViviendaChange(valor);
+      return next;
+    });
   };
 
   const handleGuardar = async () => {

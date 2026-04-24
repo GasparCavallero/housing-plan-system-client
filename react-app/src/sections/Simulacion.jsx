@@ -7,6 +7,7 @@ import {
 } from "../services/services.js";
 
 import { useGuardarSimulacionModal } from "../hooks/useGuardarSimulacionModal.jsx";
+import GraficosModal from "../components/GraficosModal.jsx";
 
 const formatterArs = new Intl.NumberFormat("es-AR", {
   style: "currency",
@@ -65,12 +66,14 @@ function hasMetrics(rows) {
   return rows.some((row) => keys.some((k) => row[k] !== null && row[k] !== undefined));
 }
 
-function Simulacion() {
+function Simulacion({ onRowsChange }) {
+  console.log("onRowsChange recibido:", typeof onRowsChange);
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState("Ejecutá la simulación para ver proyecciones.");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [soloEventos, setSoloEventos] = useState(false);
+  const [graficosOpen, setGraficosOpen] = useState(false);
   const { pedirDatos, modal } = useGuardarSimulacionModal();
 
   const handleSimular = async () => {
@@ -89,6 +92,8 @@ function Simulacion() {
 
       const normalized = normalizeTimeline(payload);
       setRows(normalized);
+      console.log("llamando onRowsChange con", normalized?.length, "filas");
+      if (onRowsChange) onRowsChange(normalized);
 
       if (normalized.length > 0) {
         setSoloEventos(!hasMetrics(normalized));
@@ -163,8 +168,21 @@ function Simulacion() {
         <button className="btn btn-secondary" type="button" onClick={handleGuardar} disabled={loading}>
           Guardar simulación
         </button>
+        {rows.length > 0 && (
+          <button className="btn btn-ghost" type="button" onClick={() => setGraficosOpen(true)}>
+            Ver gráficos
+          </button>
+        )}
         {modal}
       </div>
+
+      {graficosOpen && (
+        <GraficosModal
+          rows={rows}
+          valorViviendaArs={0}
+          onClose={() => setGraficosOpen(false)}
+        />
+      )}
 
       {error && <p className="config-help" style={{ color: "red" }}>{error}</p>}
 
