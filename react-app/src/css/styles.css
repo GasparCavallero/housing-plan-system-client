@@ -20,6 +20,7 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  border-radius: 16px;
 }
 
 .modal-box {
@@ -33,6 +34,7 @@
   flex-direction: column;
   overflow: hidden;
   animation: rise 0.2s ease both;
+  min-height: 60.1vh;
 }
 
 .modal-header {
