@@ -1,3 +1,18 @@
+.sim-card-selected {
+  border-color: var(--primary);
+  background: #eef5f3;
+}
+
+.sim-card-checkbox {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
 /* ── Simulacion detalle ────────────────────────────────────────────────────── */
 .sim-detalle-header {
   display: flex;
