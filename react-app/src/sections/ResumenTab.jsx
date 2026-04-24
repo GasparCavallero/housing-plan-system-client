@@ -19,8 +19,7 @@ function ResumenTab({ detalle }) {
 
   const casasTotal       = resumen?.casas_total ?? 0;
   const planillasTotal   = detalle?.casas?.reduce((acc, c) => acc + (c.items?.length ?? 0), 0) ?? 0;
-  const itemsTotal       = detalle?.casas?.reduce((acc, c) =>
-    acc + (c.items?.reduce((a, it) => a + 1, 0) ?? 0), 0) ?? 0;
+  const itemsTotal = detalle?.casas?.reduce((acc, c) => acc + (c.items?.length ?? 0), 0) ?? 0;
   const materialesTotal  = resumen?.material_total_cantidad ?? 0;
   const gastosTotal      = detalle?.casas?.reduce((acc, c) => acc + (c.gastos?.length ?? 0), 0) ?? 0;
   const totalMaterialArs = resumen?.materiales_total_ars ?? 0;
