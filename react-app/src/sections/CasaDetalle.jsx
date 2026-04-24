@@ -41,10 +41,11 @@ function CasaDetalle({ casa, onVolver }) {
   const items        = casa.items?.length ?? 0;
   const gastos       = casa.gastos?.length ?? 0;
   const completada   = casa.completada ? "Completada" : "En curso";
-  const avance       = casa.avance_financiero_pct ?? 0;
-
   const fondoDisponible  = casa.precio_ars ?? 0;
   const comprometido     = casa.total_casa_ars ?? 0;
+  const avance = fondoDisponible > 0
+  ? (comprometido / fondoDisponible) * 100
+  : 0;
   const totalMaterial    = casa.cantidad_material_total ?? 0;
   const totalRetirado    = casa.cantidad_material_retirada ?? 0;
   const enConstruccion   = casa.cantidad_material_en_construccion ?? 0;
