@@ -1,3 +1,321 @@
+/* ── Simulacion detalle ────────────────────────────────────────────────────── */
+.sim-detalle-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.sim-detalle-header h2 {
+  margin: 0 0 0.2rem;
+}
+
+.simulation-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 0.6rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.7);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.simulation-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 109, 91, 0.1);
+}
+
+.simulation-card-title {
+  margin: 0 0 0.2rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--primary-strong);
+}
+
+.simulation-card-desc {
+  margin: 0 0 0.2rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.simulation-card-date {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+/* ── Simulaciones grid ─────────────────────────────────────────────────────── */
+.sim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.sim-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 1rem 2rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.8);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.sim-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 10px rgba(0,109,91,0.1);
+}
+
+.sim-card-label {
+  margin: 0 0 0.3rem;
+  font-size: 0.7rem;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--primary);
+  letter-spacing: 0.05em;
+}
+
+.sim-card-title {
+  margin: 0 0 0.2rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--primary-strong);
+}
+
+.sim-card-desc {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.sim-card-date {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.sim-card-arrow {
+  position: absolute;
+  right: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.3rem;
+  color: var(--primary);
+}
+
+/* ── Simulacion detalle ────────────────────────────────────────────────────── */
+.sim-detalle-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sim-detalle-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.sim-header-meta {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+/* ── Breadcrumb ────────────────────────────────────────────────────────────── */
+.sim-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.1rem;
+  margin-bottom: 1.2rem;
+}
+
+.sim-breadcrumb-item {
+  font-size: 0.82rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.7);
+  color: var(--muted);
+}
+
+.sim-breadcrumb-item.clickable {
+  cursor: pointer;
+  color: var(--primary);
+}
+
+.sim-breadcrumb-item.clickable:hover {
+  background: #eef5f3;
+}
+
+.sim-breadcrumb-sep {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 0 0.1rem;
+}
+
+/* ── Section cards ─────────────────────────────────────────────────────────── */
+.sim-sections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.sim-section-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 1rem 2.5rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.8);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.sim-section-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0,109,91,0.08);
+}
+
+.sim-section-label {
+  margin: 0 0 0.2rem;
+  font-size: 0.68rem;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--primary);
+  letter-spacing: 0.05em;
+}
+
+.sim-section-title {
+  margin: 0 0 0.2rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--primary-strong);
+}
+
+.sim-section-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.sim-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+}
+
+.sim-section-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* ── KPI grid ──────────────────────────────────────────────────────────────── */
+.sim-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1.5rem;
+}
+
+.sim-kpi-box {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.7);
+}
+
+.sim-kpi-label {
+  margin: 0 0 0.3rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.sim-kpi-value {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-strong);
+}
+
+/* ── Búsqueda casas ────────────────────────────────────────────────────────── */
+.sim-search {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1.5px solid var(--primary);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+/* ── Casa detalle ──────────────────────────────────────────────────────────── */
+.sim-casa-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.2rem;
+  background: rgba(255,255,255,0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.sim-casa-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.sim-badge {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.7);
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  white-space: nowrap;
+}
+
+/* ── Progress bar ──────────────────────────────────────────────────────────── */
+.sim-progress-wrap {
+  border-radius: 8px;
+  background: #e8f0ee;
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+
+.sim-progress-bar {
+  height: 10px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-strong));
+  border-radius: 8px;
+  transition: width 0.4s ease;
+}
+
+.sim-progress-label {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+
 /* ── Modal de gráficos ─────────────────────────────────────────────────────── */
 .chart-total {
   margin-top: 0.8rem;

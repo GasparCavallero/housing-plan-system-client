@@ -19,7 +19,6 @@ function Dashboard({ user }) {
     setSimulacionRows(rows);
   };
   const [valorViviendaArs, setValorViviendaArs] = useState(0);
-  console.log("Dashboard render - simulacionRows:", simulacionRows?.length, "section:", section);
 
   return (
     <div>

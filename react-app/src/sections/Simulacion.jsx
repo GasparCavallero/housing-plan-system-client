@@ -67,7 +67,6 @@ function hasMetrics(rows) {
 }
 
 function Simulacion({ onRowsChange }) {
-  console.log("onRowsChange recibido:", typeof onRowsChange);
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState("Ejecutá la simulación para ver proyecciones.");
   const [loading, setLoading] = useState(false);
@@ -92,7 +91,6 @@ function Simulacion({ onRowsChange }) {
 
       const normalized = normalizeTimeline(payload);
       setRows(normalized);
-      console.log("llamando onRowsChange con", normalized?.length, "filas");
       if (onRowsChange) onRowsChange(normalized);
 
       if (normalized.length > 0) {
