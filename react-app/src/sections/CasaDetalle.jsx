@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { actualizarCasaSimulacion } from "../services/services.js";
+import PlanillasTab from "./PlanillasTab.jsx";
 
 const fmt = (n) =>
   Number(n ?? 0).toLocaleString("es-AR", {
@@ -51,6 +52,17 @@ function CasaDetalle({ casa, simulacionId, onVolver, onRefresh }) {
     descripcion: casa.descripcion ?? "",
     completada: casa.completada ?? false,
   });
+  const [view, setView] = useState("detalle");
+
+  if (view === "planillas") {
+    return (
+      <PlanillasTab
+        casa={casa}
+        simulacionId={simulacionId}
+        onVolver={() => setView("detalle")}
+      />
+    );
+  }
 
   const nombre = casa.adherente_nombre ?? casa.descripcion ?? `Casa #${casa.id}`;
   const planillas = casa.items?.length ?? 0;
@@ -223,7 +235,9 @@ function CasaDetalle({ casa, simulacionId, onVolver, onRefresh }) {
 
       {/* Secciones */}
       <div className="sim-sections-list" style={{ marginTop: "1.5rem" }}>
-        <SectionCard title="Planillas" desc={`${planillas} planillas registradas`} onClick={() => { }} />
+        <SectionCard title="Planillas" desc={`${planillas} planillas registradas`} onClick={() => {
+          setView("planillas");
+         }} />
         <SectionCard title="Items" desc={`${items} items registrados`} onClick={() => { }} />
         <SectionCard title="Materiales" desc="Vista consolidada de todos los materiales" onClick={() => { }} />
         <SectionCard title="Gastos" desc={`${gastos} gastos registrados`} onClick={() => { }} />
