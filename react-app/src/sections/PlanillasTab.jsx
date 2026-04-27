@@ -52,7 +52,7 @@ function PlanillaCard({ planilla, onOpen, onEdit, onDelete }) {
   );
 }
 
-function PlanillaForm({ initial, casaNombre, onGuardar, saving, error }) {
+function PlanillaForm({ initial, casaNombre, onGuardar, onCancelar, saving, error }) {
   const [form, setForm] = useState(initial ?? FORM_EMPTY);
 
   const handleChange = (e) => {
@@ -97,9 +97,21 @@ function PlanillaForm({ initial, casaNombre, onGuardar, saving, error }) {
         </label>
       </div>
       {error && <p className="config-help" style={{ color: "red", marginTop: "0.5rem" }}>{error}</p>}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
-        <button className="btn btn-primary" onClick={() => onGuardar(form)} disabled={saving}>
-          {saving ? "Guardando..." : "Crear planilla"}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem", gap: "0.5rem" }}>
+        <button 
+          className="btn btn-ghost" 
+          onClick={onCancelar} 
+          disabled={saving}
+          type="button"
+        >
+          Cancelar
+        </button>
+        <button 
+          className="btn btn-primary" 
+          onClick={() => onGuardar(form)} 
+          disabled={saving}
+        >
+          {saving ? "Guardando..." : (initial ? "Guardar cambios" : "Crear planilla")}
         </button>
       </div>
     </div>
