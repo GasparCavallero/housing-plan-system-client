@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   listarItemsPlanilla,
   crearItemPlanilla,
   actualizarItemPlanilla,
   eliminarItemPlanilla,
-  listarMaterialesItem,
+  // listarMaterialesItem,
   crearMaterialPlanilla,
   actualizarMaterialPlanilla,
   eliminarMaterialPlanilla,
@@ -91,12 +91,12 @@ function MovimientoForm({ onGuardar, onCancelar, saving, error }) {
 // ── Material con movimientos ──────────────────────────────────────────────────
 
 function MaterialRow({ material, simulacionId, casaId, planillaId, itemId, onEdit, onDelete }) {
-  const [expanded, setExpanded]         = useState(false);
-  const [movimientos, setMovimientos]   = useState([]);
-  const [loadingMov, setLoadingMov]     = useState(false);
-  const [showMovForm, setShowMovForm]   = useState(false);
-  const [savingMov, setSavingMov]       = useState(false);
-  const [movError, setMovError]         = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const [movimientos, setMovimientos] = useState([]);
+  const [loadingMov, setLoadingMov] = useState(false);
+  const [showMovForm, setShowMovForm] = useState(false);
+  const [savingMov, setSavingMov] = useState(false);
+  const [movError, setMovError] = useState("");
 
   const loadMovimientos = async () => {
     setLoadingMov(true);
@@ -123,14 +123,14 @@ function MaterialRow({ material, simulacionId, casaId, planillaId, itemId, onEdi
     setMovError("");
     try {
       await registrarMovimientoEntrega({
-        simulacion_id:   simulacionId,
-        casa_id:         casaId,
-        planilla_id:     planillaId,
-        item_id:         itemId,
-        material_id:     material.id,
-        cantidad:        Number(form.cantidad),
-        tipo:            form.tipo,
-        observaciones:   form.observaciones?.trim() || null,
+        simulacion_id: simulacionId,
+        casa_id: casaId,
+        planilla_id: planillaId,
+        item_id: itemId,
+        material_id: material.id,
+        cantidad: Number(form.cantidad),
+        tipo: form.tipo,
+        observaciones: form.observaciones?.trim() || null,
       });
       setShowMovForm(false);
       await loadMovimientos();
@@ -186,21 +186,21 @@ function MaterialRow({ material, simulacionId, casaId, planillaId, itemId, onEdi
 // ── Item con materiales ───────────────────────────────────────────────────────
 
 function ItemRow({ item, simulacionId, casaId, planillaId, onEdit, onDelete, onRefresh }) {
-  const [expanded, setExpanded]           = useState(true);
-  const [showMatForm, setShowMatForm]     = useState(false);
-  const [editingMat, setEditingMat]       = useState(null);
+  const [expanded, setExpanded] = useState(true);
+  const [showMatForm, setShowMatForm] = useState(false);
+  const [editingMat, setEditingMat] = useState(null);
   const [deletingMatId, setDeletingMatId] = useState(null);
-  const [savingMat, setSavingMat]         = useState(false);
-  const [matError, setMatError]           = useState("");
+  const [savingMat, setSavingMat] = useState(false);
+  const [matError, setMatError] = useState("");
 
   const materiales = item.materiales ?? [];
 
   const buildMatPayload = (form) => ({
-    nombre:              form.nombre?.trim(),
-    proveedor:           form.proveedor?.trim() || null,
-    descripcion:         form.descripcion?.trim() || null,
-    unidad:              form.unidad?.trim() || null,
-    cantidad_total:      Number(form.cantidad_total) || 0,
+    nombre: form.nombre?.trim(),
+    proveedor: form.proveedor?.trim() || null,
+    descripcion: form.descripcion?.trim() || null,
+    unidad: form.unidad?.trim() || null,
+    cantidad_total: Number(form.cantidad_total) || 0,
     precio_unitario_ars: Number(form.precio_unitario_ars) || 0,
   });
 
@@ -280,11 +280,11 @@ function ItemRow({ item, simulacionId, casaId, planillaId, onEdit, onDelete, onR
               <MaterialForm
                 key={mat.id}
                 initial={{
-                  nombre:              mat.nombre ?? "",
-                  proveedor:           mat.proveedor ?? "",
-                  descripcion:         mat.descripcion ?? "",
-                  unidad:              mat.unidad ?? "",
-                  cantidad_total:      mat.cantidad_total ?? "",
+                  nombre: mat.nombre ?? "",
+                  proveedor: mat.proveedor ?? "",
+                  descripcion: mat.descripcion ?? "",
+                  unidad: mat.unidad ?? "",
+                  cantidad_total: mat.cantidad_total ?? "",
                   precio_unitario_ars: mat.precio_unitario_ars ?? "",
                 }}
                 onGuardar={handleEditarMat}
@@ -319,28 +319,35 @@ function ItemRow({ item, simulacionId, casaId, planillaId, onEdit, onDelete, onR
 // ── Detalle de planilla ───────────────────────────────────────────────────────
 
 function PlanillaDetalle({ planilla, casa, simulacionId, onVolver }) {
-  const [items, setItems]               = useState(planilla.items ?? []);
-  const [loading, setLoading]           = useState(false);
+  const [items, setItems] = useState(planilla.items ?? []);
+  const [loading, setLoading] = useState(false);
   const [showItemForm, setShowItemForm] = useState(false);
-  const [editingItem, setEditingItem]   = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [deletingItemId, setDeletingItemId] = useState(null);
-  const [savingItem, setSavingItem]     = useState(false);
-  const [itemError, setItemError]       = useState("");
+  const [savingItem, setSavingItem] = useState(false);
+  const [itemError, setItemError] = useState("");
 
   const casaNombre = casa.adherente_nombre ?? casa.descripcion ?? `Casa #${casa.id}`;
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await listarItemsPlanilla(simulacionId, casa.id, planilla.id);
       setItems(Array.isArray(data) ? data : []);
-    } catch { }
+    } catch (err) {
+      console.error("Error loading items:", err);
+    }
     finally { setLoading(false); }
-  };
+  }, [simulacionId, casa.id, planilla.id]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
 
   const buildItemPayload = (form) => ({
-    nombre:      form.nombre?.trim(),
-    proveedor:   form.proveedor?.trim() || null,
+    nombre: form.nombre?.trim(),
+    proveedor: form.proveedor?.trim() || null,
     descripcion: form.descripcion?.trim() || null,
   });
 
@@ -413,7 +420,6 @@ function PlanillaDetalle({ planilla, casa, simulacionId, onVolver }) {
         {planilla.proveedor ?? casaNombre}
       </p>
 
-      {/* Tarjeta resumen de la planilla */}
       <div className="sim-casa-card" style={{ marginBottom: "1rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
           <div>

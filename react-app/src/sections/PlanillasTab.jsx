@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   listarPlanillasCasa,
   crearPlanillaCasa,
@@ -28,7 +28,7 @@ const FORM_EMPTY = {
   observaciones: "",
 };
 
-function PlanillaCard({ planilla, casaNombre, onOpen, onEdit, onDelete }) {
+function PlanillaCard({ planilla, onOpen, onEdit, onDelete }) {
   const itemsCount = planilla.items?.length ?? planilla.cantidad_items ?? 0;
   const monto = planilla.total_materiales_ars ?? planilla.monto ?? 0;
 
@@ -52,7 +52,7 @@ function PlanillaCard({ planilla, casaNombre, onOpen, onEdit, onDelete }) {
   );
 }
 
-function PlanillaForm({ initial, casaNombre, onGuardar, onCancelar, saving, error }) {
+function PlanillaForm({ initial, casaNombre, onGuardar, saving, error }) {
   const [form, setForm] = useState(initial ?? FORM_EMPTY);
 
   const handleChange = (e) => {
@@ -119,7 +119,7 @@ function PlanillasTab({ casa, simulacionId, onVolver }) {
 
   const casaNombre = casa.adherente_nombre ?? casa.descripcion ?? `Casa #${casa.id}`;
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await listarPlanillasCasa(simulacionId, casa.id);
@@ -129,9 +129,12 @@ function PlanillasTab({ casa, simulacionId, onVolver }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [simulacionId, casa.id]);
 
-  useEffect(() => { load(); }, [simulacionId, casa.id]);
+  useEffect(() => { 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load(); 
+  }, [load]);
 
   const buildPayload = (form) => ({
     numero:       form.numero?.trim() || null,
