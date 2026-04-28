@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { actualizarCasaSimulacion } from "../services/services.js";
 import PlanillasTab from "./PlanillasTab.jsx";
+import GastosTab from "./GastosTab.jsx";
 
 const fmt = (n) =>
   Number(n ?? 0).toLocaleString("es-AR", {
@@ -57,6 +58,16 @@ function CasaDetalle({ casa, simulacionId, onVolver, onRefresh }) {
   if (view === "planillas") {
     return (
       <PlanillasTab
+        casa={casa}
+        simulacionId={simulacionId}
+        onVolver={() => setView("detalle")}
+      />
+    );
+  }
+
+  if (view === "gastos") {
+    return (
+      <GastosTab
         casa={casa}
         simulacionId={simulacionId}
         onVolver={() => setView("detalle")}
@@ -237,10 +248,14 @@ function CasaDetalle({ casa, simulacionId, onVolver, onRefresh }) {
       <div className="sim-sections-list" style={{ marginTop: "1.5rem" }}>
         <SectionCard title="Planillas" desc={`${planillas} planillas registradas`} onClick={() => {
           setView("planillas");
-         }} />
+        }} />
         <SectionCard title="Items" desc={`${items} items registrados`} onClick={() => { }} />
         <SectionCard title="Materiales" desc="Vista consolidada de todos los materiales" onClick={() => { }} />
-        <SectionCard title="Gastos" desc={`${gastos} gastos registrados`} onClick={() => { }} />
+        <SectionCard
+          title="Gastos"
+          desc={`${gastos} gastos registrados`}
+          onClick={() => setView("gastos")}
+        />
         <SectionCard title="Mano de obra" desc="Registros de mano de obra" onClick={() => { }} />
       </div>
     </div>

@@ -179,7 +179,8 @@ function Adherentes() {
                     ) : (
                       <>
                         <button className="btn-table" type="button" onClick={() => handleEditar(a.id)}>Editar</button>
-                        <button className="btn-table" type="button" onClick={() => abrirModalEliminar(a.id)}>Eliminar</button>
+                        <button className="btn-table" type="button" onClick={() => abrirModalEliminar(a.id)} 
+                          style={{ padding: "0.25rem 0.6rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }}>Eliminar</button>
                         <ConfirmModal
                           isOpen={modalConfig.isOpen}
                           title="Eliminar adherente"

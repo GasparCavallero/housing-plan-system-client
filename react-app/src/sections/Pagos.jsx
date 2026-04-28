@@ -12,19 +12,19 @@ function Pagos() {
   const [modalConfig, setModalConfig] = useState({ isOpen: false, id: null });
 
   const abrirModalEliminar = (id) => {
-      setModalConfig({ isOpen: true, id });
-    };
-  
-    const confirmarEliminacion = async () => {
-      try {
-        await eliminarPago(modalConfig.id);
-        await cargarPagos();
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setModalConfig({ isOpen: false, id: null });
-      }
+    setModalConfig({ isOpen: true, id });
+  };
+
+  const confirmarEliminacion = async () => {
+    try {
+      await eliminarPago(modalConfig.id);
+      await cargarPagos();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setModalConfig({ isOpen: false, id: null });
     }
+  }
 
   const cargarPagos = async () => {
     try {
@@ -95,9 +95,9 @@ function Pagos() {
         <h2>Pagos</h2>
         <p id="pagos-summary">
           {
-            pagos.length === 0 
-            ? "Sin datos cargados." : pagos.length === 1 
-              ? "1 pago registrado" : `${pagos.length} pagos registrados` 
+            pagos.length === 0
+              ? "Sin datos cargados." : pagos.length === 1
+                ? "1 pago registrado" : `${pagos.length} pagos registrados`
           }
         </p>
       </div>
@@ -185,7 +185,8 @@ function Pagos() {
                     ) : (
                       <>
                         <button type="button" className="btn-table" onClick={() => setEditandoId(p.id)}>Editar</button>
-                        <button type="button" className="btn-table" onClick={() => abrirModalEliminar(p.id)}>Eliminar</button>
+                        <button type="button" className="btn-table" onClick={() => abrirModalEliminar(p.id)}
+                          style={{ padding: "0.25rem 0.6rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }}>Eliminar</button>
                         <ConfirmModal
                           isOpen={modalConfig.isOpen}
                           title="Eliminar pago"
