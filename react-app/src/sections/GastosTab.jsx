@@ -215,14 +215,14 @@ function GastosTab({ casa, simulacionId, onVolver }) {
                         style={{ padding: "0.25rem 0.6rem", fontSize: "0.8rem", marginRight: "0.3rem" }}
                         onClick={() => { setEditingGasto(g); setShowForm(false); setFormError(""); }}
                       >
-                        Editar gasto
+                        Editar
                       </button>
                       <button
                         className="btn btn-ghost"
                         style={{ padding: "0.25rem 0.6rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }}
                         onClick={() => setDeletingId(g.id)}
                       >
-                        Borrar
+                        Eliminar
                       </button>
                     </td>
                   </tr>

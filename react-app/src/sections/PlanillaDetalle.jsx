@@ -153,8 +153,8 @@ function MaterialRow({ material, simulacionId, casaId, planillaId, itemId, onEdi
           <span className="sim-badge">Retirado {material.cantidad_retirada ?? 0}</span>
           <span className="sim-badge">En obra {material.cantidad_en_construccion ?? 0}</span>
           <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }} onClick={onEdit}>Editar material</button>
-          <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }} onClick={() => { setShowMovForm(true); setExpanded(true); }}>Agregar movimiento</button>
-          <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }} onClick={onDelete}>Borrar</button>
+          <button className="btn btn-primary" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }} onClick={() => { setShowMovForm(true); setExpanded(true); }}>Agregar movimiento</button>
+          <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }} onClick={onDelete}>Eliminar</button>
           <span style={{ cursor: "pointer", color: "var(--primary)", fontWeight: 600, padding: "0 0.3rem" }} onClick={handleToggle}>{expanded ? "–" : "+"}</span>
         </div>
       </div>
@@ -258,8 +258,8 @@ function ItemRow({ item, simulacionId, casaId, planillaId, onEdit, onDelete, onR
         <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
           <span className="sim-badge">{materiales.length} materiales</span>
           <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }} onClick={onEdit}>Editar item</button>
-          <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }} onClick={() => { setShowMatForm(true); setExpanded(true); }}>Agregar material</button>
-          <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }} onClick={onDelete}>Borrar</button>
+          <button className="btn btn-primary" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }} onClick={() => { setShowMatForm(true); setExpanded(true); }}>Agregar material</button>
+          <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }} onClick={onDelete}>Eliminar</button>
           <span style={{ cursor: "pointer", color: "var(--primary)", fontWeight: 600, padding: "0 0.3rem" }} onClick={() => setExpanded((v) => !v)}>{expanded ? "–" : "+"}</span>
         </div>
       </div>
@@ -431,7 +431,7 @@ function PlanillaDetalle({ planilla, casa, simulacionId, onVolver }) {
             {planilla.fecha && <span className="sim-badge">{new Date(planilla.fecha).toLocaleDateString("es-AR")}</span>}
             {planilla.vencimiento && <span className="sim-badge">Vto {new Date(planilla.vencimiento).toLocaleDateString("es-AR")}</span>}
             <button
-              className="btn btn-ghost"
+              className="btn btn-primary"
               style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }}
               onClick={() => { setShowItemForm(true); setEditingItem(null); }}
             >

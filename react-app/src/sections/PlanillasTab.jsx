@@ -44,7 +44,7 @@ function PlanillaCard({ planilla, onOpen, onEdit, onDelete }) {
           {planilla.fecha && <span className="sim-badge">{new Date(planilla.fecha).toLocaleDateString("es-AR")}</span>}
           {planilla.vencimiento && <span className="sim-badge">Vto {new Date(planilla.vencimiento).toLocaleDateString("es-AR")}</span>}
           <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }} onClick={onEdit}>Editar</button>
-          <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }} onClick={onDelete}>Borrar</button>
+          <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }} onClick={onDelete}>Eliminar</button>
           <span style={{ cursor: "pointer", color: "var(--primary)", fontWeight: 600, padding: "0 0.3rem" }} onClick={onOpen}>–</span>
         </div>
       </div>
