@@ -8,12 +8,6 @@ import {
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import PlanillaDetalle from "./PlanillaDetalle.jsx";
 
-const fmt = (n) =>
-  Number(n ?? 0).toLocaleString("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 0,
-  });
 
 const TODAY = new Date().toISOString().split("T")[0];
 
@@ -29,8 +23,6 @@ const FORM_EMPTY = {
 };
 
 function PlanillaCard({ planilla, onOpen, onEdit, onDelete }) {
-  const itemsCount = planilla.items?.length ?? planilla.cantidad_items ?? 0;
-  const monto = planilla.total_materiales_ars ?? planilla.monto ?? 0;
 
   return (
     <div className="sim-section-card" style={{ cursor: "default" }}>
@@ -38,7 +30,6 @@ function PlanillaCard({ planilla, onOpen, onEdit, onDelete }) {
         <div style={{ flex: 1, cursor: "pointer" }} onClick={onOpen}>
           <p className="sim-section-label">PLANILLA #{planilla.id}</p>
           <p className="sim-section-title">{planilla.proveedor ?? planilla.nombre ?? `Planilla #${planilla.id}`}</p>
-          <p className="sim-section-desc">Items: {itemsCount} | Monto: {fmt(monto)}</p>
         </div>
         <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
           {planilla.fecha && <span className="sim-badge">{new Date(planilla.fecha).toLocaleDateString("es-AR")}</span>}
