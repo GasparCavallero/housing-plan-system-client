@@ -233,7 +233,7 @@ function PlanillasTab({ casa, simulacionId, onVolver }) {
         <h3>Planillas de la casa</h3>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           {showForm ? (
-            <button className="btn btn-ghost" onClick={() => { setShowForm(false); setFormError(""); }}>Cancelar</button>
+            <button className="btn btn-secondary" onClick={() => { setShowForm(false); setFormError(""); }}>Cancelar</button>
           ) : (
             <button className="btn btn-primary" onClick={() => { setShowForm(true); setEditingPlanilla(null); }}>Agregar planilla</button>
           )}

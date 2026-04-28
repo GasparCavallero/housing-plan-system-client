@@ -2,6 +2,9 @@ import { useState } from "react";
 import { actualizarCasaSimulacion } from "../services/services.js";
 import PlanillasTab from "./PlanillasTab.jsx";
 import GastosTab from "./GastosTab.jsx";
+import ItemsTab from "./ItemsTab.jsx";
+import MaterialesTab from "./MaterialesTab.jsx";
+import ManoDeObraTab from "./ManoDeObraTab.jsx";
 
 const fmt = (n) =>
   Number(n ?? 0).toLocaleString("es-AR", {
@@ -73,6 +76,18 @@ function CasaDetalle({ casa, simulacionId, onVolver, onRefresh }) {
         onVolver={() => setView("detalle")}
       />
     );
+  }
+
+  if (view === "items") {
+    return <ItemsTab casa={casa} simulacionId={simulacionId} onVolver={() => setView("detalle")} />;
+  }
+
+  if (view === "materiales") {
+    return <MaterialesTab casa={casa} simulacionId={simulacionId} onVolver={() => setView("detalle")} />;
+  }
+
+  if (view === "mano_obra") {
+    return <ManoDeObraTab casa={casa} simulacionId={simulacionId} onVolver={() => setView("detalle")} />;
   }
 
   const nombre = casa.adherente_nombre ?? casa.descripcion ?? `Casa #${casa.id}`;
@@ -249,14 +264,14 @@ function CasaDetalle({ casa, simulacionId, onVolver, onRefresh }) {
         <SectionCard title="Planillas" desc={`${planillas} planillas registradas`} onClick={() => {
           setView("planillas");
         }} />
-        <SectionCard title="Items" desc={`${items} items registrados`} onClick={() => { }} />
-        <SectionCard title="Materiales" desc="Vista consolidada de todos los materiales" onClick={() => { }} />
+        <SectionCard title="Items" desc={`${items} items registrados`} onClick={() => setView("items")} />
+        <SectionCard title="Materiales" desc="Vista consolidada de todos los materiales" onClick={() => setView("materiales")} />
         <SectionCard
           title="Gastos"
           desc={`${gastos} gastos registrados`}
           onClick={() => setView("gastos")}
         />
-        <SectionCard title="Mano de obra" desc="Registros de mano de obra" onClick={() => { }} />
+        <SectionCard title="Mano de obra" desc="Registros de mano de obra" onClick={() => setView("mano_obra")} />
       </div>
     </div>
   );
