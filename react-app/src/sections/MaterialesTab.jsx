@@ -112,6 +112,7 @@ function MaterialesTab({ casa, simulacionId, onVolver }) {
   const [formError, setFormError] = useState("");
   const [editingItem, setEditingItem] = useState(null); // { planilla, item, material }
   const [deletingItem, setDeletingItem] = useState(null); // { planillaId, itemId, materialId }
+  const [query, setQuery] = useState("");
 
   const casaNombre = casa.adherente_nombre ?? casa.descripcion ?? `Casa #${casa.id}`;
 
@@ -124,6 +125,17 @@ function MaterialesTab({ casa, simulacionId, onVolver }) {
   const totalMateriales = allMateriales.reduce(
     (acc, { material }) => acc + (Number(material.total_ars) || 0), 0
   );
+
+  const filtrados = allMateriales.filter(({ planilla, item, material }) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      String(planilla.numero_planilla ?? planilla.numero ?? planilla.id).toLowerCase().includes(q) ||
+      item.nombre.toLowerCase().includes(q) ||
+      material.nombre.toLowerCase().includes(q) ||
+      (material.proveedor ?? "").toLowerCase().includes(q)
+    );
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -254,15 +266,51 @@ function MaterialesTab({ casa, simulacionId, onVolver }) {
         />
       )}
 
+      {/* Buscador */}
+      {!loading && (
+        <div style={{ position: "relative", marginBottom: "1rem" }}>
+          <input
+            className="sim-search"
+            type="text"
+            placeholder="Buscar por planilla, item o material..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ paddingRight: query ? "2.5rem" : undefined }}
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              style={{
+                position: "absolute", right: "0.7rem", top: "50%",
+                transform: "translateY(-50%)", background: "none",
+                border: "none", cursor: "pointer", color: "var(--muted)",
+                fontSize: "1rem", lineHeight: 1,
+              }}
+            >✕</button>
+          )}
+        </div>
+      )}
+
       {loading && <p className="config-help">Cargando materiales...</p>}
       {error && <p className="config-help" style={{ color: "red" }}>{error}</p>}
 
-      {!loading && allMateriales.length > 0 && (
+      {/* Mensajes de estado de búsqueda */}
+      {!loading && allMateriales.length === 0 && (
+        <p className="config-help">Sin materiales cargados.</p>
+      )}
+
+      {!loading && allMateriales.length > 0 && filtrados.length === 0 && query && (
+        <p className="config-help">No se encontraron materiales que coincidan con "{query}".</p>
+      )}
+
+      {/* Tabla de resultados */}
+      {!loading && filtrados.length > 0 && (
         <div className="table-wrap">
           <table className="sim-table">
             <thead>
               <tr>
-                <th>Planilla/Item</th>
+                <th>Planilla</th>
+                <th>Item</th>
                 <th>Material</th>
                 <th style={{ textAlign: "right" }}>Total</th>
                 <th style={{ textAlign: "right" }}>Retirado</th>
@@ -273,16 +321,12 @@ function MaterialesTab({ casa, simulacionId, onVolver }) {
               </tr>
             </thead>
             <tbody>
-              {allMateriales.map(({ planilla, item, material }) => (
+              {filtrados.map(({ planilla, item, material }) => (
                 editingItem?.material?.id === material.id ? (
                   <tr key={material.id}>
-                    <td colSpan={8}>
+                    <td colSpan={9}>
                       <MaterialForm
                         isEditing
-                        // initial={{
-                        //   ...material,
-                        //   target: `${planilla.id}::${item.id}`
-                        // }}
                         initial={{
                           ...material,
                           cantidad_total: material.cantidad_total?.toString(),
@@ -300,7 +344,10 @@ function MaterialesTab({ casa, simulacionId, onVolver }) {
                 ) : (
                   <tr key={material.id}>
                     <td style={{ fontSize: "0.85rem", color: "#666" }}>
-                      P{planilla.numero || planilla.id} / {item.nombre}
+                      #{planilla.numero_planilla ?? planilla.numero ?? planilla.id}
+                    </td>
+                    <td style={{ fontSize: "0.85rem", color: "#666" }}>
+                      {item.nombre}
                     </td>
                     <td>
                       <strong>{material.nombre}</strong>
@@ -324,7 +371,7 @@ function MaterialesTab({ casa, simulacionId, onVolver }) {
             </tbody>
             <tfoot>
               <tr style={{ fontWeight: "bold", background: "#f5f5f5" }}>
-                <td colSpan={6} style={{ textAlign: "right" }}>Total Consolidado</td>
+                <td colSpan={7} style={{ textAlign: "right" }}>Total Consolidado</td>
                 <td style={{ textAlign: "right" }}>{fmt(totalMateriales)}</td>
                 <td></td>
               </tr>
