@@ -131,29 +131,20 @@ function MaterialesTab({ casa, simulacionId, onVolver }) {
       const planillas = await listarPlanillasCasa(simulacionId, casa.id);
       const planillasRaw = Array.isArray(planillas) ? planillas : [];
 
-      const planillasCompletas = await Promise.all(
+      const planillasConItems = await Promise.all(
         planillasRaw.map(async (p) => {
-          try {
-            const items = await listarItemsPlanilla(simulacionId, casa.id, p.id);
-            const itemsArray = Array.isArray(items) ? items : [];
-
-            const itemsConMateriales = await Promise.all(
-              itemsArray.map(async (item) => {
-                try {
-                  const materiales = await listarMaterialesItem(simulacionId, casa.id, p.id, item.id);
-                  return { ...item, materiales: Array.isArray(materiales) ? materiales : [] };
-                } catch {
-                  return { ...item, materiales: [] };
-                }
-              })
-            );
-            return { ...p, items: itemsConMateriales };
-          } catch {
-            return { ...p, items: [] };
-          }
+          const items = await listarItemsPlanilla(simulacionId, casa.id, p.id).catch(() => []);
+          const itemsConMateriales = await Promise.all(
+            (Array.isArray(items) ? items : []).map(async (item) => {
+              const materiales = await listarMaterialesItem(simulacionId, casa.id, p.id, item.id).catch(() => []);
+              return { ...item, materiales: Array.isArray(materiales) ? materiales : [] };
+            })
+          );
+          return { ...p, items: itemsConMateriales };
         })
       );
-      setPlanillasConItems(planillasCompletas);
+
+      setPlanillasConItems(planillasConItems);
     } catch (err) {
       setError(err?.message || "Error al cargar materiales.");
     } finally {
@@ -161,9 +152,9 @@ function MaterialesTab({ casa, simulacionId, onVolver }) {
     }
   }, [simulacionId, casa.id]);
 
-  useEffect(() => { 
+  useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load(); 
+    load();
   }, [load]);
 
   const buildPayload = (form) => ({

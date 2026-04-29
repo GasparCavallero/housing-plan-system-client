@@ -4,10 +4,7 @@ import {
   crearItemPlanilla,
   actualizarItemPlanilla,
   eliminarItemPlanilla,
-  // listarMaterialesItem,
   crearMaterialPlanilla,
-  actualizarMaterialPlanilla,
-  eliminarMaterialPlanilla,
   listarMovimientosMaterial,
   registrarMovimientoEntrega,
 } from "../services/services.js";
@@ -186,14 +183,10 @@ function MaterialRow({ material, simulacionId, casaId, planillaId, itemId, onEdi
 // ── Item con materiales ───────────────────────────────────────────────────────
 
 function ItemRow({ item, simulacionId, casaId, planillaId, onEdit, onDelete, onRefresh }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [showMatForm, setShowMatForm] = useState(false);
-  const [editingMat, setEditingMat] = useState(null);
-  const [deletingMatId, setDeletingMatId] = useState(null);
   const [savingMat, setSavingMat] = useState(false);
   const [matError, setMatError] = useState("");
-
-  const materiales = item.materiales ?? [];
 
   const buildMatPayload = (form) => ({
     nombre: form.nombre?.trim(),
@@ -216,38 +209,8 @@ function ItemRow({ item, simulacionId, casaId, planillaId, onEdit, onDelete, onR
     } finally { setSavingMat(false); }
   };
 
-  const handleEditarMat = async (form) => {
-    setSavingMat(true);
-    setMatError("");
-    try {
-      await actualizarMaterialPlanilla(simulacionId, casaId, planillaId, item.id, editingMat.id, buildMatPayload(form));
-      setEditingMat(null);
-      onRefresh();
-    } catch (err) {
-      setMatError(err?.message || "Error al actualizar material.");
-    } finally { setSavingMat(false); }
-  };
-
-  const handleEliminarMat = async () => {
-    try {
-      await eliminarMaterialPlanilla(simulacionId, casaId, planillaId, item.id, deletingMatId);
-      setDeletingMatId(null);
-      onRefresh();
-    } catch (err) {
-      setMatError(err?.message || "Error al eliminar material.");
-      setDeletingMatId(null);
-    }
-  };
-
   return (
     <div className="sim-casa-card" style={{ marginBottom: "0.8rem" }}>
-      <ConfirmModal
-        isOpen={!!deletingMatId}
-        title="Eliminar material"
-        message="¿Eliminás este material?"
-        onConfirm={handleEliminarMat}
-        onCancel={() => setDeletingMatId(null)}
-      />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
@@ -256,7 +219,6 @@ function ItemRow({ item, simulacionId, casaId, planillaId, onEdit, onDelete, onR
           <p className="sim-section-desc">Total materiales {fmt(item.total_materiales_ars)}</p>
         </div>
         <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-          <span className="sim-badge">{materiales.length} materiales</span>
           <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }} onClick={onEdit}>Editar item</button>
           <button className="btn btn-primary" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }} onClick={() => { setShowMatForm(true); setExpanded(true); }}>Agregar material</button>
           <button className="btn btn-ghost" style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem", color: "#c0392b", borderColor: "#c0392b" }} onClick={onDelete}>Eliminar</button>
@@ -274,41 +236,8 @@ function ItemRow({ item, simulacionId, casaId, planillaId, onEdit, onDelete, onR
               error={matError}
             />
           )}
-
-          {materiales.map((mat) => (
-            editingMat?.id === mat.id ? (
-              <MaterialForm
-                key={mat.id}
-                initial={{
-                  nombre: mat.nombre ?? "",
-                  proveedor: mat.proveedor ?? "",
-                  descripcion: mat.descripcion ?? "",
-                  unidad: mat.unidad ?? "",
-                  cantidad_total: mat.cantidad_total ?? "",
-                  precio_unitario_ars: mat.precio_unitario_ars ?? "",
-                }}
-                onGuardar={handleEditarMat}
-                onCancelar={() => { setEditingMat(null); setMatError(""); }}
-                saving={savingMat}
-                error={matError}
-              />
-            ) : (
-              <MaterialRow
-                key={mat.id}
-                material={mat}
-                simulacionId={simulacionId}
-                casaId={casaId}
-                planillaId={planillaId}
-                itemId={item.id}
-                onEdit={() => setEditingMat(mat)}
-                onDelete={() => setDeletingMatId(mat.id)}
-              />
-            )
-          ))}
-
           <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem" }}>
             <span className="sim-badge">Total item: {fmt(item.total_materiales_ars)}</span>
-            <span className="sim-badge">Materiales: {materiales.length}</span>
           </div>
         </div>
       )}
@@ -336,8 +265,9 @@ function PlanillaDetalle({ planilla, casa, simulacionId, onVolver }) {
       setItems(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error loading items:", err);
+    } finally {
+      setLoading(false);
     }
-    finally { setLoading(false); }
   }, [simulacionId, casa.id, planilla.id]);
 
   useEffect(() => {
