@@ -71,7 +71,10 @@ function Simulaciones() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load(); 
+  }, []);
 
   const toggleSelect = (id) => {
     setCheckedIds((prev) => {
@@ -138,7 +141,7 @@ function Simulaciones() {
             {checkedIds.size > 0 && (
               <button
                 className="btn btn-ghost"
-                style={{ color: "#c0392b", borderColor: "#c0392b" }}
+                style={{ color: "#c0392b", borderColor: "#c0392b", background: "#fff"}}
                 onClick={() => setShowConfirm(true)}
                 disabled={deleting}
               >
