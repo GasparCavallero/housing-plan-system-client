@@ -43,7 +43,9 @@ function PlanillaCard({ planilla, onOpen, onEdit, onDelete }) {
 }
 
 function PlanillaForm({ initial, casaNombre, onGuardar, onCancelar, saving, error }) {
-  const [form, setForm] = useState(initial ?? FORM_EMPTY);
+  // Inicializamos el estado. Si es una nueva planilla (initial es null), 
+  // usamos FORM_EMPTY pero sobreescribimos el adherente con casaNombre.
+  const [form, setForm] = useState(initial ?? { ...FORM_EMPTY, adherente: casaNombre });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,7 +77,8 @@ function PlanillaForm({ initial, casaNombre, onGuardar, onCancelar, saving, erro
         </label>
         <label>
           Adherente
-          <input type="text" name="adherente" value={form.adherente} onChange={handleChange} defaultValue={casaNombre} />
+          {/* Eliminado defaultValue para evitar el conflicto con value */}
+          <input type="text" name="adherente" value={form.adherente} onChange={handleChange} />
         </label>
         <label>
           Dirección
