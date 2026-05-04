@@ -142,12 +142,16 @@ function Configuracion({ onValorViviendaChange }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => {
-      const next = { ...prev, [name]: value };
-      const valor = Number(next.metrosCuadrados) * Number(next.valorPorM2);
-      if (onValorViviendaChange && valor > 0) onValorViviendaChange(valor);
-      return next;
+      return { ...prev, [name]: value };
     });
   };
+
+  useEffect(() => {
+    const valor = Number(form.metrosCuadrados) * Number(form.valorPorM2);
+    if (onValorViviendaChange && valor > 0) {
+      onValorViviendaChange(valor);
+    }
+  }, [form.metrosCuadrados, form.valorPorM2, onValorViviendaChange]);
 
   const handleGuardar = async () => {
     setError("");
@@ -234,11 +238,6 @@ function Configuracion({ onValorViviendaChange }) {
           <label>
             % licitación extraordinaria
             <input type="number" name="porcentajeLicitacionExtraordinaria" min="0" step="0.0001" value={form.porcentajeLicitacionExtraordinaria} onChange={handleChange} required />
-          </label>
-          <label style={{ gridColumn: "1 / -1" }}>
-            Cronograma adjudicaciones anual (CSV)
-            <input type="text" name="cronogramaAdjudicacionesAnual" placeholder="5,5,5,6,6,7" value={form.cronogramaAdjudicacionesAnual} onChange={handleChange} />
-            <small>Formato legacy: enteros no negativos separados por coma. Ejemplo: 5,5,5,6,6,7.</small>
           </label>
           <label>
             Duración construcción (meses)
