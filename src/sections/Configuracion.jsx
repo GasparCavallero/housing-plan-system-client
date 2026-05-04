@@ -78,7 +78,7 @@ function validateConfig(payload) {
   if (payload.porcentaje_licitacion_extraordinaria < 0)
     throw new Error("El porcentaje de licitación extraordinaria debe ser mayor o igual a 0.");
   const cron = String(payload.cronograma_adjudicaciones_anual || "").trim();
-  if (!cron || !cron.split(",").every((p) => /^\d+$/.test(p.trim())))
+  if (cron && !cron.split(",").every((p) => /^\d+$/.test(p.trim())))
     throw new Error("El cronograma anual debe tener enteros no negativos separados por coma. Ejemplo: 5,5,5,6,6,7.");
 }
 
